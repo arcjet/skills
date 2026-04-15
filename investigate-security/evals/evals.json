@@ -1,0 +1,38 @@
+{
+  "skill_name": "investigate-security",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Give me a security overview of my Arcjet-protected site — what's the traffic looking like and are there any issues?",
+      "expected_output": "The agent uses Arcjet MCP tools to get a security briefing, analyze traffic patterns, and check for anomalies. It reports total requests, denial rates, top denial reasons, and any anomalies detected.",
+      "assertions": [
+        "The agent calls list-teams and list-sites (or equivalent) to identify the site",
+        "get-security-briefing or analyze-traffic is called",
+        "The response includes denial rates or request volume data",
+        "The agent summarizes findings with actionable recommendations"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Why was a request from 203.0.113.42 blocked on my site?",
+      "expected_output": "The agent uses MCP tools to find the request, get its details, and explain the decision. It reports which rule caused the denial and what the IP's reputation looks like.",
+      "assertions": [
+        "The agent calls list-requests filtered by the IP address",
+        "get-request-details or explain-decision is called for the specific request",
+        "The explanation identifies which rule caused the DENY decision",
+        "The agent provides a clear plain-language explanation of why the request was blocked"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I want to block all traffic from a suspicious IP range. Can you create a rule for that?",
+      "expected_output": "The agent creates a filter rule in DRY_RUN mode first, checks its impact with get-dry-run-impact, and only promotes to LIVE after confirming the impact is acceptable.",
+      "assertions": [
+        "The agent creates the rule in DRY_RUN mode first, not LIVE",
+        "get-dry-run-impact is called before promoting",
+        "The agent explains what traffic would be affected before promoting",
+        "promote-rule is only called after confirming impact is acceptable"
+      ]
+    }
+  ]
+}
