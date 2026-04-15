@@ -1,2 +1,3 @@
 # Eval workspace artifacts (generated, not committed)
 *-workspace/
+__pycache__/

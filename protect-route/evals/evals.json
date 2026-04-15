@@ -9,7 +9,7 @@
         "evals/files/express-api/package.json",
         "evals/files/express-api/routes/api.ts"
       ],
-      "assertions": [
+      "expectations": [
         "The agent detects Express as the framework and selects @arcjet/node",
         "A shared Arcjet client is created with shield() as the base rule",
         "Route-specific rules are applied using withRule(), not by modifying the shared instance",
@@ -26,7 +26,7 @@
         "evals/files/nextjs-signup/package.json",
         "evals/files/nextjs-signup/app/api/signup/route.ts"
       ],
-      "assertions": [
+      "expectations": [
         "The agent detects Next.js and selects @arcjet/next",
         "Email validation (validateEmail) is included since this is a signup form",
         "Rate limiting is included to prevent brute force",
@@ -42,7 +42,7 @@
         "evals/files/fastapi-data/requirements.txt",
         "evals/files/fastapi-data/main.py"
       ],
-      "assertions": [
+      "expectations": [
         "The agent detects Python/FastAPI and uses the arcjet pip package",
         "The Python SDK API is used correctly (arcjet(), Mode.LIVE, decision.is_denied())",
         "shield() is included as base protection",
