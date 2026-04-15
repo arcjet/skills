@@ -1,0 +1,42 @@
+{
+  "skill_name": "protect-route",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add rate limiting and bot protection to my Express API endpoint in routes/api.ts",
+      "expected_output": "The agent installs @arcjet/node, creates or reuses a shared Arcjet client with shield(), adds detectBot() and a rate limiting rule via withRule(), calls protect() inside the route handler, and handles denied decisions with appropriate status codes.",
+      "assertions": [
+        "The agent detects Express as the framework and selects @arcjet/node",
+        "A shared Arcjet client is created with shield() as the base rule",
+        "Route-specific rules are applied using withRule(), not by modifying the shared instance",
+        "protect() is called inside the route handler, not as middleware",
+        "Denied decisions return appropriate HTTP status codes (429 for rate limit, 403 for bot)",
+        "ARCJET_KEY is read from an environment variable, not hardcoded"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have a Next.js app, can you protect my signup form endpoint at app/api/signup/route.ts from abuse?",
+      "expected_output": "The agent installs @arcjet/next, creates or reuses a shared Arcjet client, adds validateEmail(), detectBot(), and slidingWindow() rules appropriate for a signup form, calls protect() inside the route handler, and handles decisions.",
+      "assertions": [
+        "The agent detects Next.js and selects @arcjet/next",
+        "Email validation (validateEmail) is included since this is a signup form",
+        "Rate limiting is included to prevent brute force",
+        "protect() is called once inside the POST handler, not in middleware",
+        "The agent does not use app.use() or middleware patterns"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "secure my FastAPI endpoint at /api/data with some basic protection",
+      "expected_output": "The agent installs the arcjet pip package, creates a shared Arcjet client using the Python SDK, adds shield() and detectBot() rules, calls protect() in the route handler, and handles denied decisions.",
+      "assertions": [
+        "The agent detects Python/FastAPI and uses the arcjet pip package",
+        "The Python SDK API is used correctly (arcjet(), Mode.LIVE, decision.is_denied())",
+        "shield() is included as base protection",
+        "protect() is called with the request object",
+        "The agent does not mix JavaScript and Python SDK syntax"
+      ]
+    }
+  ]
+}
