@@ -1,0 +1,43 @@
+{
+  "skill_name": "add-guard-protection",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add rate limiting and prompt injection detection to my AI agent's weather tool call function in TypeScript",
+      "expected_output": "The agent installs @arcjet/guard, creates a client with launchArcjet(), configures tokenBucket and detectPromptInjection rules at module scope, calls guard() with bound rules and a descriptive label, and handles DENY decisions.",
+      "assertions": [
+        "Uses @arcjet/guard, not @arcjet/next or @arcjet/node",
+        "Client is created with launchArcjet() at module scope, not per call",
+        "Rules are configured once at module scope and bound with input per invocation",
+        "guard() is called instead of protect()",
+        "A descriptive label is provided to guard()",
+        "Rate limit uses an explicit key string, not IP-based"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm building an MCP server tool in Python that processes user messages. Add security to rate limit per user and block sensitive info.",
+      "expected_output": "The agent uses arcjet.guard with launch_arcjet(), configures TokenBucket and LocalDetectSensitiveInfo rules, calls guard() with bound rules, and handles decisions.",
+      "assertions": [
+        "Uses arcjet.guard imports (launch_arcjet, TokenBucket, LocalDetectSensitiveInfo), not arcjet top-level",
+        "Client is created with launch_arcjet() at module scope",
+        "TokenBucket is configured with explicit key-based tracking",
+        "LocalDetectSensitiveInfo is used with a deny list",
+        "guard() is called, not protect()",
+        "No HTTP request object is required or used"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "add arcjet protection to my background job that calls an LLM, I need to limit it to 100 calls per hour per team",
+      "expected_output": "The agent uses Guard with a fixed window or token bucket rate limit configured for 100 per hour, using the team ID as the key. guard() is called without an HTTP request.",
+      "assertions": [
+        "Uses Guard API (launchArcjet/launch_arcjet + guard()), not the HTTP SDK",
+        "Rate limit is configured for approximately 100 per hour",
+        "The team identifier is used as the rate limit key",
+        "No HTTP request object is required",
+        "The agent mentions starting with DRY_RUN mode for testing"
+      ]
+    }
+  ]
+}
