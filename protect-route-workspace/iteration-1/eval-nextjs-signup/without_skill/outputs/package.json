@@ -1,8 +1,0 @@
-{
-  "name": "my-nextjs-app",
-  "dependencies": {
-    "@arcjet/next": "^1.0.0-alpha.0",
-    "next": "^14.0.0",
-    "react": "^18.0.0"
-  }
-}
