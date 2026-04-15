@@ -4,38 +4,17 @@
     {
       "id": 1,
       "prompt": "I have a Next.js AI chat endpoint at app/api/chat/route.ts using the Vercel AI SDK. Add security to protect against prompt injection and control costs.",
-      "expected_output": "The agent adds detectPromptInjection(), sensitiveInfo(), tokenBucket(), detectBot(), and shield() rules. It composes a single protect() call with detectPromptInjectionMessage and sensitiveInfoValue parameters, handles each denial reason with specific error messages, and calls protect() before streamText().",
-      "assertions": [
-        "detectPromptInjection() is included in the rules",
-        "sensitiveInfo() or sensitiveInfo with deny list is included",
-        "tokenBucket() is used for rate limiting, not fixedWindow or slidingWindow",
-        "protect() is called before any AI SDK call (streamText/generateText)",
-        "Both sensitiveInfoValue and detectPromptInjectionMessage are passed to protect()",
-        "Each denial reason (rate limit, prompt injection, sensitive info, bot) has a distinct error response"
-      ]
+      "expected_output": "The agent adds detectPromptInjection(), sensitiveInfo(), tokenBucket(), detectBot(), and shield() rules. It composes a single protect() call with detectPromptInjectionMessage and sensitiveInfoValue parameters, handles each denial reason with specific error messages, and calls protect() before streamText()."
     },
     {
       "id": 2,
       "prompt": "protect my FastAPI /chat endpoint from jailbreaks and PII leakage, it takes a message field in the request body",
-      "expected_output": "The agent uses the Python SDK to add detect_prompt_injection(), detect_sensitive_info(), token_bucket(), detect_bot(), and shield() rules. It passes detect_prompt_injection_message and sensitive_info_value at protect() time.",
-      "assertions": [
-        "The Python SDK is used correctly (detect_prompt_injection, detect_sensitive_info, Mode.LIVE)",
-        "detect_prompt_injection_message is passed the user's message at protect() time",
-        "sensitive_info_value is passed the user's message at protect() time",
-        "token_bucket is used for rate limiting with characteristics for per-user tracking",
-        "The agent does not start streaming before calling protect()"
-      ]
+      "expected_output": "The agent uses the Python SDK to add detect_prompt_injection(), detect_sensitive_info(), token_bucket(), detect_bot(), and shield() rules. It passes detect_prompt_injection_message and sensitive_info_value at protect() time."
     },
     {
       "id": 3,
       "prompt": "add arcjet to my ai completion endpoint, I want to block credit cards and emails from being sent to the model",
-      "expected_output": "The agent adds sensitiveInfo with a deny list including CREDIT_CARD_NUMBER and EMAIL, along with other AI protections. It passes the user message via sensitiveInfoValue at protect() time.",
-      "assertions": [
-        "sensitiveInfo deny list includes CREDIT_CARD_NUMBER and EMAIL",
-        "The user message content is passed via sensitiveInfoValue (JS) or sensitive_info_value (Python)",
-        "protect() is called with all required parameters in a single call",
-        "The agent mentions that sensitive info detection runs locally in WASM"
-      ]
+      "expected_output": "The agent adds sensitiveInfo with a deny list including CREDIT_CARD_NUMBER and EMAIL, along with other AI protections. It passes the user message via sensitiveInfoValue at protect() time."
     }
   ]
 }

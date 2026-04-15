@@ -1,0 +1,23 @@
+{
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": { "mean": 1.0, "stddev": 0.0 },
+      "evals": {
+        "eval-express-api": { "passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0 },
+        "eval-nextjs-signup": { "passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0 },
+        "eval-fastapi-data": { "passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0 }
+      }
+    },
+    "without_skill": {
+      "pass_rate": { "mean": 0.56, "stddev": 0.25 },
+      "evals": {
+        "eval-express-api": { "passed": 4, "failed": 2, "total": 6, "pass_rate": 0.67 },
+        "eval-nextjs-signup": { "passed": 4, "failed": 1, "total": 5, "pass_rate": 0.8 },
+        "eval-fastapi-data": { "passed": 1, "failed": 4, "total": 5, "pass_rate": 0.2 }
+      }
+    },
+    "delta": {
+      "pass_rate": 0.44
+    }
+  }
+}

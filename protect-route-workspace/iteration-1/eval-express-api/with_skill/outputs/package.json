@@ -1,0 +1,7 @@
+{
+  "name": "my-express-app",
+  "dependencies": {
+    "express": "^4.18.0",
+    "@arcjet/node": "latest"
+  }
+}
