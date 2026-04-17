@@ -12,7 +12,12 @@ skills/
 │   └── evals/
 │       ├── evals.json              # Test prompts + expected outputs
 │       └── files/                  # Fixture input files for evals
-├── protect-route-workspace/        # Eval artifacts (gitignored)
+├── add-ai-protection/              # Arcjet AI endpoint protection skill
+│   ├── SKILL.md
+│   └── evals/
+│       ├── evals.json
+│       └── files/
+├── *-workspace/                    # Eval artifacts (gitignored)
 └── .gitignore
 ```
 
