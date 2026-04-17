@@ -1,15 +1,17 @@
 {
-  "name": "my-express-app",
+  "name": "express-ai-api",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/server.ts"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "openai": "^6.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
+    "tsx": "^4.0.0",
     "typescript": "^6.0.0"
   }
 }

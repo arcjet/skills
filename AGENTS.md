@@ -12,11 +12,35 @@ skills/
 │   └── evals/
 │       ├── evals.json              # Test prompts + expected outputs
 │       └── files/                  # Fixture input files for evals
-├── protect-route-workspace/        # Eval artifacts (gitignored)
+├── add-ai-protection/              # Arcjet AI endpoint protection skill
+│   ├── SKILL.md
+│   └── evals/
+│       ├── evals.json
+│       └── files/
+├── *-workspace/                    # Eval artifacts (gitignored)
 └── .gitignore
 ```
 
 ## Running skill evals
+
+### How to run evals
+
+Use `claude -p` for each eval run. Do NOT use subagents — they can see workspace files and leak skill context into baseline runs.
+
+For each eval, run two `claude -p` invocations in isolated temp directories:
+
+**With-skill run:**
+1. Create a tmpdir, copy fixture files in
+2. Prepend the SKILL.md content to the prompt
+3. Run `claude -p "<prompt>" --output-format json --max-turns 5 --dangerously-skip-permissions` in the tmpdir
+4. Copy outputs to `<workspace>/iteration-N/eval-<name>/with_skill/outputs/`
+
+**Without-skill run:**
+1. Create a separate tmpdir, copy same fixture files in
+2. Run `claude -p "<prompt>" --output-format json --max-turns 5 --dangerously-skip-permissions` (no skill content)
+3. Copy outputs to `<workspace>/iteration-N/eval-<name>/without_skill/outputs/`
+
+The tmpdir isolation ensures the baseline can't see SKILL.md or other Arcjet files.
 
 ### Workspace structure
 
