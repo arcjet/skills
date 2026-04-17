@@ -2,6 +2,7 @@
 *-workspace/
 
 # Installed skills (managed by skills-lock.json, via `npx skills add`)
+# The skill is copied into each agent's directory; ignore all of them.
 .agents/skills/skill-creator/
 .adal/
 .augment/
@@ -32,4 +33,5 @@
 .vibe/
 .windsurf/
 .zencoder/
+# Root-level skills/ directory used by the skills CLI
 skills/skill-creator/
