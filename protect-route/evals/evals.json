@@ -1,0 +1,37 @@
+{
+  "skill_name": "protect-route",
+  "evals": [
+    {
+      "id": 1,
+      "name": "express-api",
+      "prompt": "My Express API is getting hammered by bots and scrapers. Can you help protect it?",
+      "expected_output": "Installs @arcjet/node, creates a shared Arcjet client with shield(), adds detectBot() and a rate limiting rule via withRule(), calls protect() inside each route handler, handles denied decisions with appropriate status codes (429, 403).",
+      "files": [
+        "evals/files/express-api/package.json",
+        "evals/files/express-api/tsconfig.json",
+        "evals/files/express-api/src/index.ts"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "nextjs-signup",
+      "prompt": "We're getting tons of spam signups. Can you stop bots from abusing our signup endpoint?",
+      "expected_output": "Installs @arcjet/next, creates a shared Arcjet client (lib/arcjet.ts), adds validateEmail() to reject disposable/invalid emails, adds slidingWindow() for rate limiting, uses withRule() pattern, calls protect() with email parameter inside the POST handler.",
+      "files": [
+        "evals/files/nextjs-signup/package.json",
+        "evals/files/nextjs-signup/next.config.mjs",
+        "evals/files/nextjs-signup/app/api/signup/route.ts"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "fastapi-data",
+      "prompt": "I need to add some security to my FastAPI app before going to production.",
+      "expected_output": "Installs the arcjet pip package, creates an Arcjet client using the Python SDK (arcjet() with Mode.LIVE), adds shield() and detect_bot() rules, calls protect() with await in the route handler, handles denied decisions with appropriate HTTP status codes.",
+      "files": [
+        "evals/files/fastapi-data/requirements.txt",
+        "evals/files/fastapi-data/main.py"
+      ]
+    }
+  ]
+}
