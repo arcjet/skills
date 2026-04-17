@@ -26,8 +26,6 @@ npx skills add arcjet/skills
 | ----- | ----------- |
 | `protect-route` | Add security protection to a server-side route or endpoint — rate limiting, bot detection, email validation, and abuse prevention. Works across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, and Flask. |
 | `add-ai-protection` | Secure AI/LLM endpoints with layered protection — prompt injection detection, PII blocking, and token budget rate limiting. |
-| `add-guard-protection` | Add Arcjet Guard protection to AI agent tool calls and background tasks where there is no HTTP request. Covers `@arcjet/guard` (JS) and `arcjet.guard` (Python). |
-| `investigate-security` | Investigate security events using Arcjet MCP tools — traffic analysis, request inspection, IP investigation, and remote rule management. |
 
 ## Links
 
