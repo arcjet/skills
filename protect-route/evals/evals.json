@@ -16,7 +16,7 @@
       "id": 2,
       "name": "nextjs-signup",
       "prompt": "We're getting tons of spam signups. Can you stop bots from abusing our signup endpoint?",
-      "expected_output": "Installs @arcjet/next, creates a shared Arcjet client (lib/arcjet.ts), adds validateEmail() to reject disposable/invalid emails, adds slidingWindow() for rate limiting, uses withRule() pattern, calls protect() with email parameter inside the POST handler.",
+      "expected_output": "Installs @arcjet/next, creates a shared Arcjet client (lib/arcjet.ts), uses protectSignup() to combine bot detection, email validation, and rate limiting in one rule, calls protect() with email parameter inside the POST handler.",
       "files": [
         "evals/files/nextjs-signup/package.json",
         "evals/files/nextjs-signup/next.config.mjs",
@@ -27,7 +27,7 @@
       "id": 3,
       "name": "fastapi-data",
       "prompt": "I need to add some security to my FastAPI app before going to production.",
-      "expected_output": "Installs the arcjet pip package, creates an Arcjet client using the Python SDK (arcjet() with Mode.LIVE), adds shield() and detect_bot() rules, calls protect() with await in the route handler, handles denied decisions with appropriate HTTP status codes.",
+      "expected_output": "Installs the arcjet pypi package, creates an Arcjet client using the Python SDK (arcjet() with Mode.LIVE), adds detect_bot() rules, calls protect() with await in the route handler, handles denied decisions with appropriate HTTP status codes.",
       "files": [
         "evals/files/fastapi-data/requirements.txt",
         "evals/files/fastapi-data/main.py"

@@ -1,0 +1,6 @@
+# Eval workspace artifacts (run outputs, grading, benchmarks, viewer)
+*-workspace/
+
+# Python
+__pycache__/
+*.pyc
