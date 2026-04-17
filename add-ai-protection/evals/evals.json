@@ -1,0 +1,46 @@
+{
+  "skill_name": "add-ai-protection",
+  "evals": [
+    {
+      "id": 1,
+      "name": "nextjs-chat",
+      "prompt": "Users are finding ways to jailbreak our chatbot and it's costing us a fortune in API calls. Can you lock it down?",
+      "expected_output": "Installs @arcjet/next, creates a shared Arcjet client, adds detectPromptInjection(), sensitiveInfo(), tokenBucket(), and detectBot() via withRule(). Calls protect() with sensitiveInfoValue and detectPromptInjectionMessage before streamText(). Returns errors before opening stream.",
+      "files": [
+        "evals/files/nextjs-chat/package.json",
+        "evals/files/nextjs-chat/app/api/chat/route.ts"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "express-openai",
+      "prompt": "We need to stop people from sending credit card numbers and personal info through our AI chat endpoint.",
+      "expected_output": "Installs @arcjet/node, adds sensitiveInfo() with deny list for PII types, passes user message as sensitiveInfoValue to protect(). Calls protect() before opening the SSE stream. Handles denied decisions before res.write().",
+      "files": [
+        "evals/files/express-openai/package.json",
+        "evals/files/express-openai/src/server.ts"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "fastapi-langchain",
+      "prompt": "I'm worried about prompt injection attacks on my LangChain chatbot. What can I do?",
+      "expected_output": "Installs the arcjet pypi package, creates an Arcjet client with detect_prompt_injection() and detect_bot() rules, calls protect() with detect_prompt_injection_message before starting the LangChain stream. Returns error response before opening StreamingResponse.",
+      "files": [
+        "evals/files/fastapi-langchain/requirements.txt",
+        "evals/files/fastapi-langchain/main.py"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "nextjs-existing",
+      "prompt": "We already have Arcjet set up for rate limiting but now we need AI-specific protections on our chat endpoint — prompt injection and PII filtering.",
+      "expected_output": "Reuses the existing lib/arcjet.ts client, imports detectPromptInjection and sensitiveInfo, adds them via withRule() in the route file. Passes sensitiveInfoValue and detectPromptInjectionMessage to protect(). Does NOT create a new Arcjet instance.",
+      "files": [
+        "evals/files/nextjs-existing/package.json",
+        "evals/files/nextjs-existing/lib/arcjet.ts",
+        "evals/files/nextjs-existing/app/api/chat/route.ts"
+      ]
+    }
+  ]
+}
