@@ -8,5 +8,6 @@
 		},
 		"ghcr.io/devcontainers/features/python:1": {},
 		"ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
-	}
+	},
+	"postCreateCommand": "npx -y skills add https://github.com/anthropics/skills --skill skill-creator --yes"
 }

@@ -1,0 +1,35 @@
+# Eval workspace artifacts
+*-workspace/
+
+# Installed skills (managed by skills-lock.json, via `npx skills add`)
+.agents/skills/skill-creator/
+.adal/
+.augment/
+.bob/
+.claude/
+.codebuddy/
+.commandcode/
+.continue/
+.cortex/
+.crush/
+.factory/
+.goose/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.vibe/
+.windsurf/
+.zencoder/
+skills/skill-creator/

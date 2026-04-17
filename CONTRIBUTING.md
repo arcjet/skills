@@ -17,19 +17,22 @@ skill-name/
 └── references/           # Optional reference docs
 .agents/
 └── skills/
-    └── skill-creator/    # Anthropic's skill-creator (for building/evaluating)
+    └── skill-creator/    # Anthropic's skill-creator (installed via `npx skills add`)
 ```
 
 ## skill-creator
 
-The `skill-creator` skill in `.agents/skills/` is vendored from
-[anthropics/skills](https://github.com/anthropics/skills) at commit
-[`2c7ec5e`](https://github.com/anthropics/skills/tree/2c7ec5e78b8e5d43ea02e90bb8826f6b9f147b0c/skills/skill-creator).
-It lives in `.agents/skills/` so that Claude Code (and other agents that follow
-the universal skills convention) can discover it automatically.
+The `skill-creator` skill is installed from
+[anthropics/skills](https://github.com/anthropics/skills) via
+[skills.sh](https://skills.sh/anthropics/skills/skill-creator). It lives in
+`.agents/skills/` so that Claude Code (and other agents that follow the universal
+skills convention) can discover it automatically.
 
-To update it, clone `anthropics/skills` at the desired commit and copy
-`skills/skill-creator` into `.agents/skills/skill-creator`.
+To install or update it:
+
+```sh
+npx skills add https://github.com/anthropics/skills --skill skill-creator
+```
 
 ## Evaluating a skill
 
