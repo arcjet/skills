@@ -1,0 +1,84 @@
+{
+  "skill_name": "add-guard-protection",
+  "evals": [
+    {
+      "id": 1,
+      "name": "node-agent-tools",
+      "prompt": "My AI agent makes tool calls and I need to rate limit per user and block prompt injection before each tool runs.",
+      "expected_output": "Modifies agent.ts to add @arcjet/guard imports, creates guard client at module scope, configures tokenBucket and detectPromptInjection rules, calls guard() inline in each tool function with a specific label, handles DENY decisions.",
+      "files": [
+        "evals/files/node-agent-tools/package.json",
+        "evals/files/node-agent-tools/src/agent.ts"
+      ],
+      "assertions": [
+        "Uses @arcjet/guard package (not @arcjet/node or @arcjet/next)",
+        "Creates guard client with launchArcjet() at module scope in agent.ts",
+        "Configures a rate limiting rule (tokenBucket, fixedWindow, or slidingWindow)",
+        "Configures detectPromptInjection() rule",
+        "Calls guard() with a label parameter",
+        "Passes user identifier as rate limit key",
+        "Checks decision.conclusion for DENY",
+        "Calls guard() inline per tool (not via shared wrapper)",
+        "Does not use HTTP SDK (@arcjet/node or @arcjet/next)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "python-agent-tools",
+      "prompt": "Secure my tool calls, ",
+      "expected_output": "Modifies agent.py to add arcjet.guard imports, creates async guard client with launch_arcjet() at module scope, configures TokenBucket, DetectPromptInjection, and LocalDetectSensitiveInfo rules, calls guard() inline in each tool function or per-tool in the handler, handles DENY decisions.",
+      "files": [
+        "evals/files/python-agent-tools/requirements.txt",
+        "evals/files/python-agent-tools/agent.py"
+      ],
+      "assertions": [
+        "Adds arcjet to requirements.txt",
+        "Imports from arcjet.guard module",
+        "Creates async guard client with launch_arcjet() (not launch_arcjet_sync, since agent.py uses async code)",
+        "Configures a rate limiting rule (TokenBucket, FixedWindow, or SlidingWindow)",
+        "Configures DetectPromptInjection() rule",
+        "Calls guard() in agent.py",
+        "Checks decision.conclusion for DENY",
+        "Passes user identifier as rate limit key",
+        "Calls guard() inline per tool (not via single shared wrapper for all tools)",
+        "Does not use HTTP SDK (arcjet() / arcjet_sync() / protect())"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "node-mcp-tool",
+      "prompt": "Make sure my mcp server is secure",
+      "expected_output": "Modifies server.ts to add @arcjet/guard imports, creates guard client at module scope, configures rate limiting and detectPromptInjection rules, calls guard() inline in each tool handler with a descriptive label, handles DENY decisions.",
+      "files": [
+        "evals/files/node-mcp-tool/package.json",
+        "evals/files/node-mcp-tool/src/server.ts"
+      ],
+      "assertions": [
+        "Uses @arcjet/guard package",
+        "Creates guard client with launchArcjet()",
+        "Configures a rate limiting rule",
+        "Configures detectPromptInjection() rule",
+        "Calls guard() with a label parameter",
+        "Calls guard() inline in each tool handler (not via shared wrapper)",
+        "Checks decision.conclusion for DENY",
+        "Does not use HTTP SDK (@arcjet/node or @arcjet/next)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "go-agent",
+      "prompt": "Secure my agent",
+      "expected_output": "Explains that Arcjet Guard is only available for JavaScript/TypeScript and Python, not Go. Does not hallucinate a Go Arcjet package or create a hand-rolled imitation.",
+      "files": [
+        "evals/files/go-agent/go.mod",
+        "evals/files/go-agent/main.go"
+      ],
+      "assertions": [
+        "Does not hallucinate a Go Arcjet package",
+        "Does not add @arcjet/guard to a Go project",
+        "Does not create a hand-rolled guard implementation",
+        "Communicates that Guard is not available for Go"
+      ]
+    }
+  ]
+}
