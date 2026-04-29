@@ -10,9 +10,14 @@ metadata:
 
 Add runtime security to a route handler using Arcjet. This skill guides you through setting up the CLI, detecting the framework, configuring rules, and verifying protection.
 
-## Reference
+## SDK Reference
 
-Read https://docs.arcjet.com/llms.txt for comprehensive SDK documentation covering all frameworks, rule types, and configuration options.
+After detecting the framework (Step 1), read the appropriate reference file for exact API signatures, rule configuration, and usage patterns:
+
+- **JavaScript/TypeScript** (Next.js, Express, Fastify, SvelteKit, etc.): Read `references/javascript.md`
+- **Python** (FastAPI, Flask): Read `references/python.md`
+
+These references contain the complete SDK API — rule constructors, `protect()` parameters, decision handling, and `withRule()` patterns. Always consult the reference for the detected framework before writing code.
 
 ## Step 0: Set Up the Arcjet CLI
 
