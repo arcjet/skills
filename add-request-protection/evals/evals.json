@@ -1,0 +1,68 @@
+{
+  "skill_name": "add-request-protection",
+  "evals": [
+    {
+      "id": 1,
+      "name": "express-api",
+      "prompt": "My Express API is getting hammered by bots and scrapers. Can you help protect it?",
+      "expected_output": "Installs @arcjet/node, creates a shared Arcjet client with shield(), adds detectBot() and a rate limiting rule via withRule(), calls protect() inside each route handler, handles denied decisions with appropriate status codes (429, 403).",
+      "files": [
+        "evals/files/express-api/package.json",
+        "evals/files/express-api/tsconfig.json",
+        "evals/files/express-api/src/index.ts"
+      ],
+      "assertions": [
+        "Installs @arcjet/node (not @arcjet/next or @arcjet/guard)",
+        "Creates a shared Arcjet client at module scope",
+        "Configures shield() rule",
+        "Configures detectBot() rule",
+        "Configures a rate limiting rule (slidingWindow, fixedWindow, or tokenBucket)",
+        "Calls protect() inside route handlers",
+        "Checks decision.isDenied() and returns appropriate status codes",
+        "Sets ARCJET_KEY in environment (not hardcoded)",
+        "Does not use Arcjet in Express middleware (app.use)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "nextjs-signup",
+      "prompt": "We're getting tons of spam signups. Can you stop bots from abusing our signup endpoint?",
+      "expected_output": "Installs @arcjet/next, creates a shared Arcjet client (lib/arcjet.ts), uses protectSignup() to combine bot detection, email validation, and rate limiting in one rule, calls protect() with email parameter inside the POST handler.",
+      "files": [
+        "evals/files/nextjs-signup/package.json",
+        "evals/files/nextjs-signup/next.config.mjs",
+        "evals/files/nextjs-signup/app/api/signup/route.ts"
+      ],
+      "assertions": [
+        "Installs @arcjet/next (not @arcjet/node or @arcjet/guard)",
+        "Creates a shared Arcjet client (e.g. lib/arcjet.ts)",
+        "Configures shield() rule",
+        "Uses email validation or protectSignup()",
+        "Configures bot detection",
+        "Configures a rate limiting rule",
+        "Calls protect() inside the route handler (not middleware)",
+        "Checks decision and returns appropriate HTTP responses",
+        "Sets ARCJET_KEY in .env.local (not hardcoded)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "fastapi-data",
+      "prompt": "I need to add some security to my FastAPI app before going to production.",
+      "expected_output": "Installs the arcjet pypi package, creates an Arcjet client using the Python SDK (arcjet() with Mode.LIVE), adds detect_bot() rules, calls protect() with await in the route handler, handles denied decisions with appropriate HTTP status codes.",
+      "files": [
+        "evals/files/fastapi-data/requirements.txt",
+        "evals/files/fastapi-data/main.py"
+      ],
+      "assertions": [
+        "Adds arcjet to requirements.txt or installs via pip",
+        "Creates an Arcjet client using the Python SDK",
+        "Configures shield rule",
+        "Configures detect_bot() rule",
+        "Calls protect() in route handler with await",
+        "Checks decision and returns appropriate HTTP status codes",
+        "Sets ARCJET_KEY in environment (not hardcoded)"
+      ]
+    }
+  ]
+}

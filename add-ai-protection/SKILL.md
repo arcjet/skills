@@ -1,12 +1,22 @@
 ---
 name: add-ai-protection
 license: Apache-2.0
-description: Protect AI chat and completion endpoints from abuse — detect prompt injection and jailbreak attempts, block PII and sensitive info from leaking in responses, and enforce token budget rate limits to control costs. Use this skill when the user is building or securing any endpoint that processes user prompts with an LLM, even if they describe it as "preventing jailbreaks," "stopping prompt attacks," "blocking sensitive data," or "controlling AI API costs" rather than naming specific protections.
+description: "Deprecated: use add-request-protection (for HTTP route protection) or add-guard-protection (for non-HTTP code like agent tool calls) instead. Protect AI chat and completion endpoints from abuse."
 metadata:
   author: arcjet
 ---
 
-# Add AI-Specific Security with Arcjet
+# Deprecated — Use `add-request-protection` or `add-guard-protection`
+
+This skill has been replaced by:
+- **`add-request-protection`** — for HTTP routes serving AI/LLM endpoints (includes CLI integration, remote rules, traffic verification)
+- **`add-guard-protection`** — for non-HTTP code like AI agent tool calls, MCP handlers, and background workers
+
+Please use the appropriate skill above instead.
+
+---
+
+# Add AI-Specific Security with Arcjet (Legacy)
 
 Secure AI/LLM endpoints with layered protection: prompt injection detection, PII blocking, and token budget rate limiting. These protections work together to block abuse before it reaches your model, saving AI budget and protecting user data.
 
