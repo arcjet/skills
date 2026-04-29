@@ -4,6 +4,7 @@ license: Apache-2.0
 description: "Deprecated: use add-request-protection (for HTTP route protection) or add-guard-protection (for non-HTTP code like agent tool calls) instead. Protect AI chat and completion endpoints from abuse."
 metadata:
   author: arcjet
+  internal: true
 ---
 
 # Deprecated — Use `add-request-protection` or `add-guard-protection`
