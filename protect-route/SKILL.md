@@ -4,6 +4,7 @@ license: Apache-2.0
 description: "Deprecated: use add-request-protection instead. Add security protection to a server-side route or endpoint — rate limiting, bot detection, email validation, and abuse prevention."
 metadata:
   author: arcjet
+  internal: true
 ---
 
 # Deprecated — Use `add-request-protection`
