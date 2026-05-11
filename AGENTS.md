@@ -8,13 +8,14 @@ Instructions for agents working in this repo.
 skills/
 ├── .agents/skills/skill-creator/   # The skill-creator skill (Anthropic upstream)
 ├── protect-route/                  # Arcjet protect-route skill
-│   ├── SKILL.md                    # The skill itself
-│   └── evals/
-│       ├── evals.json              # Test prompts + expected outputs
-│       └── files/                  # Fixture input files for evals
+│   └── SKILL.md                    # The skill itself
 ├── add-ai-protection/              # Arcjet AI endpoint protection skill
-│   ├── SKILL.md
-│   └── evals/
+│   └── SKILL.md
+├── evals/                          # Evals (not installed with skills)
+│   ├── protect-route/
+│   │   ├── evals.json              # Test prompts + expected outputs
+│   │   └── files/                  # Fixture input files for evals
+│   └── add-ai-protection/
 │       ├── evals.json
 │       └── files/
 ├── *-workspace/                    # Eval artifacts (gitignored)
