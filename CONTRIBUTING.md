@@ -11,10 +11,11 @@ that guides AI coding agents through a specific security task.
 ```
 skill-name/
 ├── SKILL.md              # Skill instructions (required)
-├── evals/
-│   ├── evals.json        # Test cases
-│   └── files/            # Input files for test cases
 └── references/           # Optional reference docs
+evals/
+└── skill-name/
+    ├── evals.json        # Test cases
+    └── files/            # Input files for test cases
 .agents/
 └── skills/
     └── skill-creator/    # Anthropic's skill-creator (for building/evaluating)
@@ -38,7 +39,7 @@ We use the skill-creator workflow for eval-driven iteration. See the
 for the full process. The short version:
 
 1. **Design test cases** — add prompts and expected outputs to
-   `evals/evals.json`. Start with 2–3 cases. Don't add expectations yet.
+   `evals/skill-name/evals.json`. Start with 2–3 cases. Don't add expectations yet.
 
 2. **Run each test case** with and without the skill using `claude -p` for
    isolation. Save outputs to:
@@ -48,7 +49,7 @@ for the full process. The short version:
    ```
 
 3. **Review outputs** — write expectations based on what you observed. Add to
-   `evals/evals.json` and `eval_metadata.json` per eval directory.
+   `evals/skill-name/evals.json` and `eval_metadata.json` per eval directory.
 
 4. **Grade** — evaluate each expectation against outputs. Save to
    `run-1/grading.json` using the schema in
@@ -74,7 +75,7 @@ for the full process. The short version:
 
 ### What gets committed
 
-- `evals/evals.json` and `evals/files/` — **committed** (test cases and inputs)
+- `evals/skill-name/evals.json` and `evals/skill-name/files/` — **committed** (test cases and inputs)
 - `*-workspace/` directories — **not committed** (gitignored, eval artifacts)
 
 ## License
