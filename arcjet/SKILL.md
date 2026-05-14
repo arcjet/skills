@@ -10,7 +10,23 @@ metadata:
 
 Arcjet protects two types of entry points. Determine which applies, then read the corresponding reference.
 
-## Step 1: Detect Type and Read Reference
+## Step 1: Connect to the Arcjet Platform
+
+Before writing any code, establish a connection to the Arcjet platform so the project has a valid `ARCJET_KEY`. Skip this step only if the codebase isn't viable for Arcjet (unsupported language, no server-side code, etc.).
+
+**In order of preference:**
+
+1. **Arcjet CLI** (preferred): `npx @arcjet/cli auth login` → `arcjet teams list` → `arcjet sites list --team-id <id>` → `arcjet sites get-key --site-id <id>`
+2. **Arcjet MCP server** (if connected): `list-teams` → `list-sites` → `get-site-key`
+3. **Manual** (last resort): Tell the user to get a key from https://app.arcjet.com
+
+Add the key to the environment file (`.env.local` for Next.js, `.env` for others):
+```
+ARCJET_KEY=ajkey_...
+ARCJET_ENV=development
+```
+
+## Step 2: Detect Protection Type and Read Reference
 
 Examine the code the user wants to protect:
 
@@ -21,16 +37,6 @@ Examine the code the user wants to protect:
 3. **If the language is Go, Rust, Java, or another unsupported language** → tell the user Arcjet supports JavaScript/TypeScript and Python only. Do not hallucinate packages.
 
 These reference files contain exact API signatures, imports, and patterns. Do not guess at the API — always read the reference first.
-
-## Step 2: Get the ARCJET_KEY
-
-Check if `ARCJET_KEY` is already in the project's environment file (`.env.local` for Next.js, `.env` for others). If not:
-
-1. Run `arcjet auth login` then `arcjet sites get-key --site-id <id>` (install CLI with `npx @arcjet/cli` if needed)
-2. Or use the Arcjet MCP server if connected: `list-teams` → `list-sites` → `get-site-key`
-3. Last resort: add a placeholder and tell the user to get a key from https://app.arcjet.com
-
-Also add `ARCJET_ENV=development` for local dev environments.
 
 ## Step 3: Implement Protection
 
@@ -60,7 +66,7 @@ Also add `ARCJET_ENV=development` for local dev environments.
 - Guard rate limit rules without a `bucket` parameter may collide with other rules.
 - Never hardcode `ARCJET_KEY` — always use environment variables.
 
-## Step 4: Verify with CLI (optional)
+## Step 4: Verify with CLI
 
 ```bash
 arcjet watch --site-id <site-id>              # Stream live decisions
