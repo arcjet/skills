@@ -1,0 +1,122 @@
+{
+  "skill_name": "arcjet",
+  "evals": [
+    {
+      "id": 1,
+      "name": "express-api",
+      "prompt": "My Express API is getting hammered by bots and scrapers. Can you help protect it?",
+      "expected_output": "Installs @arcjet/node, creates a shared Arcjet client with shield(), adds detectBot() and a rate limiting rule via withRule(), calls protect() inside each route handler, handles denied decisions with appropriate status codes (429, 403).",
+      "files": [
+        "files/express-api/package.json",
+        "files/express-api/tsconfig.json",
+        "files/express-api/src/index.ts"
+      ],
+      "assertions": [
+        "Installs @arcjet/node (not @arcjet/next or @arcjet/guard)",
+        "Creates a shared Arcjet client at module scope",
+        "Configures shield() rule",
+        "Configures detectBot() rule",
+        "Configures a rate limiting rule (slidingWindow, fixedWindow, or tokenBucket)",
+        "Calls protect() inside route handlers",
+        "Checks decision.isDenied() and returns appropriate status codes",
+        "Sets ARCJET_KEY in environment (not hardcoded)",
+        "Does not use Arcjet in Express middleware (app.use)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "nextjs-signup",
+      "prompt": "We're getting tons of spam signups. Can you stop bots from abusing our signup endpoint?",
+      "expected_output": "Installs @arcjet/next, creates a shared Arcjet client (lib/arcjet.ts), uses protectSignup() or validateEmail()+detectBot()+slidingWindow() to combine bot detection, email validation, and rate limiting, calls protect() with email parameter inside the POST handler.",
+      "files": [
+        "files/nextjs-signup/package.json",
+        "files/nextjs-signup/app/api/signup/route.ts"
+      ],
+      "assertions": [
+        "Installs @arcjet/next (not @arcjet/node or @arcjet/guard)",
+        "Creates a shared Arcjet client (e.g. lib/arcjet.ts)",
+        "Configures shield() rule",
+        "Uses email validation or protectSignup()",
+        "Configures bot detection",
+        "Configures a rate limiting rule",
+        "Calls protect() inside the route handler (not middleware)",
+        "Checks decision and returns appropriate HTTP responses",
+        "Sets ARCJET_KEY in .env.local (not hardcoded)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "fastapi-data",
+      "prompt": "I need to add some security to my FastAPI app before going to production.",
+      "expected_output": "Installs the arcjet pypi package, creates an Arcjet client using the Python SDK (arcjet() with Mode.LIVE), adds detect_bot() and shield() rules, calls protect() with await in the route handler, handles denied decisions with appropriate HTTP status codes.",
+      "files": [
+        "files/fastapi-data/requirements.txt",
+        "files/fastapi-data/main.py"
+      ],
+      "assertions": [
+        "Adds arcjet to requirements.txt",
+        "Creates an Arcjet client using the Python SDK",
+        "Configures shield rule",
+        "Configures detect_bot() rule",
+        "Calls protect() in route handler with await",
+        "Checks decision and returns appropriate HTTP status codes",
+        "Sets ARCJET_KEY in environment (not hardcoded)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "node-agent-tools",
+      "prompt": "My AI agent makes tool calls and I need to rate limit per user and block prompt injection before each tool runs.",
+      "expected_output": "Modifies agent.ts to add @arcjet/guard imports, creates guard client at module scope, configures tokenBucket and detectPromptInjection rules, calls guard() inline in each tool function with a specific label, handles DENY decisions.",
+      "files": [
+        "files/node-agent-tools/package.json",
+        "files/node-agent-tools/src/agent.ts"
+      ],
+      "assertions": [
+        "Uses @arcjet/guard package (not @arcjet/node or @arcjet/next)",
+        "Creates guard client with launchArcjet() at module scope",
+        "Configures a rate limiting rule (tokenBucket, fixedWindow, or slidingWindow)",
+        "Configures detectPromptInjection() rule",
+        "Calls guard() with a label parameter",
+        "Passes user identifier as rate limit key",
+        "Checks decision.conclusion for DENY",
+        "Does not use HTTP SDK (@arcjet/node or @arcjet/next)"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "node-mcp-tool",
+      "prompt": "Make sure my mcp server is secure",
+      "expected_output": "Modifies server.ts to add @arcjet/guard imports, creates guard client at module scope, configures rate limiting and detectPromptInjection rules, calls guard() inline in each tool handler with a descriptive label, handles DENY decisions.",
+      "files": [
+        "files/node-mcp-tool/package.json",
+        "files/node-mcp-tool/src/server.ts"
+      ],
+      "assertions": [
+        "Uses @arcjet/guard package",
+        "Creates guard client with launchArcjet()",
+        "Configures a rate limiting rule",
+        "Configures detectPromptInjection() rule",
+        "Calls guard() with a label parameter",
+        "Checks decision.conclusion for DENY",
+        "Does not use HTTP SDK (@arcjet/node or @arcjet/next)"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "go-agent",
+      "prompt": "Secure my agent",
+      "expected_output": "Explains that Arcjet Guard is only available for JavaScript/TypeScript and Python, not Go. Does not hallucinate a Go Arcjet package or create a hand-rolled imitation.",
+      "files": [
+        "files/go-agent/go.mod",
+        "files/go-agent/main.go"
+      ],
+      "assertions": [
+        "Does not hallucinate a Go Arcjet package",
+        "Does not add @arcjet/guard to a Go project",
+        "Does not create a hand-rolled guard implementation",
+        "Communicates that Guard is not available for Go"
+      ]
+    }
+  ]
+}

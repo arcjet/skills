@@ -1,0 +1,15 @@
+{
+  "name": "my-express-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "typescript": "^6.0.0"
+  }
+}
