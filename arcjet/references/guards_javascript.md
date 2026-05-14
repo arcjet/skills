@@ -1,171 +1,90 @@
-# JavaScript/TypeScript Guard Reference
+# JavaScript/TypeScript Guard
+
+## What Guard Is
+
+Guard protects code paths that don't have an HTTP request — tool calls, agent loops, MCP handlers, queue consumers, background jobs. It's a separate SDK (`@arcjet/guard`) from the HTTP request SDKs (`@arcjet/node`, `@arcjet/next`, etc.) because there's no request object to inspect. Instead, you pass explicit context (labels, keys, text to scan) at each call site.
 
 ## Installation
-
-Requires `@arcjet/guard` >= 1.4.0.
 
 ```bash
 npm install @arcjet/guard
 ```
 
-Requires `@arcjet/guard` >= 1.4.0.
+Requires `@arcjet/guard` >= 1.4.0. Read the installed package's types and doc comments for the full API surface.
 
-## Create the Guard Client
+## Architecture: Why Things Go Where They Do
+
+### Client at module scope
 
 ```typescript
 import { launchArcjet } from "@arcjet/guard";
-
 const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });
 ```
 
-Create once at module scope. The client holds a persistent HTTP/2 connection — creating it inside a function defeats connection reuse.
+The client holds a persistent HTTP/2 connection to the Arcjet decision service. Creating it inside a function means a new connection per call — slow and wasteful.
 
-## Rules
+### Rules at module scope
 
-Configure rules at module scope. Each rule config carries a stable ID for server-side aggregation, so creating them per call would break dashboard tracking and rate limit state.
+Rate limit state is tracked server-side by the combination of `bucket` and other configuration properties, so recreating rules per call won't break counting. However, defining rules at module scope is still best practice because:
 
-### Token Bucket
-
-Best for AI workloads with variable cost per call. Configure a `bucket` name for semantic clarity and to avoid collisions between different rate limit rules.
-
-```typescript
-import { tokenBucket } from "@arcjet/guard";
-
-const userLimit = tokenBucket({
-  label: "user.tool_call_bucket",  // rule label for dashboard tracking
-  bucket: "tool-calls",            // named bucket for this limit
-  refillRate: 100,
-  intervalSeconds: 60,
-  maxTokens: 500,
-});
-```
-
-### Fixed Window
-
-Hard cap per time period, counter resets at end of window:
+- It makes the per-rule result accessors (e.g. `userLimit.deniedResult(decision)`) work — you need a stable reference to call methods on.
+- It avoids unnecessary object allocation on every invocation.
+- It keeps rule configuration visible and centralized.
 
 ```typescript
-import { fixedWindow } from "@arcjet/guard";
-
-const callLimit = fixedWindow({
-  label: "user.hourly_calls",
-  bucket: "hourly-calls",
-  maxRequests: 100,
-  windowSeconds: 3600,
-});
-```
-
-### Sliding Window
-
-Smooth rate limiting without burst-at-boundary issues:
-
-```typescript
-import { slidingWindow } from "@arcjet/guard";
-
-const sessionLimit = slidingWindow({
-  label: "session.api_calls",
-  bucket: "session-api",
-  maxRequests: 500,
-  intervalSeconds: 60,
-});
-```
-
-### Prompt Injection Detection
-
-Detects jailbreaks, role-play escapes, and instruction overrides. Useful both for user input before it reaches a model AND for tool call results containing untrusted content.
-
-```typescript
-import { detectPromptInjection } from "@arcjet/guard";
-
-const piRule = detectPromptInjection();
-```
-
-### Sensitive Information Detection
-
-Detects PII locally via WASM — raw text never leaves the SDK.
-
-```typescript
-import { localDetectSensitiveInfo } from "@arcjet/guard";
-
-const siRule = localDetectSensitiveInfo({
-  deny: ["CREDIT_CARD_NUMBER", "EMAIL", "PHONE_NUMBER"],
-});
-```
-
-## Calling guard()
-
-Call `guard()` inline where each operation happens. Pass a `label` (appears in the dashboard), `rules`, and optionally `metadata` for analytics/auditing.
-
-When an `AbortSignal` is available (e.g. from the caller or a timeout), pass it as `abortSignal` so guard respects cancellation.
-
-```typescript
-async function getWeather(city: string, userId: string, signal?: AbortSignal) {
-  const decision = await arcjet.guard({
-    label: "tools.get_weather",
-    metadata: { userId },
-    rules: [
-      userLimit({ key: userId, requested: 1 }),
-    ],
-    ...(signal && { abortSignal: signal }),
-  });
-
-  if (decision.conclusion === "DENY") {
-    throw new Error("Rate limited — try again later");
-  }
-
-  return fetchWeather(city);
+// WORKS but awkward — no stable reference for result inspection
+function handleTool() {
+  const limit = tokenBucket({ ... }); // hard to call limit.deniedResult() later
 }
 
-async function searchWeb(query: string, userId: string) {
-  const decision = await arcjet.guard({
-    label: "tools.search_web",
-    metadata: { userId },
-    rules: [
-      userLimit({ key: userId, requested: 1 }),
-      piRule(query),
-    ],
-  });
+// BETTER — declare rules at module scope, dynamically choose which to apply
+const adminLimit = tokenBucket({ label: "admin.tool_calls", bucket: "admin-tools", maxTokens: 1000, ... });
+const memberLimit = tokenBucket({ label: "member.tool_calls", bucket: "member-tools", maxTokens: 100, ... });
 
-  if (decision.conclusion === "DENY") {
-    // Use per-rule results for specific error messages
-    const rateLimitDenied = userLimit.deniedResult(decision);
-    if (rateLimitDenied) {
-      throw new Error(`Rate limited — try again in ${rateLimitDenied.resetInSeconds}s`);
-    }
-    if (decision.reason === "PROMPT_INJECTION") {
-      throw new Error("Prompt injection detected in query");
-    }
-    throw new Error("Request denied");
-  }
-
-  if (decision.hasError()) {
-    console.warn("Arcjet guard error — proceeding with caution");
-  }
-
-  return doSearch(query);
+function toolRules(userId: string, role: string, text: string) {
+  const limit = role === "admin" ? adminLimit : memberLimit;
+  return [
+    limit({ key: userId, requested: 1 }),
+    piRule(text),
+  ];
 }
 ```
 
-## Inspecting Per-Rule Results
+### guard() inline at each call site
 
-Both the configured rule and the bound input provide typed result accessors:
+Don't wrap `guard()` in a shared helper function. Each call site should be visible with its own `label` and `rules` array so you can see exactly what protection applies where. A helper like `checkGuard(rules)` obscures which rules apply to which operation and makes the dashboard less useful.
 
 ```typescript
-const rl = userLimit({ key: userId, requested: 5 });
-const decision = await arcjet.guard({
-  label: "tools.chat",
-  rules: [rl, piRule(message)],
-});
-
-// From a bound input — this specific invocation's result
-const r = rl.result(decision);
-if (r) {
-  console.log(r.remainingTokens, r.maxTokens, r.resetInSeconds);
-}
-
-// From the configured rule — first denied result across all submissions
-const denied = userLimit.deniedResult(decision);
-if (denied) {
-  console.log(`Retry after ${denied.resetInSeconds}s`);
-}
+// Each call site calls guard() directly with its own label
+const decision = await arcjet.guard({ label: "tools.search", rules: toolRules(userId, role, query) });
 ```
+
+## Choosing a Rate Limit Strategy
+
+See the "Rate Limiting Strategies" section in the main skill for a comparison of token bucket vs fixed window vs sliding window.
+
+Key guard-specific notes: all rate limit rules require a `key` parameter at call time (user ID, session ID, API key) — without it, limits are global across all callers. They also need a `bucket` name to avoid collisions between different rules.
+
+## Content Scanning Rules
+
+### Prompt injection detection
+
+Use `detectPromptInjection()` on any untrusted text before it reaches a model or is used as a tool argument. This catches jailbreaks, role-play escapes, and instruction overrides. Also useful on tool call *results* when the tool fetches content from untrusted sources.
+
+### Sensitive information detection
+
+Use `localDetectSensitiveInfo()` to block PII from entering or leaving the system (e.g. users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally via WASM — raw text never leaves the SDK, which matters for compliance.
+
+## Decision Handling
+
+`decision.conclusion` is either `"ALLOW"` or `"DENY"`. Always check before proceeding.
+
+For specific error messages, use the per-rule result accessors (e.g. `userLimit.deniedResult(decision)` gives you `resetInSeconds` for rate limits, `decision.reason` tells you if it was prompt injection). Read the types on the decision object for the full structure.
+
+`decision.hasError()` means something went wrong during rule evaluation (service unreachable, rule execution failure, etc.) but the SDK failed open. Log it but don't block the user.
+
+## Key Patterns
+
+- Pass `abortSignal` when one is available (e.g. from the caller or a timeout) so guard respects cancellation.
+- Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the dashboard.
+- The `label` string should identify the operation (e.g. `"tools.get_weather"`, `"mcp.query_database"`) — it appears in the dashboard and helps you understand which operations are being rate limited or blocked.

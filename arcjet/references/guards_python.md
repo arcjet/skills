@@ -1,16 +1,20 @@
-# Python Guard Reference
+# Python Guard
+
+## What Guard Is
+
+Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (>= 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
 
 ## Installation
-
-Requires `arcjet` >= 0.7.0. Guard is included in the `arcjet` package.
 
 ```bash
 pip install arcjet
 ```
 
-## Create the Guard Client
+Requires `arcjet` >= 0.7.0. Guard is included — no separate package. Read the installed package's types and docstrings for the full API surface.
 
-### Async
+## Architecture: Why Things Go Where They Do
+
+### Client at module scope
 
 ```python
 import os
@@ -19,151 +23,75 @@ from arcjet.guard import launch_arcjet
 arcjet = launch_arcjet(key=os.environ["ARCJET_KEY"])
 ```
 
-### Sync (for non-async code)
+Use `launch_arcjet` for async code, `launch_arcjet_sync` for sync. The client holds a persistent connection to the Arcjet decision service. Creating it inside a function means a new connection per call.
+
+### Rules at module scope
+
+Rate limit state is tracked server-side by the combination of `bucket` and other configuration properties, so recreating rules per call won't break counting. However, defining rules at module scope is still best practice because:
+
+- It makes the per-rule result accessors (e.g. `user_limit.denied_result(decision)`) work — you need a stable reference to call methods on.
+- It avoids unnecessary object allocation on every invocation.
+- It keeps rule configuration visible and centralized.
 
 ```python
-from arcjet.guard import launch_arcjet_sync
+# WORKS but awkward — no stable reference for result inspection
+def handle_tool():
+    limit = TokenBucket(...)  # hard to call limit.denied_result() later
 
-arcjet = launch_arcjet_sync(key=os.environ["ARCJET_KEY"])
+# BETTER — declare rules at module scope, dynamically choose which to apply
+admin_limit = TokenBucket(label="admin.tool_calls", bucket="admin-tools", max_tokens=1000, ...)
+member_limit = TokenBucket(label="member.tool_calls", bucket="member-tools", max_tokens=100, ...)
+
+def tool_rules(user_id: str, role: str, text: str):
+    limit = admin_limit if role == "admin" else member_limit
+    return [
+        limit(key=user_id, requested=1),
+        pi_rule(text),
+    ]
 ```
 
-Create once at module scope. The client holds a persistent connection — creating it inside a function defeats connection reuse.
+### guard() inline at each call site
 
-## Rules
-
-Configure rules at module scope. Each rule config carries a stable ID for server-side aggregation, so creating them per call would break dashboard tracking and rate limit state.
-
-### Token Bucket
-
-Best for AI workloads with variable cost per call. Configure a `bucket` name for semantic clarity and to avoid collisions.
+Don't wrap `guard()` in a shared helper function. Each call site should be visible with its own `label` and `rules` array so you can see exactly what protection applies where.
 
 ```python
-from arcjet.guard import TokenBucket
-
-user_limit = TokenBucket(
-    label="user.task_bucket",
-    bucket="task-calls",
-    refill_rate=100,
-    interval_seconds=60,
-    max_tokens=500,
-)
+# Each call site calls guard() directly with its own label
+decision = await arcjet.guard(label="tools.search", rules=tool_rules(user_id, role, query))
 ```
 
-### Fixed Window
+## Choosing a Rate Limit Strategy
 
-Hard cap per time period:
+See the "Rate Limiting Strategies" section in the main skill for a comparison of token bucket vs fixed window vs sliding window.
 
-```python
-from arcjet.guard import FixedWindow
+Key guard-specific notes: all rate limit rules require a `key` parameter at call time (user ID, session ID) — without it, limits are global across all callers. They also need a `bucket` name to avoid collisions between different rules.
 
-call_limit = FixedWindow(
-    label="user.hourly_calls",
-    bucket="hourly-calls",
-    max_requests=100,
-    window_seconds=3600,
-)
-```
+## Content Scanning Rules
 
-### Sliding Window
+### Prompt injection detection
 
-Smooth rate limiting:
+Use `DetectPromptInjection()` on any untrusted text before it reaches a model or is used as a tool argument. Also useful on tool call *results* when the tool fetches content from untrusted sources.
 
-```python
-from arcjet.guard import SlidingWindow
+### Sensitive information detection
 
-api_limit = SlidingWindow(
-    label="session.api_calls",
-    bucket="session-api",
-    max_requests=500,
-    interval_seconds=60,
-)
-```
+Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (e.g. users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally — raw text never leaves the SDK, which matters for compliance.
 
-### Prompt Injection Detection
+## Decision Handling
 
-Detects jailbreaks, role-play escapes, and instruction overrides.
+`decision.conclusion` is either `"ALLOW"` or `"DENY"`. Always check before proceeding.
 
-```python
-from arcjet.guard import DetectPromptInjection
+For specific error messages, use the per-rule result accessors (e.g. `user_limit.denied_result(decision)` gives you `reset_in_seconds` for rate limits, `decision.reason` tells you the denial category). Read the types on the decision object for the full structure.
 
-pi_rule = DetectPromptInjection()
-```
+`decision.has_error()` means something went wrong during rule evaluation (service unreachable, rule execution failure, etc.) but the SDK failed open. Log it but don't block the user.
 
-### Sensitive Information Detection
+## Async vs Sync
 
-Detects PII locally — raw text never leaves the SDK.
+The package provides both variants:
+- `launch_arcjet` / `arcjet.guard()` — async, use in `async def` functions
+- `launch_arcjet_sync` / `arcjet.guard()` — sync, use in regular functions
 
-```python
-from arcjet.guard import LocalDetectSensitiveInfo
+Choose based on your application's concurrency model. Both provide the same protection.
 
-si_rule = LocalDetectSensitiveInfo(
-    deny=["CREDIT_CARD_NUMBER", "EMAIL", "PHONE_NUMBER"],
-)
-```
+## Key Patterns
 
-## Calling guard()
-
-Call `guard()` inline where each operation happens. Pass a `label`, `rules`, and optionally `metadata` for analytics/auditing.
-
-### Async
-
-```python
-async def process_task(user_id: str, message: str):
-    decision = await arcjet.guard(
-        label="tasks.generate",
-        metadata={"user_id": user_id},
-        rules=[
-            user_limit(key=user_id, requested=1),
-            pi_rule(message),
-        ],
-    )
-
-    if decision.conclusion == "DENY":
-        # Use per-rule results for specific error messages
-        rate_denied = user_limit.denied_result(decision)
-        if rate_denied:
-            raise RuntimeError(f"Rate limited — try again in {rate_denied.reset_in_seconds}s")
-        raise RuntimeError(f"Blocked: {decision.reason}")
-
-    if decision.has_error():
-        print("Arcjet guard error — proceeding with caution")
-
-    # Safe to proceed...
-```
-
-### Sync
-
-```python
-def process_task(user_id: str, message: str):
-    decision = arcjet.guard(
-        label="tasks.generate",
-        metadata={"user_id": user_id},
-        rules=[
-            user_limit(key=user_id, requested=1),
-            pi_rule(message),
-        ],
-    )
-
-    if decision.conclusion == "DENY":
-        raise RuntimeError(f"Blocked: {decision.reason}")
-
-    # Safe to proceed...
-```
-
-## Inspecting Per-Rule Results
-
-```python
-rl = user_limit(key=user_id, requested=5)
-decision = await arcjet.guard(
-    label="tools.chat",
-    rules=[rl, pi_rule(message)],
-)
-
-r = rl.result(decision)
-if r:
-    print(r.remaining_tokens, r.max_tokens, r.reset_in_seconds)
-
-denied = user_limit.denied_result(decision)
-if denied:
-    print(f"Retry after {denied.reset_in_seconds}s")
-```
+- Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the dashboard.
+- The `label` string should identify the operation (e.g. `"tools.get_weather"`, `"queue.process_job"`) — it appears in the dashboard and helps you understand which operations are being limited or blocked.

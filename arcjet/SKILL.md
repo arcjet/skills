@@ -6,70 +6,151 @@ metadata:
   author: arcjet
 ---
 
-# Add Arcjet Protection
+# Arcjet
 
-Arcjet protects two types of entry points. Determine which applies, then read the corresponding reference.
+## Add Arcjet Protection to Your App
 
-## Step 1: Connect to the Arcjet Platform
+### Checklist
 
-Before writing any code, establish a connection to the Arcjet platform so the project has a valid `ARCJET_KEY`. Skip this step only if the codebase isn't viable for Arcjet (unsupported language, no server-side code, etc.).
+- [ ] Verify language support (JS/TS or Python only — stop if unsupported)
+- [ ] Connect to Arcjet platform (CLI → MCP → manual dashboard)
+- [ ] Detect protection type and read the appropriate reference file
+- [ ] Implement protection (separate client file, correct SDK, correct patterns)
+- [ ] Verify decisions are firing correctly (CLI, MCP, or dashboard)
+
+### Step 0: Check Language Support
+
+If the project's server-side code is not JavaScript, TypeScript, or Python → tell the user Arcjet does not support their language yet. Do not hallucinate packages. Stop here.
+
+### Step 1: Connect to the Arcjet Platform
+
+Before writing any code, establish a connection to the Arcjet platform so the project has a valid `ARCJET_KEY`.
 
 **In order of preference:**
 
-1. **Arcjet CLI** (preferred): `npx @arcjet/cli auth login` → `arcjet teams list` → `arcjet sites list --team-id <id>` → `arcjet sites get-key --site-id <id>`
-2. **Arcjet MCP server** (if connected): `list-teams` → `list-sites` → `get-site-key`
+1. **Arcjet CLI** (preferred): `npx -y @arcjet/cli@latest auth login` — see [references/cli.md](references/cli.md) for more install options.
+2. **Arcjet MCP server** (endpoint: `https://api.arcjet.com/mcp`): See [references/mcp.md](references/mcp.md) for detailed setup.
 3. **Manual** (last resort): Tell the user to get a key from https://app.arcjet.com
 
-Add the key to the environment file (`.env.local` for Next.js, `.env` for others):
-```
+Add the key to the environment file such as `.env` or follow the pattern used by the project
+
+```init
 ARCJET_KEY=ajkey_...
-ARCJET_ENV=development
 ```
 
-## Step 2: Detect Protection Type and Read Reference
+### Step 2: Detect Protection Type and Read Reference
 
-Examine the code the user wants to protect:
+Determine which protection type applies:
 
-1. **If it has an HTTP request object** (Express `req`, Next.js `Request`, FastAPI `Request`, etc.) → this is **request-based protection**. Read `references/requests_javascript.md` for JS/TS or `references/requests_python.md` for Python.
+| | **Request-based** | **Guard** |
+|---|---|---|
+| **When to use** | Code has an HTTP request object (Express `req`, Next.js `Request`, FastAPI `Request`, etc.) | No HTTP request (tool calls, MCP handlers, queue workers, background jobs, agent loops) |
+| **JS/TS SDK** | `@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, etc. | `@arcjet/guard` (>= 1.4.0) |
+| **Python SDK** | `arcjet` (with `arcjet()` / `arcjet_sync()`) | `arcjet` (with `launch_arcjet()` / `launch_arcjet_sync()`) |
+| **Entry point** | `protect(request)` | `guard(label, rules)` |
 
-2. **If there is NO HTTP request** (tool call function, MCP handler, queue consumer, background job, agent loop) → this is **guard protection**. Read `references/guards_javascript.md` for JS/TS or `references/guards_python.md` for Python.
+A single project can use both — e.g. request-based on API routes and guard on agent tool calls.
 
-3. **If the language is Go, Rust, Java, or another unsupported language** → tell the user Arcjet supports JavaScript/TypeScript and Python only. Do not hallucinate packages.
+Read the appropriate reference:
 
-These reference files contain exact API signatures, imports, and patterns. Do not guess at the API — always read the reference first.
+- **Request-based JS/TS**: [references/requests_javascript.md](references/requests_javascript.md)
+- **Request-based Python**: [references/requests_python.md](references/requests_python.md)
+- **Guard JS/TS**: [references/guards_javascript.md](references/guards_javascript.md)
+- **Guard Python**: [references/guards_python.md](references/guards_python.md)
 
-## Step 3: Implement Protection
+These references explain architectural decisions and patterns that can't be inferred from the source code alone. For exact API signatures, read the installed package's types and doc comments.
 
-### Request-based (HTTP routes):
-- Create a **separate shared client file** (e.g. `src/lib/arcjet.ts` or `lib/arcjet.ts`) that exports the Arcjet instance — do NOT inline it in route handlers
-- The shared client MUST include `shield({ mode: "LIVE" })` as a base rule, even when using `protectSignup()` or other combined rules
-- Use `withRule()` to add route-specific rules without modifying the shared instance
-- Call `protect()` inside each route handler (not middleware), once per request
-- Handle `isDenied()` with appropriate status codes (429 for rate limit, 403 for bot/shield)
+### Step 3: Implement Protection
 
-### Guard (non-HTTP code):
-- Create the guard client at module scope with `launchArcjet()` (JS) or `launch_arcjet()` (Python)
-- Configure rules at module scope (stable IDs for server-side aggregation)
-- Call `guard()` inline in each tool/handler — not via a shared wrapper function
-- Each `guard()` call needs a `label`, `rules` array, and optionally `metadata`
-- Rate limit rules need an explicit `key` (user ID, session ID, etc.)
+Follow the patterns in the reference file from Step 2. Key principles:
+
+#### Request-based (HTTP routes):
+- Separate shared client file with `shield()` as a base rule
+- `withRule()` for route-specific rules
+- `protect()` inside each route handler (not middleware), once per request
+- Map `isDenied()` reasons to appropriate HTTP status codes
+
+#### Guard (non-HTTP code):
+- Client at module scope with `launchArcjet()` (JS) or `launch_arcjet()` (Python)
+- Rules declared at module scope, dynamically selected at call time
+- `guard()` inline at each call site with its own `label`
 - Check `decision.conclusion === "DENY"` before proceeding
 
-## Gotchas
+### Step 4: Verify Decisions
 
-- `@arcjet/guard` is for non-HTTP code. `@arcjet/node` / `@arcjet/next` are for HTTP routes. Using the wrong one is a common mistake.
-- Guard is only available in JS/TS (`@arcjet/guard` >= 1.4.0) and Python (`arcjet` >= 0.7.0). Do not attempt to use it in Go or other languages.
-- `protect()` must not be called in Express middleware (`app.use()`). Call it inside each route handler.
-- `protect()` must not be called in Next.js middleware. Call it inside route handlers or server components.
-- Calling `protect()` or `guard()` multiple times for the same operation double-counts rate limits.
-- Guard rate limit rules without a `key` parameter cannot track per-user limits — they default to global.
-- Guard rate limit rules without a `bucket` parameter may collide with other rules.
-- Never hardcode `ARCJET_KEY` — always use environment variables.
+Confirm protection is working by checking that decisions fire correctly:
 
-## Step 4: Verify with CLI
+1. **Arcjet CLI**: `arcjet requests list --site-id <id>` or `arcjet guards list --site-id <id>`
+2. **Arcjet MCP** (if connected): `list-requests` or `list-guards`
+3. **Dashboard**: https://app.arcjet.com
 
-```bash
-arcjet watch --site-id <site-id>              # Stream live decisions
-arcjet requests list --site-id <id> --conclusion DENY  # List recent denials
-arcjet requests explain --site-id <id> --request-id <id>  # Explain a decision
-```
+For deeper investigation: `arcjet requests explain --site-id <id> --request-id <id>` or `arcjet guards explain --site-id <id> --guard-id <id>`
+
+### Gotchas
+
+- **Wrong SDK**: `@arcjet/guard` is for non-HTTP code. `@arcjet/node` / `@arcjet/next` / etc. are for HTTP routes. Using the wrong one is the most common mistake.
+- **Wrong placement**: `protect()` must not be called in Express middleware or Next.js middleware. Call it inside each route handler.
+- **Double-counting**: Calling `protect()` or `guard()` multiple times for the same operation counts against rate limits multiple times.
+- **Never hardcode `ARCJET_KEY`** — always use environment variables.
+
+## Choosing Protections
+
+Map the user's problem to the right Arcjet rules:
+
+### Automated traffic and bot abuse
+
+Automated clients — scrapers, data harvesters, and script-based attackers — treat AI features as free compute. Without bot protection, every request from a bot reaches your AI provider and inflates your costs.
+
+Arcjet bot detection runs inside the application, before the AI call, so denied requests never reach your provider. It classifies 600+ known bots across 25 categories, verifies legitimate bots (search engines, monitors), and detects emerging threats in real time.
+
+You configure bot rules in application code — not at the CDN layer — so you can apply different strategies per route and make decisions based on full application context (identity, subscription level, session state).
+
+**Rules:** `detectBot` (request-based only). Use `allow` for a safelist or `deny` to block specific categories — they're mutually exclusive. Combine with rate limiting for full traffic control.
+
+Bot rules can also be configured as remote rules via the CLI or MCP server — applied site-wide with no code changes or redeployment. Useful for blocking a newly-spotted bot category during an incident.
+
+### Cost explosion and budget control
+
+Automated traffic, user abuse, and prompt attacks inflate token and tool spend. Rate limiting enforces per-user token quotas to prevent cost explosions.
+
+**Rules:** `tokenBucket`, `fixedWindow`, `slidingWindow` (request-based and guard).
+
+Use token bucket for AI workloads where operations have variable cost — set `requested` per call to consume proportional tokens (1 for a lookup, 10 for an expensive generation). Fixed window gives a hard cap that resets at period boundaries. Sliding window provides smooth rate limiting without boundary bursts.
+
+For request-based protection, rate limits default to keying by IP. Use `characteristics: ["userId"]` to key by something else. For guard protection, you must always pass an explicit `key` (user ID, session ID, etc.) and a `bucket` name to avoid collisions.
+
+### Prompt injection attacks
+
+Jailbreaks, role-play escapes, and instruction overrides allow attackers to manipulate AI behavior. Arcjet scores incoming messages for injection patterns before they reach the model.
+
+**Rules:** `detectPromptInjection` (request-based and guard). Use on any untrusted text before it reaches a model or tool argument — and on tool call *results* when the tool fetches content from untrusted sources.
+
+### Data loss prevention
+
+Sensitive data leaks into AI model context, logs, third-party tool calls, or model memory through unguarded inputs and outputs. Arcjet detects card numbers, email addresses, phone numbers, and custom patterns — entirely locally via WASM, with no data leaving your infrastructure.
+
+**Rules:** `sensitiveInfo` / `localDetectSensitiveInfo` (request-based and guard). Use to block PII from entering the system (users sending credit card numbers) or leaving it (tool outputs leaking email addresses).
+
+### Unauthorized tool invocation
+
+Agents invoke tools in ways they shouldn't — issuing refunds, accessing data, escalating privileges. The prompt can be benign; the tool call is catastrophic.
+
+**Rules:** Guard protection with per-tool rate limits and labels. Each tool call site gets its own `label` and rules, so you can enforce different budgets and detect abuse per operation. Combine with prompt injection detection on tool inputs.
+
+### Common web attacks
+
+SQLi, XSS, and other injection attacks targeting web endpoints.
+
+**Rules:** `shield` (request-based only). Always include — zero config, no cost. Should be in every shared Arcjet client file as a base rule.
+
+### Signup abuse
+
+Credential stuffing, spam registrations, and disposable email abuse on signup/login forms.
+
+**Rules:** `validateEmail` + `protectSignup` (request-based only). Rejects disposable, no-MX, and invalid addresses. `protectSignup` combines bot detection + email validation + rate limiting in one rule.
+
+### IP-based filtering
+
+Block traffic by IP metadata — VPN, Tor, country, or specific IP ranges.
+
+**Rules:** `filter` (request-based only). Can also be configured as remote rules via CLI/MCP for immediate response to active attacks without redeployment.
