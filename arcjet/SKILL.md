@@ -66,7 +66,8 @@ Key retrieval priority:
 Follow the patterns in the reference file from Step 2. Key principles:
 
 ### For request-based protection:
-- Create a shared Arcjet client at module scope with `shield()` as a base rule
+- **Always create a SEPARATE shared client file** (e.g. `src/lib/arcjet.ts`, `lib/arcjet.ts`, or `lib/arcjet.py`) that exports the Arcjet instance. Import it in route files. Do NOT define the client inline in route handlers.
+- The shared client MUST include `shield({ mode: "LIVE" })` as a base rule — this is required even when using `protectSignup()` or other combined rules
 - Use `withRule()` to add route-specific rules (don't modify the shared instance)
 - Call `protect()` inside each route handler (not middleware), once per request
 - Handle `isDenied()` with appropriate HTTP status codes (429 for rate limit, 403 for bot/shield)

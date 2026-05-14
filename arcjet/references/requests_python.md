@@ -10,6 +10,8 @@ Works with FastAPI (async) and Flask (sync). Requires Python 3.10+.
 
 ## Create the Client
 
+For projects with multiple route files, create a separate `lib/arcjet.py` module. For single-file apps (e.g. FastAPI `main.py`), define at the top of the file. Always include `shield()` as a base rule.
+
 ### FastAPI (async)
 
 ```python

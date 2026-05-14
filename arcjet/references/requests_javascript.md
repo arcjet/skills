@@ -17,16 +17,21 @@
 
 ## Create the Client
 
+Create a **separate file** for the shared client (e.g. `src/lib/arcjet.ts` or `lib/arcjet.ts`). Always include `shield()` as a base rule:
+
 ```typescript
+// src/lib/arcjet.ts (or lib/arcjet.ts for Next.js)
 import arcjet, { shield } from "@arcjet/next"; // or @arcjet/node, etc.
 
 const aj = arcjet({
   key: process.env.ARCJET_KEY!,
   rules: [shield({ mode: "LIVE" })],
 });
+
+export default aj;
 ```
 
-Create once at module scope. Export for reuse across routes with `withRule()`.
+Create once at module scope in its own file. Import and extend with `withRule()` in route files. Do NOT define the client inline in route handlers.
 
 ## Rules
 
