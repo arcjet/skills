@@ -29,3 +29,4 @@ Loose lessons learned while using the **skill-creator** skill (at `.agents/skill
 ## Eval fixtures
 
 - Audit fixtures for things the agent will faithfully copy and amplify: stale dep versions (`typescript: ^6.0.0` doesn't exist), tool choices the user dislikes (`tsx watch` if the user prefers native Node), `import os` that's unused, etc. Fixtures are part of the test surface.
+- Treat fixtures as read-only inputs. After copying into the output workspace, all `npm install` / `pip install` / type-checking should happen inside the *copy*. A `.gitignore` at the fixtures root catches accidental installs that leak `node_modules/` or lockfiles back into the source.
