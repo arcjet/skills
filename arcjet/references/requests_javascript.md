@@ -6,7 +6,7 @@ Request protection inspects HTTP requests — headers, IP, body — to enforce s
 
 ## Installation
 
-Pick the adapter for the project's framework. Read the installed package's types and doc comments for the full API surface.
+Pick the adapter for the project's framework, then install it with whichever package manager the project already uses (`npm install`, `pnpm add`, `yarn add`, `bun add`). Don't hand-edit `package.json` — a typed version is usually stale, and the lockfile won't update. Read the installed package's types and doc comments for the full API surface.
 
 | Framework                | Package                |
 | ------------------------ | ---------------------- |
@@ -85,15 +85,15 @@ The request object to pass differs by framework:
 
 ## Decision Handling
 
-`decision.isDenied()` means a LIVE rule triggered a denial. Map denial reasons to HTTP status codes:
+`decision.isDenied()` means a LIVE rule triggered a denial. Map denial reasons to HTTP status codes, but **only branch on reasons that produce a different response** — skip arms that would just return the same status as the default 403:
 
 - `decision.reason.isRateLimit()` → 429
-- `decision.reason.isBot()` → 403
-- `decision.reason.isShield()` → 403
 - `decision.reason.isEmail()` → 400
 - `decision.reason.isSensitiveInfo()` → 400
 - `decision.reason.isPromptInjection()` → 400
-- `decision.reason.isFilterRule()` → 403
+- everything else (bot, shield, filter) → default 403
+
+Writing an explicit `else if (reason.isShield())` arm that returns 403 just adds noise when the default already returns 403.
 
 `decision.isErrored()` means something went wrong during rule evaluation but the SDK failed open. Log it and allow the request.
 

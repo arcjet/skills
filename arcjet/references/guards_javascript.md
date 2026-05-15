@@ -6,6 +6,8 @@ Guard protects code paths that don't have an HTTP request — tool calls, agent 
 
 ## Installation
 
+Install with whichever package manager the project already uses (`npm install`, `pnpm add`, `yarn add`, `bun add`) — don't hand-edit `package.json`:
+
 ```bash
 npm install @arcjet/guard
 ```
@@ -50,20 +52,57 @@ function toolRules(userId: string, role: string, text: string) {
 }
 ```
 
-### guard() inline at each call site
+### guard() at the operation, with a hardcoded label
 
-Don't wrap `guard()` in a shared helper function. Each call site should be visible with its own `label` and `rules` array so you can see exactly what protection applies where. A helper like `checkGuard(rules)` obscures which rules apply to which operation and makes the dashboard less useful.
+Place `guard()` wherever you already know exactly what operation is happening. That's typically inside the specific tool/task function, but the dispatch arm right before the call works equally well — sometimes it gives cleaner error propagation:
 
 ```typescript
-// Each call site calls guard() directly with its own label
-const decision = await arcjet.guard({ label: "tools.search", rules: toolRules(userId, role, query) });
+// Option A: guard inside the tool function
+async function getWeather(city: string, userId: string) {
+  const decision = await arcjet.guard({
+    label: "tools.get_weather",
+    rules: [toolCallLimit({ key: userId, requested: 1 })],
+    metadata: { userId },
+  });
+  if (decision.conclusion === "DENY") throw fromDecision(decision);
+  // ...do the work
+}
+
+// Option B: guard at the dispatch site, right before calling the tool
+switch (toolName) {
+  case "get_weather": {
+    const decision = await arcjet.guard({
+      label: "tools.get_weather",
+      rules: [toolCallLimit({ key: userId, requested: 1 })],
+      metadata: { userId },
+    });
+    if (decision.conclusion === "DENY") throw fromDecision(decision);
+    return getWeather(args.city);
+  }
+  // ...
+}
+
+// Avoid: generic dispatcher with interpolated label
+async function handleToolCall(name: string, args: Record<string, unknown>, userId: string) {
+  const decision = await arcjet.guard({ label: `tools.${name}`, rules: [...] }); // 👎
+}
 ```
+
+The `label` should be a hardcoded string — `"tools.get_weather"`, not `` `tools.${name}` ``. Hardcoded labels stay greppable, and the dashboard groups by them; interpolation produces a sea of distinct-looking calls instead of one bucket per operation.
+
+Pass `metadata` whenever you have useful auditing context (`{ userId, requestId }`) — it shows up in the dashboard alongside the decision and makes debugging much easier later.
 
 ## Choosing a Rate Limit Strategy
 
 See the "Rate Limiting Strategies" section in the main skill for a comparison of token bucket vs fixed window vs sliding window.
 
 Key guard-specific notes: all rate limit rules require a `key` parameter at call time (user ID, session ID, API key) — without it, limits are global across all callers. They also need a `bucket` name to avoid collisions between different rules.
+
+**Picking a `key` when there's no user:** Some call sites have no per-user context — e.g. a stdio MCP server where the client is the only caller, or a single-tenant queue worker. Don't try to fake it by passing an empty string. Use whatever identifier actually matches the scope of the limit:
+- single-tenant worker → the deployment name or env (`process.env.HOSTNAME ?? "default"`)
+- stdio MCP server → the MCP client/session id if exposed by the SDK, otherwise the process identity
+- shared limit across all callers → a stable literal like `"global"`, and add a comment explaining why
+The point is to be intentional. A wrong-but-explicit `key` is much easier to fix than a missing one.
 
 ## Content Scanning Rules
 
@@ -79,7 +118,22 @@ Use `localDetectSensitiveInfo()` to block PII from entering or leaving the syste
 
 `decision.conclusion` is either `"ALLOW"` or `"DENY"`. Always check before proceeding.
 
-For specific error messages, use the per-rule result accessors (e.g. `userLimit.deniedResult(decision)` gives you `resetInSeconds` for rate limits, `decision.reason` tells you if it was prompt injection). Read the types on the decision object for the full structure.
+For useful error messages, branch on **which rule** denied — not just on `DENY`. Each rule defined at module scope exposes a `.deniedResult(decision)` accessor that returns rule-specific info (e.g. `resetInSeconds` for rate limits). Use this to give the caller something actionable:
+
+```typescript
+if (decision.conclusion === "DENY") {
+  const rateLimited = toolCallLimit.deniedResult(decision);
+  if (rateLimited) {
+    throw new ToolBlocked(`rate limited — retry in ${rateLimited.resetInSeconds}s`);
+  }
+  if (decision.reason.isPromptInjection()) {
+    throw new ToolBlocked("input flagged as prompt injection");
+  }
+  throw new ToolBlocked("blocked");
+}
+```
+
+Read the types on the decision object for the full structure.
 
 `decision.hasError()` means something went wrong during rule evaluation (service unreachable, rule execution failure, etc.) but the SDK failed open. Log it but don't block the user.
 

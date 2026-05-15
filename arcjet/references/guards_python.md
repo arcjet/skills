@@ -6,11 +6,13 @@ Guard protects code paths that don't have an HTTP request — tool calls, agent 
 
 ## Installation
 
+Install with whichever package manager the project already uses (`pip install`, `uv add`, `poetry add`, etc.) — don't hand-edit `requirements.txt` with a guessed version (`arcjet>=1.0.0` doesn't exist; current is `>=0.7.0`):
+
 ```bash
 pip install arcjet
 ```
 
-Requires `arcjet` >= 0.7.0. Guard is included — no separate package. Read the installed package's types and docstrings for the full API surface.
+Guard is included in the `arcjet` package — no separate install. Read the installed package's types and docstrings for the full API surface.
 
 ## Architecture: Why Things Go Where They Do
 
@@ -50,20 +52,49 @@ def tool_rules(user_id: str, role: str, text: str):
     ]
 ```
 
-### guard() inline at each call site
+### guard() at the operation, with a hardcoded label
 
-Don't wrap `guard()` in a shared helper function. Each call site should be visible with its own `label` and `rules` array so you can see exactly what protection applies where.
+Place `guard()` wherever you already know exactly what operation is happening. That's typically inside the specific tool/task function, but the dispatch arm right before calling it works equally well — sometimes it gives cleaner error propagation:
 
 ```python
-# Each call site calls guard() directly with its own label
-decision = await arcjet.guard(label="tools.search", rules=tool_rules(user_id, role, query))
+# Option A: guard inside the tool function
+async def get_weather(city: str, user_id: str) -> dict:
+    decision = await arcjet.guard(
+        label="tools.get_weather",
+        rules=[tool_call_limit(key=user_id, requested=1)],
+        metadata={"user_id": user_id},
+    )
+    if decision.conclusion == "DENY":
+        raise from_decision(decision)
+    # ...do the work
+
+# Option B: guard at the dispatch arm, right before the call
+if task_type == "summarize":
+    decision = arcjet.guard(
+        label="queue.summarize",
+        rules=[user_task_limit(key=task["user_id"], requested=3)],
+        metadata={"user_id": task["user_id"]},
+    )
+    if decision.conclusion == "DENY":
+        raise from_decision(decision)
+    return _summarize(task)
+
+# Avoid: generic dispatcher with interpolated label
+async def handle_tool_call(name: str, args: dict, user_id: str):  # 👎
+    decision = await arcjet.guard(label=f"tools.{name}", rules=[...])
 ```
+
+The `label` should be a hardcoded string — `"tools.get_weather"`, not `f"tools.{name}"`. Hardcoded labels stay greppable, and the dashboard groups by them.
+
+Pass `metadata` whenever you have useful auditing context (`{"user_id": ..., "request_id": ...}`) — it shows up in the dashboard and makes debugging much easier later.
 
 ## Choosing a Rate Limit Strategy
 
 See the "Rate Limiting Strategies" section in the main skill for a comparison of token bucket vs fixed window vs sliding window.
 
 Key guard-specific notes: all rate limit rules require a `key` parameter at call time (user ID, session ID) — without it, limits are global across all callers. They also need a `bucket` name to avoid collisions between different rules.
+
+**Picking a `key` when there's no user:** Some call sites have no per-user context — e.g. a single-tenant background worker. Don't fake it with an empty string. Use whatever identifier matches the scope (`os.environ.get("HOSTNAME", "default")`, deployment name, etc.) and add a short comment if it's deliberately global.
 
 ## Content Scanning Rules
 
@@ -79,17 +110,29 @@ Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the syste
 
 `decision.conclusion` is either `"ALLOW"` or `"DENY"`. Always check before proceeding.
 
-For specific error messages, use the per-rule result accessors (e.g. `user_limit.denied_result(decision)` gives you `reset_in_seconds` for rate limits, `decision.reason` tells you the denial category). Read the types on the decision object for the full structure.
+For useful error messages, branch on **which rule** denied — not just on `DENY`. Each rule defined at module scope exposes a `.denied_result(decision)` accessor that returns rule-specific info (e.g. `reset_in_seconds` for rate limits). Use this to give the caller something actionable:
+
+```python
+if decision.conclusion == "DENY":
+    rate_limited = user_task_limit.denied_result(decision)
+    if rate_limited:
+        raise TaskBlocked(f"rate limited — retry in {rate_limited.reset_in_seconds}s")
+    if decision.reason.is_prompt_injection():
+        raise TaskBlocked("input flagged as prompt injection")
+    raise TaskBlocked("blocked")
+```
+
+Read the types on the decision object for the full structure.
 
 `decision.has_error()` means something went wrong during rule evaluation (service unreachable, rule execution failure, etc.) but the SDK failed open. Log it but don't block the user.
 
 ## Async vs Sync
 
 The package provides both variants:
-- `launch_arcjet` / `arcjet.guard()` — async, use in `async def` functions
-- `launch_arcjet_sync` / `arcjet.guard()` — sync, use in regular functions
+- `launch_arcjet` / `await arcjet.guard(...)` — async, use in `async def` functions
+- `launch_arcjet_sync` / `arcjet.guard(...)` — sync, use in regular `def` functions
 
-Choose based on your application's concurrency model. Both provide the same protection.
+**Pick the variant that matches the function you're protecting.** A FastAPI handler or an `AsyncOpenAI` agent loop is async — use `launch_arcjet`. A Celery task, a queue poller defined with `def`, or anything wrapped by a sync framework is sync — use `launch_arcjet_sync`. Mixing them produces "coroutine was never awaited" warnings or blocking calls inside an event loop. Both variants provide the same protection.
 
 ## Key Patterns
 
