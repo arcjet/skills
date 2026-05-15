@@ -22,17 +22,13 @@ npx skills add arcjet/skills
 
 ## Skills
 
-| Skill | Description |
-| ----- | ----------- |
-| `add-request-protection` | Add security protection to a server-side route or endpoint — rate limiting, bot detection, email validation, and abuse prevention. Works across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, and Flask. |
-| `add-guard-protection` | Add Arcjet Guard protection to AI agent tool calls, background jobs, queue workers, and other non-HTTP code paths — rate limiting, prompt injection detection, sensitive information blocking, and custom rules. |
+**`arcjet`** — Add Arcjet security protection to any code path: HTTP route handlers, API endpoints, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking, and abuse prevention. Works across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, and non-HTTP contexts.
 
 ## Related
 
-These skills are also bundled by the
-[Arcjet plugin](https://github.com/arcjet/arcjet-plugin), which packages them
-as `/arcjet:add-request-protection` and `/arcjet:add-guard-protection` slash
-commands for Claude Code and Cursor (alongside MCP integration and a
+This skill is also bundled by the
+[Arcjet plugin](https://github.com/arcjet/arcjet-plugin), which packages it as
+a slash command for Claude Code and Cursor (alongside MCP integration and a
 security-analyst agent). Choose the plugin if you want the bundled experience;
 choose the direct skill install (`npx skills add arcjet/skills`) for
 portability across any [agentskills.io](https://agentskills.io/)-compatible
