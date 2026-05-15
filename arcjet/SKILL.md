@@ -8,21 +8,26 @@ metadata:
 
 # Arcjet
 
+## Contents
+
+- [Add Arcjet Protection to Your App](#add-arcjet-protection-to-your-app)
+- [Choosing Protections](#choosing-protections)
+
 ## Add Arcjet Protection to Your App
 
 ### Checklist
 
-- [ ] Verify language support (JS/TS or Python only — stop if unsupported)
-- [ ] Connect to Arcjet platform (CLI → MCP → manual dashboard)
-- [ ] Detect protection type and read the appropriate reference file
-- [ ] Implement protection (separate client file, correct SDK, correct patterns)
-- [ ] Verify decisions are firing correctly (CLI, MCP, or dashboard)
+- [ ] **Step 1:** Verify language support (JS/TS or Python only — stop if unsupported)
+- [ ] **Step 2:** Connect to Arcjet platform (CLI → MCP → manual dashboard)
+- [ ] **Step 3:** Detect protection type and read the appropriate reference file
+- [ ] **Step 4:** Implement protection (separate client file, correct SDK, correct patterns)
+- [ ] **Step 5:** Verify decisions are firing correctly (trigger a real call, then check CLI / MCP / dashboard)
 
-### Step 0: Check Language Support
+### Step 1: Check Language Support
 
 If the project's server-side code is not JavaScript, TypeScript, or Python → tell the user in chat that Arcjet doesn't support their language yet. Don't modify the project, don't write a `NOTES.md`, don't invent a package. Just say it and stop.
 
-### Step 1: Get an ARCJET_KEY into the project's env file
+### Step 2: Get an ARCJET_KEY into the project's env file
 
 Before writing any code, the project needs a real `ARCJET_KEY` in its env file. Don't write Arcjet code first and "leave the key as a TODO" — that just produces dead code. Get the key first, then wire it up.
 
@@ -53,9 +58,9 @@ See [references/cli.md](references/cli.md) for install options beyond `npx`, age
 
 #### Install the SDK with the project's package manager
 
-Once you know which SDK you need (Step 2 below), install it via the package manager the project already uses — `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, etc. Don't hand-edit `package.json` / `requirements.txt` and guess a version: typed versions tend to be wrong (`arcjet>=1.0.0` doesn't exist for the Python SDK; `^1.0.0` is stale for `@arcjet/next`), and the lockfile won't get updated. Let the package manager pick the real version and pin it.
+Once you know which SDK you need (Step 3 below), install it via the package manager the project already uses — `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, etc. Don't hand-edit `package.json` / `requirements.txt` and guess a version: typed versions tend to be wrong (`arcjet>=1.0.0` doesn't exist for the Python SDK; `^1.0.0` is stale for `@arcjet/next`), and the lockfile won't get updated. Let the package manager pick the real version and pin it.
 
-### Step 2: Detect Protection Type and Read Reference
+### Step 3: Detect Protection Type and Read Reference
 
 Determine which protection type applies:
 
@@ -84,9 +89,9 @@ Read the appropriate reference:
 
 These references explain architectural decisions and patterns that can't be inferred from the source code alone. For exact API signatures, read the installed package's types and doc comments.
 
-### Step 3: Implement Protection
+### Step 4: Implement Protection
 
-Follow the patterns in the reference file from Step 2. Key principles:
+Follow the patterns in the reference file from Step 3. Key principles:
 
 #### Request-based (HTTP routes):
 - Shared Arcjet client in its own file with `shield()` as a base rule.
@@ -110,21 +115,26 @@ Follow the patterns in the reference file from Step 2. Key principles:
 
 For everything that *isn't* an Arcjet-specific decision — dev scripts, file/module layout, named-vs-default exports, comment style, env-file naming, type hints, error class patterns — match the project's existing conventions. If the project has no convention yet, default to modern best practice for the language. This skill is opinionated about *where Arcjet goes* and *how its API is used*; it shouldn't reach further than that.
 
-### Step 4: Verify Decisions
+### Step 5: Verify Decisions
 
-After wiring up protection, confirm it's actually firing. Two levels of verification:
+After wiring up protection, confirm it's actually firing. Three steps:
 
-**Type-check / build the project first.** If `tsc`, `next build`, `python -m py_compile`, or the project's existing check command is available, run it. Catches wrong imports, wrong rule names, and stale type signatures before the user does.
+**1. Type-check / build first.** Run `tsc`, `next build`, `python -m py_compile`, or whatever check command the project uses. Catches wrong imports, wrong rule names, and stale type signatures before the user does.
 
-**Confirm decisions in the Arcjet platform** once a real request or guard call has fired (the user runs the app, or you do if you can):
+**2. Trigger a real call so a decision exists to check.** Without one, the dashboard and CLI are empty and you can't tell whether protection is actually wired up.
 
-- **CLI**: `npx -y @arcjet/cli@latest requests list --site-id <id>` or `... guards list --site-id <id>`
+- **Request-based**: start the dev server (`npm run dev`, `uvicorn main:app --reload`, etc.) and `curl` the protected route. To trip a rate limit, loop the call: `for i in {1..50}; do curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/api/your-route; done` — you should see a mix of 200s and 429s once the limit is hit.
+- **Guard**: invoke the protected function directly. A tiny script that imports the tool/task function and calls it twice (once to allow, once to exceed the limit) is usually the fastest path — e.g. `node -e "import('./src/tools.js').then(m => m.getWeather('SF', 'user_123'))"` or `python -c "from worker import process_job; process_job({'user_id': 'user_123'})"`. For MCP servers, send a tool call via the MCP client / inspector. For queue workers, enqueue a real job. Don't try to test guard by `curl`ing anything — there's no HTTP surface.
+
+**3. Confirm the decision in the Arcjet platform.**
+
+- **CLI**: `npx -y @arcjet/cli@latest requests list --site-id <id>` (request-based) or `... guards list --site-id <id>` (Guard)
 - **MCP**: `list-requests` / `list-guards`
 - **Dashboard**: https://app.arcjet.com
 
 For deeper investigation: `arcjet requests explain --site-id <id> --request-id <id>` or `arcjet guards explain --site-id <id> --guard-id <id>`.
 
-If you can't actually run the app in the current environment, tell the user what to check (which command to run, what to look for) instead of silently skipping verification.
+If you can't run the app in the current environment, tell the user exactly what to do (which command to run, what to look for in the output) instead of silently skipping verification.
 
 ### Gotchas
 
