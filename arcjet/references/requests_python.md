@@ -2,7 +2,7 @@
 
 ## What Request Protection Is
 
-Request protection inspects HTTP requests — headers, IP, body — to enforce security rules on API routes and form handlers. Works with FastAPI (async) and Flask (sync). Requires Python 3.10+ and `arcjet` >= 1.0.0.
+Request protection inspects HTTP requests — headers, IP, body — to enforce security rules on API routes and form handlers. Works with FastAPI (async) and Flask (sync). Requires Python 3.10+ and `arcjet` >= 0.7.0.
 
 ## Installation
 

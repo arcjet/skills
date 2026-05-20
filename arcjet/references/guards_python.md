@@ -110,14 +110,14 @@ Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the syste
 
 `decision.conclusion` is either `"ALLOW"` or `"DENY"`. Always check before proceeding.
 
-For useful error messages, branch on **which rule** denied — not just on `DENY`. Each rule defined at module scope exposes a `.denied_result(decision)` accessor that returns rule-specific info (e.g. `reset_in_seconds` for rate limits). Use this to give the caller something actionable:
+For useful error messages, branch on **which rule** denied — not just on `DENY`. Each rule defined at module scope exposes a `.denied_result(decision)` accessor that returns rule-specific info (e.g. `reset_at_unix_seconds` for rate limits). Use this to give the caller something actionable:
 
 ```python
 if decision.conclusion == "DENY":
     rate_limited = user_task_limit.denied_result(decision)
     if rate_limited:
-        raise TaskBlocked(f"rate limited — retry in {rate_limited.reset_in_seconds}s")
-    if decision.reason.is_prompt_injection():
+        raise TaskBlocked(f"rate limited — retry after unix {rate_limited.reset_at_unix_seconds}")
+    if decision.reason_v2.type == "PROMPT_INJECTION":
         raise TaskBlocked("input flagged as prompt injection")
     raise TaskBlocked("blocked")
 ```
