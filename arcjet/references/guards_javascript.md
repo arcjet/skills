@@ -12,7 +12,20 @@ Install with whichever package manager the project already uses (`npm install`, 
 npm install @arcjet/guard
 ```
 
-Requires `@arcjet/guard` >= 1.4.0. Read the installed package's types and doc comments for the full API surface.
+Requires `@arcjet/guard` ≥ 1.4.0. The runtime minimums are stricter than the request adapters (which need only Node 20+):
+
+| Runtime            | Minimum version          |
+| ------------------ | ------------------------ |
+| Node.js            | 22.18.0                  |
+| Bun                | 1.3.0                    |
+| Deno               | `stable` / `lts`         |
+| Cloudflare Workers | compat date `2025-09-01` |
+
+The correct transport is picked automatically via conditional exports (HTTP/2 on Node and Bun, fetch-based on Deno and Workers) — import from `@arcjet/guard` either way. If the project is on Node 20/21 or an older Bun/Workers compat date, warn the user and stop until the runtime is bumped.
+
+Read the installed package's types and doc comments for the full API surface.
+
+> _Runtime support last verified against `@arcjet/guard` v1.4.0 on **2026-05-20**. Before relying on these numbers, check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README — minimums tend to creep upward over time._
 
 ## Architecture: Why Things Go Where They Do
 
@@ -34,14 +47,29 @@ Rate limit state is tracked server-side by the combination of `bucket` and other
 - It keeps rule configuration visible and centralized.
 
 ```typescript
+import { tokenBucket, detectPromptInjection } from "@arcjet/guard";
+
 // WORKS but awkward — no stable reference for result inspection
 function handleTool() {
-  const limit = tokenBucket({ ... }); // hard to call limit.deniedResult() later
+  const limit = tokenBucket({ /* config */ }); // hard to call limit.deniedResult() later
 }
 
 // BETTER — declare rules at module scope, dynamically choose which to apply
-const adminLimit = tokenBucket({ label: "admin.tool_calls", bucket: "admin-tools", maxTokens: 1000, ... });
-const memberLimit = tokenBucket({ label: "member.tool_calls", bucket: "member-tools", maxTokens: 100, ... });
+const adminLimit = tokenBucket({
+  label: "admin.tool_calls",
+  bucket: "admin-tools",
+  refillRate: 100,
+  intervalSeconds: 60,
+  maxTokens: 1000,
+});
+const memberLimit = tokenBucket({
+  label: "member.tool_calls",
+  bucket: "member-tools",
+  refillRate: 10,
+  intervalSeconds: 60,
+  maxTokens: 100,
+});
+const piRule = detectPromptInjection();
 
 function toolRules(userId: string, role: string, text: string) {
   const limit = role === "admin" ? adminLimit : memberLimit;
@@ -64,7 +92,7 @@ async function getWeather(city: string, userId: string) {
     rules: [toolCallLimit({ key: userId, requested: 1 })],
     metadata: { userId },
   });
-  if (decision.conclusion === "DENY") throw fromDecision(decision);
+  if (decision.conclusion === "DENY") throw new Error(decision.reason);
   // ...do the work
 }
 
@@ -76,7 +104,7 @@ switch (toolName) {
       rules: [toolCallLimit({ key: userId, requested: 1 })],
       metadata: { userId },
     });
-    if (decision.conclusion === "DENY") throw fromDecision(decision);
+    if (decision.conclusion === "DENY") throw new Error(decision.reason);
     return getWeather(args.city);
   }
   // ...
@@ -84,7 +112,7 @@ switch (toolName) {
 
 // Avoid: generic dispatcher with interpolated label
 async function handleToolCall(name: string, args: Record<string, unknown>, userId: string) {
-  const decision = await arcjet.guard({ label: `tools.${name}`, rules: [...] }); // 👎
+  const decision = await arcjet.guard({ label: `tools.${name}`, rules: [/* ... */] }); // 👎
 }
 ```
 
@@ -118,27 +146,27 @@ Use `localDetectSensitiveInfo()` to block PII from entering or leaving the syste
 
 `decision.conclusion` is either `"ALLOW"` or `"DENY"`. Always check before proceeding.
 
-For useful error messages, branch on **which rule** denied — not just on `DENY`. Each rule defined at module scope exposes a `.deniedResult(decision)` accessor that returns rule-specific info (e.g. `resetInSeconds` for rate limits). Use this to give the caller something actionable:
+For useful error messages, branch on **which rule** denied — not just on `DENY`. Each rule defined at module scope exposes a `.deniedResult(decision)` accessor that returns rule-specific info (e.g. `resetAtUnixSeconds` for rate limits). Use this to give the caller something actionable:
 
 ```typescript
 if (decision.conclusion === "DENY") {
   const rateLimited = toolCallLimit.deniedResult(decision);
   if (rateLimited) {
-    throw new ToolBlocked(`rate limited — retry in ${rateLimited.resetInSeconds}s`);
+    throw new Error(`rate limited — retry after unix ${rateLimited.resetAtUnixSeconds}`);
   }
-  if (decision.reason.isPromptInjection()) {
-    throw new ToolBlocked("input flagged as prompt injection");
+  if (decision.reason === "PROMPT_INJECTION") {
+    throw new Error("input flagged as prompt injection");
   }
-  throw new ToolBlocked("blocked");
+  throw new Error("blocked");
 }
 ```
 
-Read the types on the decision object for the full structure.
+`decision.reason` is a flat string when `conclusion === "DENY"` — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. (On ALLOW it's `undefined`.) Read the types on the decision object for the full structure.
 
 `decision.hasError()` means something went wrong during rule evaluation (service unreachable, rule execution failure, etc.) but the SDK failed open. Log it but don't block the user.
 
 ## Key Patterns
 
-- Pass `abortSignal` when one is available (e.g. from the caller or a timeout) so guard respects cancellation.
+- Pass `signal` (an `AbortSignal`) on the `.guard()` call when one is available (e.g. from the caller or a timeout) so guard respects cancellation. `timeoutSeconds` is also available for a simple deadline.
 - Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the dashboard.
 - The `label` string should identify the operation (e.g. `"tools.get_weather"`, `"mcp.query_database"`) — it appears in the dashboard and helps you understand which operations are being rate limited or blocked.

@@ -2,7 +2,11 @@
 
 ## What Guard Is
 
-Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (>= 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
+Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
+
+**Version compatibility:** Python ≥ 3.10 (same as the request SDK — they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
+
+> _Version info last verified against `arcjet` v0.7.0 on **2026-05-20**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
 
 ## Installation
 
@@ -36,13 +40,28 @@ Rate limit state is tracked server-side by the combination of `bucket` and other
 - It keeps rule configuration visible and centralized.
 
 ```python
+from arcjet.guard import TokenBucket, DetectPromptInjection
+
 # WORKS but awkward — no stable reference for result inspection
 def handle_tool():
     limit = TokenBucket(...)  # hard to call limit.denied_result() later
 
 # BETTER — declare rules at module scope, dynamically choose which to apply
-admin_limit = TokenBucket(label="admin.tool_calls", bucket="admin-tools", max_tokens=1000, ...)
-member_limit = TokenBucket(label="member.tool_calls", bucket="member-tools", max_tokens=100, ...)
+admin_limit = TokenBucket(
+    label="admin.tool_calls",
+    bucket="admin-tools",
+    refill_rate=100,
+    interval_seconds=60,
+    max_tokens=1000,
+)
+member_limit = TokenBucket(
+    label="member.tool_calls",
+    bucket="member-tools",
+    refill_rate=10,
+    interval_seconds=60,
+    max_tokens=100,
+)
+pi_rule = DetectPromptInjection()
 
 def tool_rules(user_id: str, role: str, text: str):
     limit = admin_limit if role == "admin" else member_limit
@@ -65,19 +84,20 @@ async def get_weather(city: str, user_id: str) -> dict:
         metadata={"user_id": user_id},
     )
     if decision.conclusion == "DENY":
-        raise from_decision(decision)
+        raise Exception(decision.reason)
     # ...do the work
 
 # Option B: guard at the dispatch arm, right before the call
-if task_type == "summarize":
-    decision = arcjet.guard(
-        label="queue.summarize",
-        rules=[user_task_limit(key=task["user_id"], requested=3)],
-        metadata={"user_id": task["user_id"]},
-    )
-    if decision.conclusion == "DENY":
-        raise from_decision(decision)
-    return _summarize(task)
+async def dispatch(task):
+    if task["type"] == "summarize":
+        decision = await arcjet.guard(
+            label="queue.summarize",
+            rules=[user_task_limit(key=task["user_id"], requested=3)],
+            metadata={"user_id": task["user_id"]},
+        )
+        if decision.conclusion == "DENY":
+            raise Exception(decision.reason)
+        return _summarize(task)
 
 # Avoid: generic dispatcher with interpolated label
 async def handle_tool_call(name: str, args: dict, user_id: str):  # 👎
@@ -116,13 +136,13 @@ For useful error messages, branch on **which rule** denied — not just on `DENY
 if decision.conclusion == "DENY":
     rate_limited = user_task_limit.denied_result(decision)
     if rate_limited:
-        raise TaskBlocked(f"rate limited — retry after unix {rate_limited.reset_at_unix_seconds}")
-    if decision.reason_v2.type == "PROMPT_INJECTION":
-        raise TaskBlocked("input flagged as prompt injection")
-    raise TaskBlocked("blocked")
+        raise Exception(f"rate limited — retry after unix {rate_limited.reset_at_unix_seconds}")
+    if decision.reason == "PROMPT_INJECTION":
+        raise Exception("input flagged as prompt injection")
+    raise Exception("blocked")
 ```
 
-Read the types on the decision object for the full structure.
+`decision.reason` is a flat string — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Read the types on the decision object for the full structure.
 
 `decision.has_error()` means something went wrong during rule evaluation (service unreachable, rule execution failure, etc.) but the SDK failed open. Log it but don't block the user.
 

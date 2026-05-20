@@ -12,6 +12,7 @@ metadata:
 
 - [Add Arcjet Protection to Your App](#add-arcjet-protection-to-your-app)
 - [Choosing Protections](#choosing-protections)
+- [Resources](#resources)
 
 ## Add Arcjet Protection to Your App
 
@@ -148,3 +149,12 @@ If you can't run the app in the current environment, tell the user exactly what 
 ## Choosing Protections
 
 When you need to pick which rules address the user's concern — bot abuse, rate limits, prompt injection, signup spam, PII, IP filtering, etc. — load [references/choosing_protections.md](references/choosing_protections.md). It maps common problems to Arcjet rules and explains the tradeoffs between strategies (e.g. token bucket vs sliding window). The mapping doesn't need to be in your context for the rest of the workflow.
+
+## Resources
+
+For exact API signatures, parameter names, and the full set of rules and helpers, read the installed SDK's source — types and docstrings are the source of truth:
+
+- **Python SDK**: https://github.com/arcjet/arcjet-py — `arcjet` package (request protection) and `arcjet.guard` subpackage (non-HTTP guard).
+- **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js — monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`, etc.).
+- **Docs**: https://docs.arcjet.com — narrative guides, blueprints, and product reference.
+- **Dashboard**: https://app.arcjet.com — sites, keys, and decision history.

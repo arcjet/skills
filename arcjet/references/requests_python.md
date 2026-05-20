@@ -2,7 +2,14 @@
 
 ## What Request Protection Is
 
-Request protection inspects HTTP requests — headers, IP, body — to enforce security rules on API routes and form handlers. Works with FastAPI (async) and Flask (sync). Requires Python 3.10+ and `arcjet` >= 0.7.0.
+Request protection inspects HTTP requests — headers, IP, body — to enforce security rules on API routes and form handlers. Works with FastAPI (async) and Flask (sync).
+
+**Version compatibility:**
+
+- **Python:** ≥ 3.10 (declared in `pyproject.toml`). Older versions will fail to install — warn the user and stop.
+- **FastAPI / Flask:** no formal peer dependency — the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes.
+
+> _Version info last verified against `arcjet` v0.7.0 on **2026-05-20**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
 
 ## Installation
 
@@ -22,14 +29,14 @@ The Python SDK's `arcjet()` / `arcjet_sync()` constructor takes the full rule se
 
 ```python
 import os
-from arcjet import Mode, arcjet, shield, detect_bot, sliding_window
+from arcjet import BotCategory, Mode, arcjet, detect_bot, shield, sliding_window
 
 # Read endpoints: shield + bot detection + lenient rate limit
 aj_read = arcjet(
     key=os.environ["ARCJET_KEY"],
     rules=[
         shield(mode=Mode.LIVE),
-        detect_bot(mode=Mode.LIVE, allow=[]),
+        detect_bot(mode=Mode.LIVE, allow=[BotCategory.SEARCH_ENGINE]),
         sliding_window(mode=Mode.LIVE, interval=60, max=100),
     ],
 )
@@ -39,7 +46,7 @@ aj_write = arcjet(
     key=os.environ["ARCJET_KEY"],
     rules=[
         shield(mode=Mode.LIVE),
-        detect_bot(mode=Mode.LIVE, allow=[]),
+        detect_bot(mode=Mode.LIVE, allow=[BotCategory.SEARCH_ENGINE]),
         sliding_window(mode=Mode.LIVE, interval=60, max=15),
     ],
 )
@@ -70,7 +77,7 @@ See the "Choosing the Right Rules" section in the main skill for rule selection 
 ### FastAPI (async)
 
 ```python
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import Request, HTTPException
 
 @app.get("/api/items")
 async def list_items(request: Request):
@@ -85,7 +92,7 @@ async def list_items(request: Request):
 ### Flask (sync)
 
 ```python
-from flask import Flask, request, jsonify
+from flask import request, jsonify
 
 @app.get("/api/items")
 def list_items():
