@@ -56,14 +56,14 @@ function handleTool() {
 
 // BETTER — declare rules at module scope, dynamically choose which to apply
 const adminLimit = tokenBucket({
-  label: "admin.tool_calls",
+  label: "admin.tool-calls",
   bucket: "admin-tools",
   refillRate: 100,
   intervalSeconds: 60,
   maxTokens: 1000,
 });
 const memberLimit = tokenBucket({
-  label: "member.tool_calls",
+  label: "member.tool-calls",
   bucket: "member-tools",
   refillRate: 10,
   intervalSeconds: 60,
@@ -88,7 +88,7 @@ Place `guard()` wherever you already know exactly what operation is happening. T
 // Option A: guard inside the tool function
 async function getWeather(city: string, userId: string) {
   const decision = await arcjet.guard({
-    label: "tools.get_weather",
+    label: "tools.get-weather",
     rules: [toolCallLimit({ key: userId, requested: 1 })],
     metadata: { userId },
   });
@@ -100,7 +100,7 @@ async function getWeather(city: string, userId: string) {
 switch (toolName) {
   case "get_weather": {
     const decision = await arcjet.guard({
-      label: "tools.get_weather",
+      label: "tools.get-weather",
       rules: [toolCallLimit({ key: userId, requested: 1 })],
       metadata: { userId },
     });
@@ -116,7 +116,9 @@ async function handleToolCall(name: string, args: Record<string, unknown>, userI
 }
 ```
 
-The `label` should be a hardcoded string — `"tools.get_weather"`, not `` `tools.${name}` ``. Hardcoded labels stay greppable, and the dashboard groups by them; interpolation produces a sea of distinct-looking calls instead of one bucket per operation.
+The `label` should be a hardcoded string — `"tools.get-weather"`, not `` `tools.${name}` ``. Hardcoded labels stay greppable, and the dashboard groups by them; interpolation produces a sea of distinct-looking calls instead of one bucket per operation.
+
+**Label naming rules (often surprising):** labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected even though the `GuardOptions.label` TSDoc lists them as allowed. Use `tools.get-weather`, not `tools.get_weather`. Same rules apply to rate-limit `bucket` names.
 
 Pass `metadata` whenever you have useful auditing context (`{ userId, requestId }`) — it shows up in the dashboard alongside the decision and makes debugging much easier later.
 
@@ -169,4 +171,4 @@ if (decision.conclusion === "DENY") {
 
 - Pass `signal` (an `AbortSignal`) on the `.guard()` call when one is available (e.g. from the caller or a timeout) so guard respects cancellation. `timeoutSeconds` is also available for a simple deadline.
 - Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the dashboard.
-- The `label` string should identify the operation (e.g. `"tools.get_weather"`, `"mcp.query_database"`) — it appears in the dashboard and helps you understand which operations are being rate limited or blocked.
+- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"mcp.query-database"`) — it appears in the dashboard and helps you understand which operations are being rate limited or blocked.

@@ -48,14 +48,14 @@ def handle_tool():
 
 # BETTER — declare rules at module scope, dynamically choose which to apply
 admin_limit = TokenBucket(
-    label="admin.tool_calls",
+    label="admin.tool-calls",
     bucket="admin-tools",
     refill_rate=100,
     interval_seconds=60,
     max_tokens=1000,
 )
 member_limit = TokenBucket(
-    label="member.tool_calls",
+    label="member.tool-calls",
     bucket="member-tools",
     refill_rate=10,
     interval_seconds=60,
@@ -79,7 +79,7 @@ Place `guard()` wherever you already know exactly what operation is happening. T
 # Option A: guard inside the tool function
 async def get_weather(city: str, user_id: str) -> dict:
     decision = await arcjet.guard(
-        label="tools.get_weather",
+        label="tools.get-weather",
         rules=[tool_call_limit(key=user_id, requested=1)],
         metadata={"user_id": user_id},
     )
@@ -104,7 +104,9 @@ async def handle_tool_call(name: str, args: dict, user_id: str):  # 👎
     decision = await arcjet.guard(label=f"tools.{name}", rules=[...])
 ```
 
-The `label` should be a hardcoded string — `"tools.get_weather"`, not `f"tools.{name}"`. Hardcoded labels stay greppable, and the dashboard groups by them.
+The `label` should be a hardcoded string — `"tools.get-weather"`, not `f"tools.{name}"`. Hardcoded labels stay greppable, and the dashboard groups by them.
+
+**Label naming rules (often surprising):** labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected even though some SDK TSDoc / docstring comments list them as allowed. Use `tools.get-weather`, not `tools.get_weather`. Same rules apply to rate-limit `bucket` names.
 
 Pass `metadata` whenever you have useful auditing context (`{"user_id": ..., "request_id": ...}`) — it shows up in the dashboard and makes debugging much easier later.
 
@@ -157,4 +159,4 @@ The package provides both variants:
 ## Key Patterns
 
 - Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the dashboard.
-- The `label` string should identify the operation (e.g. `"tools.get_weather"`, `"queue.process_job"`) — it appears in the dashboard and helps you understand which operations are being limited or blocked.
+- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"queue.process-job"`) — it appears in the dashboard and helps you understand which operations are being limited or blocked.
