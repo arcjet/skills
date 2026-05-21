@@ -5,34 +5,28 @@
   </picture>
 </a>
 
-# Arcjet Skills
+# Arcjet Skill
 
-[Agent Skills](https://agentskills.io/) for [Arcjet](https://arcjet.com/) —
+An [Agent Skill](https://agentskills.io/) for [Arcjet](https://arcjet.com/) —
 the runtime security platform that ships with your code.
 
-These skills give AI coding agents the knowledge to add Arcjet security
-protections to any project. They work in VS Code (GitHub Copilot), Claude Code,
-Cursor, and any other [compatible agent](https://agentskills.io/clients).
+Gives AI coding agents the knowledge to add Arcjet security protection to any
+project. Works in VS Code (GitHub Copilot), Claude Code, Cursor, and any other
+[compatible agent](https://agentskills.io/clients).
 
-## Installation
+## Install the `arcjet` skill
 
 ```sh
 npx skills add arcjet/skills
 ```
 
-## Skills
-
-| Skill | Description |
-| ----- | ----------- |
-| `add-request-protection` | Add security protection to a server-side route or endpoint — rate limiting, bot detection, email validation, and abuse prevention. Works across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, and Flask. |
-| `add-guard-protection` | Add Arcjet Guard protection to AI agent tool calls, background jobs, queue workers, and other non-HTTP code paths — rate limiting, prompt injection detection, sensitive information blocking, and custom rules. |
+The Arcjet skill for AI coding agents. Adds protection across HTTP route handlers, AI agent tool calls, MCP servers, background jobs, and queue workers — rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking, and abuse prevention — and verifies decisions via the Arcjet CLI, MCP server, and dashboard. Works in JavaScript/TypeScript and Python across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, and non-HTTP contexts.
 
 ## Related
 
-These skills are also bundled by the
-[Arcjet plugin](https://github.com/arcjet/arcjet-plugin), which packages them
-as `/arcjet:add-request-protection` and `/arcjet:add-guard-protection` slash
-commands for Claude Code and Cursor (alongside MCP integration and a
+This skill is also bundled by the
+[Arcjet plugin](https://github.com/arcjet/arcjet-plugin), which packages it as
+a slash command for Claude Code and Cursor (alongside MCP integration and a
 security-analyst agent). Choose the plugin if you want the bundled experience;
 choose the direct skill install (`npx skills add arcjet/skills`) for
 portability across any [agentskills.io](https://agentskills.io/)-compatible
@@ -41,6 +35,7 @@ client.
 ## Links
 
 - [Arcjet Documentation](https://docs.arcjet.com/)
+- [Arcjet docs for LLMs](https://docs.arcjet.com/llms.txt) ([full](https://docs.arcjet.com/llms-full.txt))
 - [Agent Skills Specification](https://agentskills.io/specification)
 - [Arcjet Plugin](https://github.com/arcjet/arcjet-plugin)
 - [Arcjet JS SDK](https://github.com/arcjet/arcjet-js)

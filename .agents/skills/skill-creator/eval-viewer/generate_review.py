@@ -30,6 +30,32 @@ from pathlib import Path
 # Files to exclude from output listings
 METADATA_FILES = {"transcript.md", "user_notes.md", "metrics.json"}
 
+# Directories that are build artifacts / vendored dependencies. Embedding them
+# bloats the page to hundreds of MB and can break the inline script (raw code
+# in node_modules may contain stray backticks, `</script>`, etc.).
+EXCLUDE_DIRS = {
+    "node_modules", "__pycache__", ".git", ".venv", "venv", ".next",
+    "dist", "build", ".turbo", ".cache", "target", ".pytest_cache",
+    ".mypy_cache", ".ruff_cache", ".tox",
+}
+
+# Lockfiles are large and never useful in a human review.
+EXCLUDE_FILENAMES = {
+    "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb",
+    "poetry.lock", "uv.lock", "Pipfile.lock", "Cargo.lock",
+}
+
+
+def _is_excluded(path: Path, outputs_dir: Path) -> bool:
+    """True if `path` is inside an excluded dir or has an excluded filename."""
+    if path.name in EXCLUDE_FILENAMES:
+        return True
+    try:
+        rel = path.relative_to(outputs_dir)
+    except ValueError:
+        return False
+    return any(part in EXCLUDE_DIRS for part in rel.parts)
+
 # Extensions we render as inline text
 TEXT_EXTENSIONS = {
     ".txt", ".md", ".json", ".csv", ".py", ".js", ".ts", ".tsx", ".jsx",
@@ -123,11 +149,14 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
     output_files: list[dict] = []
     if outputs_dir.is_dir():
         for f in sorted(outputs_dir.rglob("*")):
-            if f.is_file() and f.name not in METADATA_FILES:
-                file_data = embed_file(f)
-                # Use relative path from outputs/ as the display name
-                file_data["name"] = str(f.relative_to(outputs_dir))
-                output_files.append(file_data)
+            if not f.is_file() or f.name in METADATA_FILES:
+                continue
+            if _is_excluded(f, outputs_dir):
+                continue
+            file_data = embed_file(f)
+            # Use relative path from outputs/ as the display name
+            file_data["name"] = str(f.relative_to(outputs_dir))
+            output_files.append(file_data)
 
     # Load grading if present
     grading = None
@@ -443,10 +472,10 @@ def main() -> None:
     _kill_port(port)
     handler = partial(ReviewHandler, workspace, skill_name, feedback_path, previous, benchmark_path)
     try:
-        server = HTTPServer(("127.0.0.1", port), handler)
+        server = HTTPServer(("0.0.0.0", port), handler)
     except OSError:
         # Port still in use after kill attempt — find a free one
-        server = HTTPServer(("127.0.0.1", 0), handler)
+        server = HTTPServer(("0.0.0.0", 0), handler)
         port = server.server_address[1]
 
     url = f"http://localhost:{port}"

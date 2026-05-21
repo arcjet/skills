@@ -1,88 +1,32 @@
 # AGENTS.md
 
-Instructions for agents working in this repo.
+Loose lessons learned while using the **skill-creator** skill (at `.agents/skills/skill-creator/`). Terse on purpose. **Always read `.agents/skills/skill-creator/SKILL.md` first** — this file only supplements it.
 
-## Repo structure
+## Subagent prompts for test runs
 
-```
-skills/
-├── .agents/skills/skill-creator/   # The skill-creator skill (Anthropic upstream)
-├── protect-route/                  # Arcjet protect-route skill
-│   └── SKILL.md                    # The skill itself
-├── add-ai-protection/              # Arcjet AI endpoint protection skill
-│   └── SKILL.md
-├── evals/                          # Evals (not installed with skills)
-│   ├── protect-route/
-│   │   ├── evals.json              # Test prompts + expected outputs
-│   │   └── files/                  # Fixture input files for evals
-│   └── add-ai-protection/
-│       ├── evals.json
-│       └── files/
-├── *-workspace/                    # Eval artifacts (gitignored)
-└── .gitignore
-```
+- Keep prompts minimal. The prescribed format (`Skill path / Task / Input files / Save outputs to`) is enough — don't add framing like "you're running an eval," "report what you did," or environment hints the agent should discover itself (e.g. that the CLI is pre-authenticated).
+- Don't add restrictions like "don't run the server" or "typechecking optional." Those bias the agent away from the verification step you're trying to measure.
 
-## Running skill evals
+## Aggregation gotchas
 
-### How to run evals
+- The aggregator expects per-run subdirectories: `eval-X/<config>/run-N/grading.json` (plus `timing.json`). If you save outputs at `eval-X/<config>/grading.json` (no `run-N`), it picks up nothing and reports 0%.
+- Config ordering in `benchmark.md` is alphabetical, which means `new_skill` / `old_skill` and `with_skill` / `without_skill` flip the delta sign. Sanity-check the sign by hand.
 
-Use `claude -p` for each eval run. Do NOT use subagents — they can see workspace files and leak skill context into baseline runs.
+## Capturing subagent transcripts
 
-For each eval, run two `claude -p` invocations in isolated temp directories:
+- Each `Agent` task writes its JSONL transcript to `/tmp/claude-*/-workspaces-*/<session>/tasks/<task_id>.output`. **Don't `cat` or `Read` it** — it's the full transcript and will blow your context.
+- Do `cp` it into the run directory as `transcript.jsonl` once the task completes. The viewer also looks for `transcript.md` at the same level.
 
-**With-skill run:**
-1. Create a tmpdir, copy fixture files in
-2. Prepend the SKILL.md content to the prompt
-3. Run `claude -p "<prompt>" --output-format json --max-turns 5 --dangerously-skip-permissions` in the tmpdir
-4. Copy outputs to `<workspace>/iteration-N/eval-<name>/with_skill/outputs/`
+## Eval viewer
 
-**Without-skill run:**
-1. Create a separate tmpdir, copy same fixture files in
-2. Run `claude -p "<prompt>" --output-format json --max-turns 5 --dangerously-skip-permissions` (no skill content)
-3. Copy outputs to `<workspace>/iteration-N/eval-<name>/without_skill/outputs/`
+- It embeds every file under `outputs/` into a single inline `<script>`. Without an exclude list it'll happily inline 482 MB of `node_modules`, and a stray backtick inside a vendored file crashes the page. The current code excludes `node_modules`, `__pycache__`, `.venv`, `.next`, `dist`, `build`, lockfiles, etc. — extend that list if a new ecosystem shows up.
+- Bind to `0.0.0.0` (not `127.0.0.1`) so devcontainer / remote setups can reach it via the forwarded port.
 
-The tmpdir isolation ensures the baseline can't see SKILL.md or other Arcjet files.
+## When the same baseline serves multiple iterations
 
-### Workspace structure
+- For iteration N+1 of an existing skill, you don't have to re-run the previous version as `old_skill`. Just point the viewer at the prior iteration with `--previous-workspace` and only run `with_skill` for the new round.
 
-The skill-creator expects this exact layout — do NOT add extra nesting (e.g. no `run-1/`):
+## Eval fixtures
 
-```
-<skill>-workspace/iteration-N/
-  eval-<name>/
-    eval_metadata.json          # prompt + assertions
-    with_skill/
-      outputs/                  # Files the agent produced
-      grading.json              # Assertion results
-      timing.json               # Token/time data
-    without_skill/
-      outputs/
-      grading.json
-      timing.json
-```
-
-### Launching the viewer
-
-Use `generate_review.py` in **server mode** (not `--static`) so the feedback POST endpoint works:
-
-```bash
-nohup python3 .agents/skills/skill-creator/eval-viewer/generate_review.py \
-  <workspace>/iteration-N \
-  --skill-name "<name>" \
-  --benchmark <workspace>/iteration-N/benchmark.json \
-  --port 8080 \
-  > /dev/null 2>&1 &
-```
-
-Do NOT serve the static HTML with `python3 -m http.server` — the feedback submit button will silently fail (the simple server returns 405 on POST, but the JS `.then()` still fires, so it looks like it worked).
-
-### Aggregating benchmarks
-
-```bash
-PYTHONPATH=.agents/skills/skill-creator python3 -m scripts.aggregate_benchmark \
-  <workspace>/iteration-N --skill-name <name>
-```
-
-### generate_review.py fixes applied
-
-The upstream `generate_review.py` has a bug: `iterdir()` on line ~125 only lists direct children of `outputs/`, missing files in subdirectories like `src/index.ts`. We patched it to use `rglob("*")` instead. If the upstream is updated, check whether this fix was incorporated.
+- Audit fixtures for things the agent will faithfully copy and amplify: stale dep versions (`typescript: ^6.0.0` doesn't exist), tool choices the user dislikes (`tsx watch` if the user prefers native Node), `import os` that's unused, etc. Fixtures are part of the test surface.
+- Treat fixtures as read-only inputs. After copying into the output workspace, all `npm install` / `pip install` / type-checking should happen inside the *copy*. A `.gitignore` at the fixtures root catches accidental installs that leak `node_modules/` or lockfiles back into the source.
