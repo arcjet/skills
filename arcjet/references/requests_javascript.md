@@ -257,6 +257,17 @@ Writing an explicit `else if (reason.isShield())` arm that returns 403 just adds
 
 `decision.isErrored()` means something went wrong during rule evaluation but the SDK failed open. Log it and allow the request.
 
+## Deprecations
+
+As of `@arcjet/*` 1.4.0, the request-based SDK carries a few deprecated bits. New code should avoid them; existing code that uses them should be migrated when convenient.
+
+- **`detectPromptInjection({ threshold })`** — the `threshold` option is no longer respected by the server and will be removed in a future release. Drop it from new configs; remove it from existing configs when touching them. Detection runs without it.
+- **`PromptInjectionReason.score`** — the `score` field on the reason returned for prompt-injection denials is no longer populated by the server and will be removed. Don't read it; branch on `decision.reason.isPromptInjection()` instead.
+- **`experimental_detectPromptInjection`** — the legacy `experimental_` alias is deprecated. Import `detectPromptInjection` directly from `@arcjet/node` / `@arcjet/next` / etc.
+- **`ArcjetEdgeRuleReason`** — currently unused; can be ignored in reason-handling switches.
+
+> _Deprecations last verified against `@arcjet/*` v1.4.0 on **2026-05-20**. Before relying on the items above, grep the installed package for `@deprecated` markers — see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
+
 ## Key Patterns
 
 - Rules that need extra input at protect() time: `tokenBucket` needs `{ requested: N }`, `validateEmail`/`protectSignup` needs `{ email }`, `sensitiveInfo` needs `{ sensitiveInfoValue }`, `detectPromptInjection` needs `{ detectPromptInjectionMessage }`.

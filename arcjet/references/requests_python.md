@@ -118,6 +118,17 @@ A branch that returns 403 for SHIELD when the default already returns 403 is dea
 
 `decision.is_error()` means something went wrong during rule evaluation but the SDK failed open. Log it and allow the request.
 
+## Deprecations
+
+As of `arcjet` 0.7.0, the request-based SDK carries a few deprecated bits. New code should avoid them; existing code in the project that uses them should be migrated when convenient.
+
+- **`decision.reason` / `result.reason` → use `decision.reason_v2` / `result.reason_v2`.** The legacy `reason` accessor returns a tagged-union helper (`reason.is_rate_limit()`, etc.) and is marked `@deprecated`. `reason_v2` returns a typed discriminated union — branch on `reason_v2.type` (`"RATE_LIMIT"`, `"BOT"`, etc.) and read typed fields directly (`reason_v2.remaining`, `reason_v2.spoofed`). A TODO in the SDK notes the name `reason_v2` is itself transitional — in a future major it's planned to fold back into `reason`, but until then `reason_v2` is the right call.
+- **`detect_prompt_injection(threshold=...)`** — the `threshold` parameter is no longer respected by the server and will be removed. Drop it from new configs; remove it from existing configs when touching them. The detection runs without it.
+- **`PromptInjectionReason.score`** — the `score` field on the reason returned for prompt-injection denials is no longer populated meaningfully and will be removed. Don't read it; rely on `reason_v2.type == "PROMPT_INJECTION"` instead.
+- **`arcjet._decision.Reason`** — internal type; use `arcjet._dataclasses.Reason` (re-exported as `arcjet.Reason`) if you need the type annotation. Most callers won't touch this directly.
+
+> _Deprecations last verified against `arcjet` v0.7.0 on **2026-05-20**. Before relying on the items above, grep the installed package for new `@deprecated` markers — see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py) and [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py)._
+
 ## Key Patterns
 
 - Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
