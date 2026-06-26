@@ -146,7 +146,23 @@ if decision.conclusion == "DENY":
 
 `decision.reason` is a flat string — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Read the types on the decision object for the full structure.
 
-`decision.has_error()` means something went wrong during rule evaluation (service unreachable, rule execution failure, etc.) but the SDK failed open. Log it but don't block the user.
+### Errors vs warnings (failing open)
+
+`guard()` never raises for runtime degradation — a transport failure or a rule that couldn't be processed comes back as a fail-open `"ALLOW"` decision, not an exception. (Programmer errors — an invalid label, a misconfigured rule — still raise `ArcjetError`.) Two distinct signals (available from **`arcjet` 0.9.0**) tell you what happened:
+
+- `decision.has_failed_open()` — `True` when the decision is `"ALLOW"` *only* because a rule or the decision itself could not be processed. This is the **fail-closed gate**: if the operation is sensitive enough that a degraded Arcjet signal should block rather than allow, branch on this and deny. `decision.error_results()` returns the errored results (each with a `code`/`message`) for logging.
+- `decision.warnings` — request-validation diagnostics (e.g. an invalid metadata key that was stripped). The decision is still valid and trustworthy; warnings never change the conclusion. Log them so the config gets fixed, but don't block on them.
+
+```python
+decision = await arcjet.guard(label="tools.get-weather", rules=rules)
+if decision.has_failed_open():
+    # Arcjet couldn't fully evaluate. Allow by default, or deny for a sensitive op.
+    logging.error("guard failed open: %s", decision.error_results())
+for w in decision.warnings:
+    logging.warning("%s: %s", w.code, w.message)
+```
+
+On `arcjet` ≤ 0.8.0 the only signal is `decision.has_error()`, which is **deprecated** from 0.9.0 (it conflated request diagnostics with rule errors, and now emits a `DeprecationWarning`). Check the installed package's types — if `has_failed_open` exists, prefer it over `has_error()`.
 
 ## Async vs Sync
 
