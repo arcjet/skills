@@ -6,6 +6,8 @@ Guard protects code paths that don't have an HTTP request — tool calls, agent 
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK — they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
+Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
+
 > _Version info last verified against the `arcjet` v0.9.0 release on **2026-06-30**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
 
 ## Installation
