@@ -2,15 +2,15 @@
 
 ## What Guard Is
 
-Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
+Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). New release features called out below require **`arcjet` 0.9.0**. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK — they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
-> _Version info last verified against `arcjet` v0.7.0 on **2026-05-20**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
+> _Version info last verified against the `arcjet` v0.9.0 release on **2026-06-30**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
 
 ## Installation
 
-Install with whichever package manager the project already uses (`pip install`, `uv add`, `poetry add`, etc.) — don't hand-edit `requirements.txt` with a guessed version (`arcjet>=1.0.0` doesn't exist; current is `>=0.7.0`):
+Install with whichever package manager the project already uses (`pip install`, `uv add`, `poetry add`, etc.) — don't hand-edit `requirements.txt` with a guessed version (`arcjet>=1.0.0` doesn't exist; the current minor release line is `0.x`):
 
 ```bash
 pip install arcjet
@@ -128,6 +128,10 @@ Use `DetectPromptInjection()` on any untrusted text before it reaches a model or
 
 Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (e.g. users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally — raw text never leaves the SDK, which matters for compliance.
 
+### Content moderation
+
+Available from **`arcjet` 0.9.0**: `experimental_ModerateContent()` flags unsafe or policy-violating text for Guard call sites. It is explicitly experimental — the name and result shape may change, and the server may return an error result while the rule is experimental. Treat those errors as fail-open and inspect `decision.has_failed_open()` / `decision.error_results()`.
+
 ## Decision Handling
 
 `decision.conclusion` is either `"ALLOW"` or `"DENY"`. Always check before proceeding.
@@ -153,6 +157,8 @@ if decision.conclusion == "DENY":
 - `decision.has_failed_open()` — `True` when the decision is `"ALLOW"` *only* because a rule or the decision itself could not be processed. This is the **fail-closed gate**: if the operation is sensitive enough that a degraded Arcjet signal should block rather than allow, branch on this and deny. `decision.error_results()` returns the errored results (each with a `code`/`message`) for logging.
 - `decision.warnings` — request-validation diagnostics (e.g. an invalid metadata key that was stripped). The decision is still valid and trustworthy; warnings never change the conclusion. Log them so the config gets fixed, but don't block on them.
 
+To attribute a failure to a *specific* rule rather than scanning the whole decision, each rule also exposes `.error_result(decision)` (new in **`arcjet` 0.9.0**) — the mirror of `.denied_result(decision)`. It returns that rule's `RuleResultError` (with `code`/`message`) if that rule errored, else `None`. Use it when only one rule failing open is actually unsafe (e.g. the prompt-injection scan) while others failing open is tolerable.
+
 ```python
 decision = await arcjet.guard(label="tools.get-weather", rules=rules)
 if decision.has_failed_open():
@@ -163,6 +169,14 @@ for w in decision.warnings:
 ```
 
 On `arcjet` ≤ 0.8.0 the only signal is `decision.has_error()`, which is **deprecated** from 0.9.0 (it conflated request diagnostics with rule errors, and now emits a `DeprecationWarning`). Check the installed package's types — if `has_failed_open` exists, prefer it over `has_error()`.
+
+### Correlation IDs
+
+Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision.
+
+### Outbound HTTP proxy
+
+Available from **`arcjet` 0.9.0**: standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables are honored for outbound Arcjet API calls. Do not log proxy URLs because they may contain credentials.
 
 ## Async vs Sync
 

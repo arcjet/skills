@@ -30,6 +30,12 @@ Jailbreaks, role-play escapes, and instruction overrides allow attackers to mani
 
 **Rules:** `detectPromptInjection` (request-based and guard). Use on any untrusted text before it reaches a model or tool argument — and on tool call *results* when the tool fetches content from untrusted sources.
 
+## Unsafe content moderation
+
+Some AI workflows need to block unsafe, abusive, or policy-violating text even when it is not prompt injection or PII.
+
+**Rules:** Guard content moderation only: `experimental_moderateContent` in `@arcjet/guard` **>= 1.6.0**, `experimental_ModerateContent` in Python `arcjet` **>= 0.9.0**, and `ExperimentalGuardModerateContent` in Go `arcjet-go` **>= v0.1.0**. These APIs are experimental: the name/result shape may change, and server support may fail open with an error result. Use `hasFailedOpen()` / `has_failed_open()` / `HasFailedOpen()` as the fail-closed gate for sensitive operations.
+
 ## Data loss prevention
 
 Sensitive data leaks into AI model context, logs, third-party tool calls, or model memory through unguarded inputs and outputs. Arcjet detects card numbers, email addresses, phone numbers, and custom patterns — entirely locally via WASM, with no data leaving your infrastructure.
