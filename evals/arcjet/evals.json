@@ -72,7 +72,7 @@
       "id": 4,
       "name": "node-agent-tools",
       "prompt": "My AI agent makes tool calls and I need to rate limit per user and block prompt injection before each tool runs.",
-      "expected_output": "Retrieves a site key via the Arcjet CLI and writes it to .env, installs @arcjet/guard (not the request-based SDK), creates guard client at module scope with launchArcjet(), configures tokenBucket and detectPromptInjection rules, calls guard() inline in each tool function with a per-tool label (e.g. 'tools.get_weather'), uses the user id as the rate limit key, handles DENY decisions.",
+      "expected_output": "Retrieves a site key via the Arcjet CLI and writes it to .env, installs @arcjet/guard (not the request-based SDK), creates guard client at module scope with launchArcjet(), configures tokenBucket and detectPromptInjection rules, calls guard() inline in each tool function with a per-tool label (e.g. 'tools.get-weather'), uses the user id as the rate limit key, handles DENY decisions.",
       "files": [
         "files/node-agent-tools/package.json",
         "files/node-agent-tools/src/agent.ts"
@@ -138,7 +138,7 @@
       "id": 7,
       "name": "python-queue-worker",
       "prompt": "This worker pulls AI tasks off a queue and runs them through OpenAI. We've had cost spikes from abusive users. Add some protection.",
-      "expected_output": "Retrieves a site key via the Arcjet CLI and writes it to an env file, adds arcjet to requirements.txt, creates a guard client at module scope using launch_arcjet_sync (since process_task is a regular sync function), configures a token bucket rate limit keyed by user_id (and ideally detect_prompt_injection on the prompt), calls arcjet.guard() inline in process_task with a label like 'queue.process_task', uses task['user_id'] as the rate limit key, checks decision.conclusion for DENY before calling the model.",
+      "expected_output": "Retrieves a site key via the Arcjet CLI and writes it to an env file, adds arcjet to requirements.txt, creates a guard client at module scope using launch_arcjet_sync (since process_task is a regular sync function), configures a token bucket rate limit keyed by user_id (and ideally detect_prompt_injection on the prompt), calls arcjet.guard() inline in process_task with a label like 'queue.process-task', uses task['user_id'] as the rate limit key, checks decision.conclusion for DENY before calling the model.",
       "files": [
         "files/python-queue-worker/worker.py",
         "files/python-queue-worker/requirements.txt"
@@ -151,25 +151,9 @@
         "Uses launch_arcjet_sync (sync) — not launch_arcjet — since process_task is a sync function",
         "Creates the guard client at module scope",
         "Configures a rate limiting rule",
-        "Calls arcjet.guard() inside process_task with a descriptive label (e.g. 'queue.process_task')",
+        "Calls arcjet.guard() inside process_task with a descriptive label (e.g. 'queue.process-task')",
         "Uses task['user_id'] as the rate limit key",
         "Checks decision.conclusion for DENY before calling the OpenAI client"
-      ]
-    },
-    {
-      "id": 8,
-      "name": "go-agent",
-      "prompt": "Secure my agent",
-      "expected_output": "Tells the user Arcjet does not support Go (only JavaScript/TypeScript and Python). Does not hallucinate a Go Arcjet package or create a hand-rolled imitation.",
-      "files": [
-        "files/go-agent/go.mod",
-        "files/go-agent/main.go"
-      ],
-      "assertions": [
-        "Communicates clearly that Arcjet does not support Go",
-        "Does not invent a Go Arcjet package or import path",
-        "Does not add @arcjet/guard or any Arcjet npm/pip package to the Go project",
-        "Does not write a hand-rolled imitation of Arcjet in Go"
       ]
     }
   ]

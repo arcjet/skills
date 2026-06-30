@@ -8,14 +8,14 @@ Request protection inspects HTTP requests — headers, IP, body — to enforce s
 
 Pick the adapter for the project's framework, then install it with whichever package manager the project already uses (`npm install`, `pnpm add`, `yarn add`, `bun add`). Don't hand-edit `package.json` — a typed version is usually stale, and the lockfile won't update. Read the installed package's types and doc comments for the full API surface.
 
-**Runtime baseline:** **Node.js ≥ 20**, **Bun ≥ 1.3.0**, **Deno** `stable` / `lts`. If the project is below any of these, the install will fail or runtime behavior will misbehave — bump the runtime first.
+**Runtime baseline:** **Node.js `>=22.21.0 <23 || >=24.5.0`**, **Bun ≥ 1.3.0**, **Deno** `stable` / `lts`. Node 20 is end-of-life and is no longer supported by the SDK. If the project is below any of these, the install will fail or runtime behavior will misbehave — bump the runtime first.
 
-> _Version info last verified against `@arcjet/*` v1.4.0 on **2026-05-20**. Numbers below may drift — before relying on them, check the current `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the latest release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
+> _Version info last verified against the `@arcjet/*` v1.6.0 release on **2026-06-30**. Numbers below may drift — before relying on them, check the current `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the latest release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
 
 | Framework         | Package                                                   | Min framework version                                |
 | ----------------- | --------------------------------------------------------- | ---------------------------------------------------- |
-| Next.js           | `@arcjet/next`                                            | Next.js ≥ 15                                         |
-| Express / Node.js | `@arcjet/node`                                            | Node ≥ 20 (no framework peer)                        |
+| Next.js           | `@arcjet/next`                                            | Next.js 15 or 16                                     |
+| Express / Node.js | `@arcjet/node`                                            | Node `>=22.21.0 <23 || >=24.5.0` (no framework peer) |
 | Fastify           | `@arcjet/fastify`                                         | Fastify ≥ 5                                          |
 | NestJS            | `@arcjet/nest`                                            | `@nestjs/common` ^10 \|\| ^11                        |
 | SvelteKit         | `@arcjet/sveltekit`                                       | Svelte ^3.54 \|\| ^4 \|\| ^5                         |
@@ -257,16 +257,30 @@ Writing an explicit `else if (reason.isShield())` arm that returns 403 just adds
 
 `decision.isErrored()` means something went wrong during rule evaluation but the SDK failed open. Log it and allow the request.
 
+### Correlation IDs
+
+Available from **`@arcjet/*` 1.6.0**: pass `correlationId` to `protect()` when the Arcjet decision should be correlated with another request, guard call, workflow run, or agent trace. It is a dedicated field, not `extra`, and it does not affect fingerprinting or the decision cache key.
+
+```typescript
+const decision = await aj.protect(request, {
+  correlationId: requestId,
+});
+```
+
+### Outbound HTTP proxy
+
+Available from **`@arcjet/*` 1.6.0**: SDK transports honor standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables. Node.js proxy support depends on the Node runtime baseline above. Prefer env vars over custom code; do not log proxy URLs because they may include credentials. Advanced Node deployments can set `proxyHttpVersion: "2"` on lower-level transport options, but most app integrations should not need it.
+
 ## Deprecations
 
-As of `@arcjet/*` 1.4.0, the request-based SDK carries a few deprecated bits. New code should avoid them; existing code that uses them should be migrated when convenient.
+As of `@arcjet/*` 1.6.0, the request-based SDK carries a few deprecated bits. New code should avoid them; existing code that uses them should be migrated when convenient.
 
 - **`detectPromptInjection({ threshold })`** — the `threshold` option is no longer respected by the server and will be removed in a future release. Drop it from new configs; remove it from existing configs when touching them. Detection runs without it.
 - **`PromptInjectionReason.score`** — the `score` field on the reason returned for prompt-injection denials is no longer populated by the server and will be removed. Don't read it; branch on `decision.reason.isPromptInjection()` instead.
 - **`experimental_detectPromptInjection`** — the legacy `experimental_` alias is deprecated. Import `detectPromptInjection` directly from `@arcjet/node` / `@arcjet/next` / etc.
 - **`ArcjetEdgeRuleReason`** — currently unused; can be ignored in reason-handling switches.
 
-> _Deprecations last verified against `@arcjet/*` v1.4.0 on **2026-05-20**. Before relying on the items above, grep the installed package for `@deprecated` markers — see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
+> _Deprecations last verified against the `@arcjet/*` v1.6.0 release on **2026-06-30**. Before relying on the items above, grep the installed package for `@deprecated` markers — see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
 
 ## Key Patterns
 

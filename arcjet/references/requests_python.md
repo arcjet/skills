@@ -9,11 +9,11 @@ Request protection inspects HTTP requests — headers, IP, body — to enforce s
 - **Python:** ≥ 3.10 (declared in `pyproject.toml`). Older versions will fail to install — warn the user and stop.
 - **FastAPI / Flask:** no formal peer dependency — the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes.
 
-> _Version info last verified against `arcjet` v0.7.0 on **2026-05-20**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
+> _Version info last verified against the `arcjet` v0.9.0 release on **2026-06-30**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
 
 ## Installation
 
-Install with whichever package manager the project already uses (`pip install`, `uv add`, `poetry add`, etc.) — don't hand-edit `requirements.txt` with a guessed version like `arcjet>=1.0.0` (that release doesn't exist; current is `>=0.7.0`).
+Install with whichever package manager the project already uses (`pip install`, `uv add`, `poetry add`, etc.) — don't hand-edit `requirements.txt` with a guessed version like `arcjet>=1.0.0` (that release doesn't exist; the current minor release line is `0.x`).
 
 ```bash
 pip install arcjet
@@ -118,16 +118,28 @@ A branch that returns 403 for SHIELD when the default already returns 403 is dea
 
 `decision.is_error()` means something went wrong during rule evaluation but the SDK failed open. Log it and allow the request.
 
+### Correlation IDs
+
+Available from **`arcjet` 0.9.0**: pass `correlation_id` to `protect()` when the Arcjet decision should be correlated with a guard call, workflow run, or agent trace. It is a dedicated field, not `extra`, and it does not affect fingerprinting or the decision cache key.
+
+```python
+decision = await aj.protect(request, correlation_id=request_id)
+```
+
+### Outbound HTTP proxy
+
+Available from **`arcjet` 0.9.0**: the SDK honors standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables for outbound Arcjet API calls. Because Arcjet is contacted over HTTPS, `HTTPS_PROXY` is the relevant variable for most deployments. Do not log proxy URLs because they may contain credentials.
+
 ## Deprecations
 
-As of `arcjet` 0.7.0, the request-based SDK carries a few deprecated bits. New code should avoid them; existing code in the project that uses them should be migrated when convenient.
+As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New code should avoid them; existing code in the project that uses them should be migrated when convenient.
 
 - **`decision.reason` / `result.reason` → use `decision.reason_v2` / `result.reason_v2`.** The legacy `reason` accessor returns a tagged-union helper (`reason.is_rate_limit()`, etc.) and is marked `@deprecated`. `reason_v2` returns a typed discriminated union — branch on `reason_v2.type` (`"RATE_LIMIT"`, `"BOT"`, etc.) and read typed fields directly (`reason_v2.remaining`, `reason_v2.spoofed`). A TODO in the SDK notes the name `reason_v2` is itself transitional — in a future major it's planned to fold back into `reason`, but until then `reason_v2` is the right call.
 - **`detect_prompt_injection(threshold=...)`** — the `threshold` parameter is no longer respected by the server and will be removed. Drop it from new configs; remove it from existing configs when touching them. The detection runs without it.
 - **`PromptInjectionReason.score`** — the `score` field on the reason returned for prompt-injection denials is no longer populated meaningfully and will be removed. Don't read it; rely on `reason_v2.type == "PROMPT_INJECTION"` instead.
 - **`arcjet._decision.Reason`** — internal type; use `arcjet._dataclasses.Reason` (re-exported as `arcjet.Reason`) if you need the type annotation. Most callers won't touch this directly.
 
-> _Deprecations last verified against `arcjet` v0.7.0 on **2026-05-20**. Before relying on the items above, grep the installed package for new `@deprecated` markers — see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py) and [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py)._
+> _Deprecations last verified against the `arcjet` v0.9.0 release on **2026-06-30**. Before relying on the items above, grep the installed package for new `@deprecated` markers — see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py) and [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py)._
 
 ## Key Patterns
 

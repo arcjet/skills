@@ -18,7 +18,7 @@ metadata:
 
 ### Checklist
 
-- [ ] **Step 1:** Verify language support (JS/TS or Python only — stop if unsupported)
+- [ ] **Step 1:** Verify language support (JS/TS, Python, or Go only — stop if unsupported)
 - [ ] **Step 2:** Connect to Arcjet platform (CLI → MCP → manual dashboard)
 - [ ] **Step 3:** Detect protection type and read the appropriate reference file
 - [ ] **Step 4:** Implement protection (separate client file, correct SDK, correct patterns)
@@ -26,7 +26,7 @@ metadata:
 
 ### Step 1: Check Language Support
 
-If the project's server-side code is not JavaScript, TypeScript, or Python → tell the user in chat that Arcjet doesn't support their language yet. Don't modify the project, don't write a `NOTES.md`, don't invent a package. Just say it and stop.
+If the project's server-side code is not JavaScript, TypeScript, Python, or Go → tell the user in chat that Arcjet doesn't support their language yet. Don't modify the project, don't write a `NOTES.md`, don't invent a package. Just say it and stop.
 
 ### Step 2: Get an ARCJET_KEY into the project's env file
 
@@ -59,7 +59,7 @@ See [references/cli.md](references/cli.md) for install options beyond `npx`, age
 
 #### Install the SDK with the project's package manager
 
-Once you know which SDK you need (Step 3 below), install it via the package manager the project already uses — `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, etc. Don't hand-edit `package.json` / `requirements.txt` and guess a version: typed versions tend to be wrong (`arcjet>=1.0.0` doesn't exist for the Python SDK; `^1.0.0` is stale for `@arcjet/next`), and the lockfile won't get updated. Let the package manager pick the real version and pin it.
+Once you know which SDK you need (Step 3 below), install it via the package manager the project already uses — `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, `go get`, etc. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions tend to be wrong (`arcjet>=1.0.0` doesn't exist for the Python SDK; `^1.0.0` is stale for `@arcjet/next`; Go should use the module tag, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
 
 ### Step 3: Detect Protection Type and Read Reference
 
@@ -68,9 +68,10 @@ Determine which protection type applies:
 | | **Request-based** | **Guard** |
 |---|---|---|
 | **When to use** | Code has an HTTP request object (Express `req`, Next.js `Request`, FastAPI `Request`, etc.) | No HTTP request (tool calls, MCP handlers, queue workers, background jobs, agent loops) |
-| **JS/TS SDK** | `@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, etc. | `@arcjet/guard` (>= 1.4.0) |
+| **JS/TS SDK** | `@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, etc. | `@arcjet/guard` |
 | **Python SDK** | `arcjet` (with `arcjet()` / `arcjet_sync()`) | `arcjet` (with `launch_arcjet()` / `launch_arcjet_sync()`) |
-| **Entry point** | `protect(request)` | `guard(label, rules)` |
+| **Go SDK** | `github.com/arcjet/arcjet-go` (with `NewClient`) | `github.com/arcjet/arcjet-go` (with `NewGuardClient`) |
+| **Entry point** | `protect(request)` / `Protect(ctx, r)` | `guard(label, rules)` / `Guard(ctx, request)` |
 
 A single project can use both — e.g. request-based on API routes and guard on agent tool calls.
 
@@ -85,8 +86,10 @@ Read the appropriate reference:
 
 - **Request-based JS/TS**: [references/requests_javascript.md](references/requests_javascript.md)
 - **Request-based Python**: [references/requests_python.md](references/requests_python.md)
+- **Request-based Go**: [references/requests_go.md](references/requests_go.md)
 - **Guard JS/TS**: [references/guards_javascript.md](references/guards_javascript.md)
 - **Guard Python**: [references/guards_python.md](references/guards_python.md)
+- **Guard Go**: [references/guards_go.md](references/guards_go.md)
 
 These references explain architectural decisions and patterns that can't be inferred from the source code alone. For exact API signatures, read the installed package's types and doc comments.
 
@@ -100,9 +103,11 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - Call `protect()` inside each route handler (not in app-level middleware), once per request.
 - Map `decision.isDenied()` reasons to HTTP responses. Only branch on reasons that produce a *different* response — there's no point in an `else if (reason.isShield())` arm that returns the same status as the default 403.
 - Put `characteristics: ["userId"]` (or similar) on the specific rule that needs it, not on the global client.
+- In Go, create one `NewClient` at package scope, call `Protect(ctx, r, ...)` inside each handler, and use `WithRule()` to derive route-specific clients when needed.
 
 #### Guard (non-HTTP code):
 - Client at module scope with `launchArcjet()` (JS) or `launch_arcjet()` / `launch_arcjet_sync()` (Python — pick async vs sync to match the function you're protecting).
+- In Go, create one `NewGuardClient` at package scope.
 - Rules declared at module scope. Give each rule a meaningful `label` so they show up usefully in the dashboard.
 - **One `guard()` call per specific operation, with a hardcoded `label`** like `"tools.get-weather"` or `"queue.summarize"`. Put it wherever you already know exactly what's happening — that can be inside the tool/task function itself, or right before calling it from a dispatch arm. Both work; pick whichever makes error propagation cleaner. What to avoid is the generic-dispatcher pattern (`handleToolCall(name, args)` calling `guard(label=f"tools.{name}")`) — interpolated labels break grep and produce messy dashboard groupings.
 - **Label naming rules**: labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and slashes are rejected even though some SDK TSDoc comments claim otherwise. Use `tools.get-weather`, not `tools.get_weather` or `Tools.GetWeather`.
@@ -111,7 +116,7 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - Every rate-limit rule needs a `key` and a `bucket`:
   - **Per-user context** (agent tool calls inside a logged-in session, queue jobs with a `user_id`): use the user/session id as the key.
   - **No user context** (stdio MCP server, single-tenant worker): use a stable identifier you control — instance id, deployment name, or a literal like `"default"`. Just be explicit.
-- Check `decision.conclusion === "DENY"` (JS) or `decision.conclusion == "DENY"` (Python) before proceeding.
+- Check `decision.conclusion === "DENY"` (JS), `decision.conclusion == "DENY"` (Python), or `decision.IsDenied()` / `decision.Conclusion == arcjet.ConclusionDeny` (Go) before proceeding.
 
 #### Conventions outside the Arcjet flow
 
@@ -140,7 +145,7 @@ If you can't run the app in the current environment, tell the user exactly what 
 
 ### Gotchas
 
-- **Wrong SDK**: `@arcjet/guard` is for non-HTTP code. `@arcjet/node` / `@arcjet/next` / etc. are for HTTP routes. Using the wrong one is the most common mistake.
+- **Wrong SDK/client**: `@arcjet/guard`, `arcjet.guard`, and Go's `NewGuardClient` are for non-HTTP code. `@arcjet/node` / `@arcjet/next` / Python `arcjet()` / Go `NewClient` are for HTTP routes. Using the wrong one is the most common mistake.
 - **Wrong placement**: `protect()` must not be called in Express middleware or Next.js middleware. Call it inside each route handler.
 - **Wrong layer for `guard()`**: don't put `guard()` in a `handleToolCall(name, args)` dispatcher — put it inside each specific tool / task function so the `label` and metadata can be hardcoded.
 - **Hand-edited dependency manifests**: don't append `"arcjet": "^1.0.0"` to `package.json` or `arcjet>=1.0.0` to `requirements.txt`. Run the project's package manager so the version is real and the lockfile updates.
@@ -157,5 +162,6 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 
 - **Python SDK**: https://github.com/arcjet/arcjet-py — `arcjet` package (request protection) and `arcjet.guard` subpackage (non-HTTP guard).
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js — monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`, etc.).
+- **Go SDK**: https://github.com/arcjet/arcjet-go — `github.com/arcjet/arcjet-go` module with request and guard clients. The initial tagged release is `v0.1.0`.
 - **Docs**: https://docs.arcjet.com — narrative guides, blueprints, and product reference.
 - **Dashboard**: https://app.arcjet.com — sites, keys, and decision history.
