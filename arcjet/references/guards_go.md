@@ -27,6 +27,9 @@ var guard = must(arcjet.NewGuardClient(arcjet.GuardConfig{
 ```
 
 The client owns the connection to Arcjet. Creating it inside a tool function means a new connection per call.
+The snippets use a small generic `must(value, err)` startup helper; use the project's existing initialization/error pattern if it has one.
+
+Go does not load `.env` files automatically. Ensure the worker process or service manager exports `ARCJET_KEY`, or use the project's existing environment loader. Do not add a dotenv dependency solely to copy this example without reviewing it first.
 
 ### Rules at package scope
 
@@ -56,12 +59,18 @@ decision, err := guard.Guard(ctx, arcjet.GuardRequest{
 	Label:    "tools.get-weather",
 	Metadata: map[string]string{"user_id": userID},
 	Rules: []arcjet.GuardRuleInput{
-		userLimit.Key(userID, 1),
+		userLimit.Key(userID, requestedTokens),
 		promptScan.Text(userMessage),
 	},
 })
 if err != nil {
-	log.Printf("arcjet guard: %v", err)
+	// Configuration/programmer errors can return a zero decision, so do not
+	// assume IsDenied or HasFailedOpen will catch every non-nil error.
+	return fmt.Errorf("arcjet guard: %w", err)
+}
+if decision.HasFailedOpen() {
+	// This sensitive operation chooses to fail closed.
+	return fmt.Errorf("arcjet guard failed open: %+v", decision.ErrorResults())
 }
 if decision.IsDenied() {
 	if rateLimited := userLimit.DeniedResult(decision); rateLimited != nil {
@@ -76,6 +85,8 @@ Labels and rate-limit buckets are validated as slugs: lowercase letters, digits,
 ## Rate Limits and Keys
 
 All Guard rate limit rules require an explicit key at call time. Use a user ID, session ID, API key, or another stable identifier. If there is no user context, use a deliberate scope such as deployment name, process identity, or `"global"` with a comment explaining why.
+
+The second argument to `Key` is the amount consumed. Passing `1` creates a per-operation quota. For a token budget, pass a documented preflight token estimate or declared job cost; the SDK does not tokenize prompts or know the eventual output-token count for you.
 
 ## Content Scanning Rules
 

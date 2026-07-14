@@ -60,11 +60,11 @@ if err != nil {
 }
 ```
 
-Use `client.WithRule(...)` to derive a route-specific client when a handler needs extra rules beyond the shared base protection.
+Use `client.WithRule(...)` to derive a route-specific client when a handler needs extra rules beyond the shared base protection. It returns `(*arcjet.Client, error)`, so construct derived clients during initialization and handle the error rather than ignoring it.
 
 ## Choosing Rules
 
-- `Shield` — always include. No configuration needed.
+- `Shield` — always include and set `ShieldOptions{Mode: arcjet.ModeLive}` when it should enforce. The zero-value mode is dry run.
 - `DetectBot` — request-based only; use `Allow` for a safelist or `Deny` for specific categories.
 - Rate limits — `TokenBucket`, `FixedWindow`, `SlidingWindow`; use `WithRequested(n)` for variable-cost calls and `WithCharacteristics(...)` for user/session keys.
 - `ValidateEmail` / `ProtectSignup` — signup and login forms.
@@ -75,6 +75,8 @@ Use `client.WithRule(...)` to derive a route-specific client when a handler need
 ## Request Context
 
 Pass the real `*http.Request` and `r.Context()` so Arcjet respects cancellation and extracts IP/header metadata correctly. If the app is behind trusted reverse proxies, set `Config.Proxies` to the trusted proxy IPs/CIDRs. If the app runs on a known platform, set `Config.Platform` when appropriate.
+
+For user-based characteristics, use identity established by trusted authentication middleware or a verified token/session. Do not trust a caller-controlled header as a user ID unless a trusted proxy strips incoming values and rewrites the header.
 
 ## Correlation IDs
 

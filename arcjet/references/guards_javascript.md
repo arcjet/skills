@@ -25,7 +25,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the `@arcjet/guard` v1.6.0 release on **2026-06-30**. Before relying on these numbers, check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README — minimums tend to creep upward over time._
+> _Runtime support last verified against the `@arcjet/guard` v1.8.0 release on **2026-07-07**. Before relying on these numbers, check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README — minimums tend to creep upward over time._
 
 ## Architecture: Why Things Go Where They Do
 
@@ -116,11 +116,11 @@ async function handleToolCall(name: string, args: Record<string, unknown>, userI
 }
 ```
 
-The `label` should be a hardcoded string — `"tools.get-weather"`, not `` `tools.${name}` ``. Hardcoded labels stay greppable, and the dashboard groups by them; interpolation produces a sea of distinct-looking calls instead of one bucket per operation.
+The `label` should be a hardcoded string — `"tools.get-weather"`, not `` `tools.${name}` ``. Hardcoded labels stay greppable, and the Console groups by them; interpolation produces a sea of distinct-looking calls instead of one bucket per operation.
 
 **Label naming rules (often surprising):** labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected even though the `GuardOptions.label` TSDoc lists them as allowed. Use `tools.get-weather`, not `tools.get_weather`. Same rules apply to rate-limit `bucket` names.
 
-Pass `metadata` whenever you have useful auditing context (`{ userId, requestId }`) — it shows up in the dashboard alongside the decision and makes debugging much easier later.
+Pass `metadata` whenever you have useful auditing context (`{ userId, requestId }`) — it shows up in the Console alongside the decision and makes debugging much easier later.
 
 ## Choosing a Rate Limit Strategy
 
@@ -200,5 +200,5 @@ Available from **`@arcjet/guard` 1.6.0**: standard `HTTP_PROXY`, `HTTPS_PROXY`, 
 ## Key Patterns
 
 - Pass `signal` (an `AbortSignal`) on the `.guard()` call when one is available (e.g. from the caller or a timeout) so guard respects cancellation. `timeoutSeconds` is also available for a simple deadline.
-- Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the dashboard.
-- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"mcp.query-database"`) — it appears in the dashboard and helps you understand which operations are being rate limited or blocked.
+- Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the Console.
+- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"mcp.query-database"`) — it appears in the Console and helps you understand which operations are being rate limited or blocked.

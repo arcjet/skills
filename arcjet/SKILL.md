@@ -1,7 +1,7 @@
 ---
 name: arcjet
 license: Apache-2.0
-description: Add Arcjet security protection to any code path — HTTP route handlers, API endpoints, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking, and abuse prevention. Works across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, and non-HTTP contexts. Use this skill when the user wants to add security, rate limiting, bot protection, or abuse prevention to any part of their application — whether they say "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," "add security to my MCP server," or "prevent abuse" without mentioning Arcjet specifically.
+description: Add Arcjet security protection to any code path — HTTP route handlers, API endpoints, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking, content moderation, and abuse prevention. Works with JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, net/http, and non-HTTP contexts. Use this skill when the user wants to add security, rate limiting, bot protection, or abuse prevention to any part of their application — whether they say "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," "add security to my MCP server," or "prevent abuse" without mentioning Arcjet specifically.
 metadata:
   author: arcjet
 ---
@@ -19,10 +19,10 @@ metadata:
 ### Checklist
 
 - [ ] **Step 1:** Verify language support (JS/TS, Python, or Go only — stop if unsupported)
-- [ ] **Step 2:** Connect to Arcjet platform (CLI → MCP → manual dashboard)
+- [ ] **Step 2:** Connect to Arcjet platform (CLI → MCP → manual Console setup)
 - [ ] **Step 3:** Detect protection type and read the appropriate reference file
 - [ ] **Step 4:** Implement protection (separate client file, correct SDK, correct patterns)
-- [ ] **Step 5:** Verify decisions are firing correctly (trigger a real call, then check CLI / MCP / dashboard)
+- [ ] **Step 5:** Verify decisions are firing correctly (trigger a real call, then check CLI / MCP / Console)
 
 ### Step 1: Check Language Support
 
@@ -98,20 +98,21 @@ These references explain architectural decisions and patterns that can't be infe
 Follow the patterns in the reference file from Step 3. Key principles:
 
 #### Request-based (HTTP routes):
-- Shared Arcjet client in its own file with `shield()` as a base rule.
-- `withRule()` to layer route-specific rules.
-- Call `protect()` inside each route handler (not in app-level middleware), once per request.
-- Map `decision.isDenied()` reasons to HTTP responses. Only branch on reasons that produce a *different* response — there's no point in an `else if (reason.isShield())` arm that returns the same status as the default 403.
-- Put `characteristics: ["userId"]` (or similar) on the specific rule that needs it, not on the global client.
-- In Go, create one `NewClient` at package scope, call `Protect(ctx, r, ...)` inside each handler, and use `WithRule()` to derive route-specific clients when needed.
+- Create shared clients outside handlers and include Shield as a base rule. Use the exact constructor and rule names from the language reference.
+- In JavaScript/TypeScript, use `withRule()` for route-specific rules and `decision.isDenied()` for the result.
+- In Python, pass the complete rule list to `arcjet()` / `arcjet_sync()`; there is no `with_rule()` client method. Check `decision.is_denied()`.
+- In Go, create one `NewClient` at package scope. `WithRule()` derives route-specific clients and returns `(*Client, error)`, so handle initialization errors. Check `decision.IsDenied()`.
+- Call `protect()` / `Protect()` inside each route handler (not in app-level middleware), once per request.
+- Map denial reasons to HTTP responses. Only branch on reasons that produce a *different* response — there is no point in a Shield-specific arm that returns the same status as the default 403.
+- Put the language's `userId` characteristic selector on the specific rule that needs it, then pass a **trusted, authenticated** user ID at protection time. Never rate limit by a client-controlled header unless a trusted proxy strips and rewrites it.
 
 #### Guard (non-HTTP code):
 - Client at module scope with `launchArcjet()` (JS) or `launch_arcjet()` / `launch_arcjet_sync()` (Python — pick async vs sync to match the function you're protecting).
 - In Go, create one `NewGuardClient` at package scope.
-- Rules declared at module scope. Give each rule a meaningful `label` so they show up usefully in the dashboard.
-- **One `guard()` call per specific operation, with a hardcoded `label`** like `"tools.get-weather"` or `"queue.summarize"`. Put it wherever you already know exactly what's happening — that can be inside the tool/task function itself, or right before calling it from a dispatch arm. Both work; pick whichever makes error propagation cleaner. What to avoid is the generic-dispatcher pattern (`handleToolCall(name, args)` calling `guard(label=f"tools.{name}")`) — interpolated labels break grep and produce messy dashboard groupings.
+- Rules declared at module scope. Give each rule a meaningful `label` so they show up usefully in the Console.
+- **One `guard()` call per specific operation, with a hardcoded `label`** like `"tools.get-weather"` or `"queue.summarize"`. Put it wherever you already know exactly what's happening — that can be inside the tool/task function itself, or right before calling it from a dispatch arm. Both work; pick whichever makes error propagation cleaner. What to avoid is the generic-dispatcher pattern (`handleToolCall(name, args)` calling `guard(label=f"tools.{name}")`) — interpolated labels break grep and produce messy Console groupings.
 - **Label naming rules**: labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and slashes are rejected even though some SDK TSDoc comments claim otherwise. Use `tools.get-weather`, not `tools.get_weather` or `Tools.GetWeather`.
-- **Pass `metadata` on the `guard()` call** when you have useful auditing context (`metadata={"user_id": user_id, "request_id": ...}`). It appears in the dashboard alongside the decision.
+- **Pass `metadata` on the `guard()` call** when you have useful auditing context (`metadata={"user_id": user_id, "request_id": ...}`). It appears in the Console alongside the decision.
 - **Branch on which rule denied**, not just on `DENY`. Use the per-rule accessors (e.g. `userLimit.deniedResult(decision)` for retry-after info) or the flat reason string (`decision.reason === "PROMPT_INJECTION"` in JS, `decision.reason == "PROMPT_INJECTION"` in Python) so the error you surface to the caller tells them *why* — "rate limited, retry in 12s" vs "input flagged as prompt injection" — instead of a generic "blocked." Note: guard's `decision.reason` is a flat string literal, unlike the request-based SDK's tagged-helper API.
 - Every rate-limit rule needs a `key` and a `bucket`:
   - **Per-user context** (agent tool calls inside a logged-in session, queue jobs with a `user_id`): use the user/session id as the key.
@@ -128,7 +129,7 @@ After wiring up protection, confirm it's actually firing. Three steps:
 
 **1. Type-check / build first.** Run `tsc`, `next build`, `python -m py_compile`, or whatever check command the project uses. Catches wrong imports, wrong rule names, and stale type signatures before the user does.
 
-**2. Trigger a real call so a decision exists to check.** Without one, the dashboard and CLI are empty and you can't tell whether protection is actually wired up.
+**2. Trigger a real call so a decision exists to check.** Without one, the Console and CLI are empty and you can't tell whether protection is actually wired up.
 
 - **Request-based**: start the dev server (`npm run dev`, `uvicorn main:app --reload`, etc.) and `curl` the protected route. To trip a rate limit, loop the call: `for i in {1..50}; do curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/api/your-route; done` — you should see a mix of 200s and 429s once the limit is hit.
 - **Guard**: invoke the protected function directly. A tiny script that imports the tool/task function and calls it twice (once to allow, once to exceed the limit) is usually the fastest path — e.g. `node -e "import('./src/tools.js').then(m => m.getWeather('SF', 'user_123'))"` or `python -c "from worker import process_job; process_job({'user_id': 'user_123'})"`. For MCP servers, send a tool call via the MCP client / inspector. For queue workers, enqueue a real job. Don't try to test guard by `curl`ing anything — there's no HTTP surface.
@@ -137,7 +138,7 @@ After wiring up protection, confirm it's actually firing. Three steps:
 
 - **CLI**: `npx -y @arcjet/cli@latest requests list --site-id <id>` (request-based) or `... guards list --site-id <id>` (Guard)
 - **MCP**: `list-requests` / `list-guards`
-- **Dashboard**: https://app.arcjet.com
+- **Console**: https://app.arcjet.com
 
 For deeper investigation: `arcjet requests explain --site-id <id> --request-id <id>` or `arcjet guards explain --site-id <id> --guard-id <id>`.
 
@@ -164,4 +165,4 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js — monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`, etc.).
 - **Go SDK**: https://github.com/arcjet/arcjet-go — `github.com/arcjet/arcjet-go` module with request and guard clients. The initial tagged release is `v0.1.0`.
 - **Docs**: https://docs.arcjet.com — narrative guides, blueprints, and product reference.
-- **Dashboard**: https://app.arcjet.com — sites, keys, and decision history.
+- **Console**: https://app.arcjet.com — sites, keys, and decision history.
