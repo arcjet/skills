@@ -51,7 +51,7 @@
       "id": 3,
       "name": "fastapi-data",
       "prompt": "I need to add some security to my FastAPI app before going to production.",
-      "expected_output": "Retrieves a site key via the Arcjet CLI and writes it to an env file, adds arcjet to requirements.txt, creates an Arcjet client using arcjet() (async) with shield() as a base rule, adds detect_bot() and a rate limiting rule via with_rule(), calls await aj.protect(request) in route handlers, handles denied decisions with appropriate HTTP status codes.",
+      "expected_output": "Retrieves a site key via the Arcjet CLI and writes it to an env file, installs arcjet with the project's package manager and records the resolved dependency, creates an Arcjet client using arcjet() (async) with shield(), detect_bot(), and a rate limiting rule in its rules list, calls await aj.protect(request) in route handlers, and handles denied decisions with appropriate HTTP status codes.",
       "files": [
         "files/fastapi-data/requirements.txt",
         "files/fastapi-data/main.py"
@@ -59,7 +59,7 @@
       "assertions": [
         "Retrieves an Arcjet site key via the CLI",
         "Writes ARCJET_KEY to an env file (not hardcoded)",
-        "Adds arcjet to requirements.txt",
+        "Installs arcjet through pip or the project's package manager and records the resolved dependency in requirements.txt",
         "Creates an Arcjet client using the Python SDK with arcjet() (async, since FastAPI is async)",
         "Configures shield() as a base rule",
         "Configures detect_bot() rule",
@@ -154,6 +154,49 @@
         "Calls arcjet.guard() inside process_task with a descriptive label (e.g. 'queue.process-task')",
         "Uses task['user_id'] as the rate limit key",
         "Checks decision.conclusion for DENY before calling the OpenAI client"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "go-http-api",
+      "prompt": "Our Go net/http API is public now. Add bot protection and a per-user rate limit to the /search endpoint.",
+      "expected_output": "Retrieves a site key via the Arcjet CLI and writes it to an env file, installs github.com/arcjet/arcjet-go with go get, creates a shared NewClient with Shield at package scope, derives a route client with DetectBot and a rate limit, calls Protect(r.Context(), r, ...) once inside the /search handler, passes the user ID as a characteristic, and handles denied decisions with 429 or 403 responses.",
+      "files": [
+        "files/go-http-api/go.mod",
+        "files/go-http-api/main.go"
+      ],
+      "assertions": [
+        "Retrieves an Arcjet site key via the CLI",
+        "Writes ARCJET_KEY to an env file (not hardcoded)",
+        "Installs github.com/arcjet/arcjet-go using go get rather than hand-editing go.mod",
+        "Creates a shared arcjet.NewClient at package scope",
+        "Configures arcjet.Shield as a base rule",
+        "Configures arcjet.DetectBot and a rate limiting rule",
+        "Calls Protect(r.Context(), r, ...) once inside the /search handler, not generic middleware",
+        "Passes the authenticated user ID with arcjet.WithCharacteristics",
+        "Checks decision.IsDenied() and returns 429 for rate limits or 403 otherwise"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "go-queue-worker",
+      "prompt": "This Go queue worker sends user prompts to an LLM. Add prompt-injection protection and a per-user token budget before each job runs.",
+      "expected_output": "Retrieves a site key via the Arcjet CLI and configures the worker process to export it, installs github.com/arcjet/arcjet-go with go get, creates a NewGuardClient and reusable GuardPromptInjection and GuardTokenBucket rules at package scope, calls Guard inside processJob with a hardcoded queue.process-job label, binds the prompt and user ID to the rule inputs, consumes job.TokenCost from the user budget, handles non-nil errors and HasFailedOpen for the chosen fallback policy, and blocks denied work before the model call.",
+      "files": [
+        "files/go-queue-worker/go.mod",
+        "files/go-queue-worker/main.go"
+      ],
+      "assertions": [
+        "Retrieves an Arcjet site key via the CLI",
+        "Configures ARCJET_KEY for the worker process without hardcoding it and does not assume Go loads .env automatically",
+        "Installs github.com/arcjet/arcjet-go using go get rather than hand-editing go.mod",
+        "Creates an arcjet.NewGuardClient at package scope",
+        "Declares GuardPromptInjection and a Guard rate limit rule at package scope",
+        "Calls Guard inside processJob with a hardcoded descriptive label",
+        "Uses the job user ID as the rate limit key, consumes job.TokenCost, and scans the job prompt",
+        "Handles a non-nil Guard error before inspecting the decision",
+        "Checks decision.IsDenied() before the model call",
+        "Handles decision.HasFailedOpen() explicitly for the sensitive operation"
       ]
     }
   ]

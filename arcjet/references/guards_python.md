@@ -104,11 +104,11 @@ async def handle_tool_call(name: str, args: dict, user_id: str):  # 👎
     decision = await arcjet.guard(label=f"tools.{name}", rules=[...])
 ```
 
-The `label` should be a hardcoded string — `"tools.get-weather"`, not `f"tools.{name}"`. Hardcoded labels stay greppable, and the dashboard groups by them.
+The `label` should be a hardcoded string — `"tools.get-weather"`, not `f"tools.{name}"`. Hardcoded labels stay greppable, and the Console groups by them.
 
 **Label naming rules (often surprising):** labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected even though some SDK TSDoc / docstring comments list them as allowed. Use `tools.get-weather`, not `tools.get_weather`. Same rules apply to rate-limit `bucket` names.
 
-Pass `metadata` whenever you have useful auditing context (`{"user_id": ..., "request_id": ...}`) — it shows up in the dashboard and makes debugging much easier later.
+Pass `metadata` whenever you have useful auditing context (`{"user_id": ..., "request_id": ...}`) — it shows up in the Console and makes debugging much easier later.
 
 ## Choosing a Rate Limit Strategy
 
@@ -188,5 +188,5 @@ The package provides both variants:
 
 ## Key Patterns
 
-- Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the dashboard.
-- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"queue.process-job"`) — it appears in the dashboard and helps you understand which operations are being limited or blocked.
+- Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the Console.
+- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"queue.process-job"`) — it appears in the Console and helps you understand which operations are being limited or blocked.

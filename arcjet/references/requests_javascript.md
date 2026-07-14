@@ -10,18 +10,18 @@ Pick the adapter for the project's framework, then install it with whichever pac
 
 **Runtime baseline:** **Node.js `>=22.21.0 <23 || >=24.5.0`**, **Bun ≥ 1.3.0**, **Deno** `stable` / `lts`. Node 20 is end-of-life and is no longer supported by the SDK. If the project is below any of these, the install will fail or runtime behavior will misbehave — bump the runtime first.
 
-> _Version info last verified against the `@arcjet/*` v1.6.0 release on **2026-06-30**. Numbers below may drift — before relying on them, check the current `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the latest release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
+> _Version info last verified against the `@arcjet/*` v1.8.0 release on **2026-07-07**. Numbers below may drift — before relying on them, check the current `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the latest release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
 
 | Framework         | Package                                                   | Min framework version                                |
 | ----------------- | --------------------------------------------------------- | ---------------------------------------------------- |
-| Next.js           | `@arcjet/next`                                            | Next.js 15 or 16                                     |
+| Next.js           | `@arcjet/next`                                            | Next.js 15 or 16 (supported target; SDK peer range is broader) |
 | Express / Node.js | `@arcjet/node`                                            | Node `>=22.21.0 <23 || >=24.5.0` (no framework peer) |
 | Fastify           | `@arcjet/fastify`                                         | Fastify ≥ 5                                          |
 | NestJS            | `@arcjet/nest`                                            | `@nestjs/common` ^10 \|\| ^11                        |
 | SvelteKit         | `@arcjet/sveltekit`                                       | Svelte ^3.54 \|\| ^4 \|\| ^5                         |
 | Remix             | `@arcjet/remix`                                           | Remix v2 (v3 was renamed to React Router 7 — use `@arcjet/react-router`) |
 | React Router      | `@arcjet/react-router`                                    | react-router ≥ 7                                     |
-| Astro             | `@arcjet/astro`                                           | Astro ^5.9.3 \|\| ^6                                 |
+| Astro             | `@arcjet/astro`                                           | Astro ^5.9.3 \|\| ^6 \|\| ^7                         |
 | Nuxt              | `@arcjet/nuxt`                                            | `@nuxt/kit` ≥ 4, `@nuxt/schema` ≥ 4                  |
 | Bun               | `@arcjet/bun`                                             | Bun ≥ 1.3.0                                          |
 | Deno              | `@arcjet/deno` (install with `deno add npm:@arcjet/deno`) | Deno `stable` / `lts`                                |
@@ -280,7 +280,7 @@ As of `@arcjet/*` 1.6.0, the request-based SDK carries a few deprecated bits. Ne
 - **`experimental_detectPromptInjection`** — the legacy `experimental_` alias is deprecated. Import `detectPromptInjection` directly from `@arcjet/node` / `@arcjet/next` / etc.
 - **`ArcjetEdgeRuleReason`** — currently unused; can be ignored in reason-handling switches.
 
-> _Deprecations last verified against the `@arcjet/*` v1.6.0 release on **2026-06-30**. Before relying on the items above, grep the installed package for `@deprecated` markers — see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
+> _Deprecations last verified against the `@arcjet/*` v1.8.0 release on **2026-07-07**. Before relying on the items above, grep the installed package for `@deprecated` markers — see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
 
 ## Key Patterns
 

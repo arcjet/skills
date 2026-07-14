@@ -20,7 +20,7 @@ project. Works in VS Code (GitHub Copilot), Claude Code, Cursor, and any other
 npx skills add arcjet/skills
 ```
 
-The Arcjet skill for AI coding agents. Adds protection across HTTP route handlers, AI agent tool calls, MCP servers, background jobs, and queue workers — rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking, and abuse prevention — and verifies decisions via the Arcjet CLI, MCP server, and dashboard. Works in JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, `net/http`, and non-HTTP contexts.
+The Arcjet skill for AI coding agents. Adds protection across HTTP route handlers, AI agent tool calls, MCP servers, background jobs, and queue workers — rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking, content moderation, and abuse prevention — and verifies decisions via the Arcjet CLI, MCP server, and Console. Works in JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, `net/http`, and non-HTTP contexts.
 
 ## Related
 
