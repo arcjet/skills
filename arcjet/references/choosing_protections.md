@@ -34,7 +34,7 @@ Jailbreaks, role-play escapes, and instruction overrides allow attackers to mani
 
 Some AI workflows need to block unsafe, abusive, or policy-violating text even when it is not prompt injection or PII.
 
-**Rules:** Guard content moderation only (not available on `protect()`). JS: `moderateContent` (graduated; published `@arcjet/guard` 1.10.0 still exports `experimental_moderateContent` — read the installed types). Python: `experimental_ModerateContent` (still experimental). Go: `GuardModerateContent` (`ExperimentalGuardModerateContent` remains a deprecated alias). The result is a binary `detected` / `Detected` plus optional `billing` (`text_units`). Use `hasFailedOpen()` / `has_failed_open()` / `HasFailedOpen()` as the fail-closed gate when evaluation is incomplete.
+**Rules:** Guard content moderation only (not available on `protect()`). JS: `moderateContent` (graduated; published `@arcjet/guard` 1.10.0 still exports `experimental_moderateContent` — read the installed types). Python: `ModerateContent` (graduated; published `arcjet` 0.9.0 / 0.10.0b1 still export `experimental_ModerateContent` — read the installed types). Go: `GuardModerateContent` (`ExperimentalGuardModerateContent` remains a deprecated alias). The result is a binary `detected` / `Detected` plus optional `billing` (`text_units`) — no per-category scores. Use `hasFailedOpen()` / `has_failed_open()` / `HasFailedOpen()` as the fail-closed gate when evaluation is incomplete.
 
 ## Data loss prevention
 

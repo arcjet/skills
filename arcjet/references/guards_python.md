@@ -2,13 +2,13 @@
 
 ## What Guard Is
 
-Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 below still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
+Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 below still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000 ms default Guard request timeout) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK — they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI** — `pip install arcjet` still resolves 0.9.0. The APIs below that are newer than 0.9.0 live in 0.10.0b1 / main. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI** — `pip install arcjet` still resolves 0.9.0. The APIs below that are newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000 ms default Guard request timeout are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and defaults to 1000 ms. Read the installed package's types before using either. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -132,7 +132,20 @@ Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the syste
 
 ### Content moderation
 
-`experimental_ModerateContent()` flags unsafe or policy-violating text for Guard call sites. **Python is still experimental** — import the `experimental_` name (the class exists as `ModerateContent` but is not in `__all__`). The name and result shape may change; treat errors as fail-open and inspect `decision.has_failed_open()` / `decision.error_results()`.
+`ModerateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is frozen to `detected` plus optional `billing` (`text_units`) — no per-category scores. Published **0.9.0** / **0.10.0b1** still export `experimental_ModerateContent` as the public name; current `main` graduates it to `ModerateContent` and keeps the old name as a deprecated alias (`DeprecationWarning`). Import whichever the installed types export. `decision.reason` is `"MODERATE_CONTENT"` on deny.
+
+```python
+from arcjet.guard import ModerateContent
+
+moderate = ModerateContent()
+
+decision = await arcjet.guard(
+    label="llm.output",
+    rules=[moderate(text)],
+)
+```
+
+Treat evaluation errors as fail-open and inspect `decision.has_failed_open()` / `decision.error_results()`.
 
 LangChain: `pip install "arcjet[langchain]"` then `from arcjet.guard.langchain import guard_tool`. The wrapper fails closed by default (`on_guard_error="deny"`).
 
@@ -165,7 +178,7 @@ if decision.conclusion == "DENY":
     raise Exception("blocked")
 ```
 
-`decision.reason` is a flat string — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Prompt-injection and content-moderation results may include optional `billing` (`unit` / `count`). Prompt injection uses `tokens`; moderation uses `text_units`. Read the types on the decision object for the full structure.
+`decision.reason` is a flat string — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"MODERATE_CONTENT"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Prompt-injection and content-moderation results may include optional `billing` (`unit` / `count`). Prompt injection uses `tokens`; moderation uses `text_units`. The moderation result is `detected` plus that optional `billing` only. Read the types on the decision object for the full structure.
 
 ### Errors vs warnings (failing open)
 
