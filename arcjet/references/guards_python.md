@@ -128,7 +128,7 @@ Use `DetectPromptInjection()` on any untrusted text before it reaches a model or
 
 ### Sensitive information detection
 
-Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (e.g. users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally — raw text never leaves the SDK, which matters for compliance.
+Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (e.g. users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally — raw text never leaves the SDK. The default backend is WASM; see Rampart below for names and government / financial identifiers.
 
 ### Content moderation
 
