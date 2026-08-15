@@ -10,7 +10,7 @@ Pick the adapter for the project's framework, then install it with whichever pac
 
 **Runtime baseline:** **Node.js `>=22.21.0 <23 || >=24.5.0`**, **Bun ≥ 1.3.0**, **Deno** `stable` / `lts`. Node 20 is end-of-life and is no longer supported by the SDK. If the project is below any of these, the install will fail or runtime behavior will misbehave — bump the runtime first.
 
-> _Version info last verified against the `@arcjet/*` v1.8.0 release on **2026-07-07**. Numbers below may drift — before relying on them, check the current `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the latest release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
+> _Version info last verified against the published `@arcjet/*` **v1.10.0** on **2026-08-11**. Numbers below may drift — before relying on them, check the current `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the latest release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
 
 | Framework         | Package                                                   | Min framework version                                |
 | ----------------- | --------------------------------------------------------- | ---------------------------------------------------- |
@@ -217,7 +217,7 @@ See the "Choosing the Right Rules" section in the main skill for rule selection 
 - **Rate limits** — use `characteristics: ["userId"]` to key by something other than IP.
 - **validateEmail** — for signup/login forms.
 - **protectSignup** — combined bot + email + rate limit, purpose-built for registration flows.
-- **sensitiveInfo** — blocks PII in request bodies.
+- **sensitiveInfo** — blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `@arcjet/sensitive-info-rampart` and pass `backend: rampart()`.
 - **detectPromptInjection** — for AI endpoints receiving user prompts.
 - **filter** — block by IP metadata (VPN, Tor, country, IP range).
 
@@ -259,13 +259,33 @@ Writing an explicit `else if (reason.isShield())` arm that returns 403 just adds
 
 ### Correlation IDs
 
-Available from **`@arcjet/*` 1.6.0**: pass `correlationId` to `protect()` when the Arcjet decision should be correlated with another request, guard call, workflow run, or agent trace. It is a dedicated field, not `extra`, and it does not affect fingerprinting or the decision cache key.
+Available from **`@arcjet/*` 1.6.0**: pass `correlationId` to `protect()` when the Arcjet decision should be correlated with another request, guard call, workflow run, or agent trace. It is a dedicated field, not `extra` or `metadata`, and it does not affect fingerprinting or the decision cache key.
 
 ```typescript
 const decision = await aj.protect(request, {
   correlationId: requestId,
 });
 ```
+
+### Explicit client IP
+
+Available from **`@arcjet/*` 1.10.0**: if the application has already determined the client IP from a trusted source, pass it as `ipSrc` on `protect()`. A non-empty value takes precedence over automatic detection, including the development-only `x-arcjet-ip` header. An empty string falls through to automatic detection.
+
+```typescript
+const decision = await aj.protect(request, {
+  ipSrc: getClientIpFromTrustedSource(request),
+});
+```
+
+The SDK trusts `ipSrc` without validating it. Do not pass a client-controlled header. Validate the value first.
+
+### Metadata
+
+Available from **`@arcjet/*` 1.10.0**: `protect()` accepts `metadata` — nested JSON, not a flat string map. It is attached to the decision for analytics and does not affect fingerprinting or the cache key. Do not put secrets or PII in it.
+
+### IP threat intelligence
+
+When present, `decision.ip.threat` is optional threat metadata (`riskLevel`, `confidence`, `reputation`, `isSafe`, `activities`, …). Older responses and IPs without an assessment omit it — always check before reading.
 
 ### Outbound HTTP proxy
 
@@ -280,7 +300,7 @@ As of `@arcjet/*` 1.6.0, the request-based SDK carries a few deprecated bits. Ne
 - **`experimental_detectPromptInjection`** — the legacy `experimental_` alias is deprecated. Import `detectPromptInjection` directly from `@arcjet/node` / `@arcjet/next` / etc.
 - **`ArcjetEdgeRuleReason`** — currently unused; can be ignored in reason-handling switches.
 
-> _Deprecations last verified against the `@arcjet/*` v1.8.0 release on **2026-07-07**. Before relying on the items above, grep the installed package for `@deprecated` markers — see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
+> _Deprecations last verified against the `@arcjet/*` v1.10.0 release on **2026-08-11**. Before relying on the items above, grep the installed package for `@deprecated` markers — see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
 
 ## Key Patterns
 

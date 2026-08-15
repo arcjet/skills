@@ -2,13 +2,13 @@
 
 ## What Guard Is
 
-Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). New release features called out below require **`arcjet` 0.9.0**. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
+Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 below still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK — they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Version info last verified against the `arcjet` v0.9.0 release on **2026-06-30**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI** — `pip install arcjet` still resolves 0.9.0. The APIs below that are newer than 0.9.0 live in 0.10.0b1 / main. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -110,7 +110,7 @@ The `label` should be a hardcoded string — `"tools.get-weather"`, not `f"tools
 
 **Label naming rules (often surprising):** labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected even though some SDK TSDoc / docstring comments list them as allowed. Use `tools.get-weather`, not `tools.get_weather`. Same rules apply to rate-limit `bucket` names.
 
-Pass `metadata` whenever you have useful auditing context (`{"user_id": ..., "request_id": ...}`) — it shows up in the Console and makes debugging much easier later.
+Pass `metadata` whenever you have useful auditing context. It is nested JSON, not a flat string map — `{"user": {"id": user_id}, "request_id": ...}` is valid. It shows up in the Console and does not affect the decision. Do not put secrets or PII in it.
 
 ## Choosing a Rate Limit Strategy
 
@@ -128,11 +128,26 @@ Use `DetectPromptInjection()` on any untrusted text before it reaches a model or
 
 ### Sensitive information detection
 
-Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (e.g. users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally — raw text never leaves the SDK, which matters for compliance.
+Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (e.g. users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally — raw text never leaves the SDK. The default backend is WASM; see Rampart below for names and government / financial identifiers.
 
 ### Content moderation
 
-Available from **`arcjet` 0.9.0**: `experimental_ModerateContent()` flags unsafe or policy-violating text for Guard call sites. It is explicitly experimental — the name and result shape may change, and the server may return an error result while the rule is experimental. Treat those errors as fail-open and inspect `decision.has_failed_open()` / `decision.error_results()`.
+`experimental_ModerateContent()` flags unsafe or policy-violating text for Guard call sites. **Python is still experimental** — import the `experimental_` name (the class exists as `ModerateContent` but is not in `__all__`). The name and result shape may change; treat errors as fail-open and inspect `decision.has_failed_open()` / `decision.error_results()`.
+
+LangChain: `pip install "arcjet[langchain]"` then `from arcjet.guard.langchain import guard_tool`. The wrapper fails closed by default (`on_guard_error="deny"`).
+
+### On-device Rampart backend
+
+`LocalDetectSensitiveInfo()` defaults to the bundled WASM engine (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()`:
+
+```python
+from arcjet.guard import LocalDetectSensitiveInfo
+from arcjet_sensitive_info_rampart import rampart
+
+sensitive = LocalDetectSensitiveInfo(deny=["GIVEN_NAME", "SSN"], backend=rampart())
+```
+
+Listing a backend-only entity type without a supporting `backend` raises.
 
 ## Decision Handling
 
@@ -150,7 +165,7 @@ if decision.conclusion == "DENY":
     raise Exception("blocked")
 ```
 
-`decision.reason` is a flat string — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Read the types on the decision object for the full structure.
+`decision.reason` is a flat string — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Prompt-injection and content-moderation results may include optional `billing` (`unit` / `count`). Prompt injection uses `tokens`; moderation uses `text_units`. Read the types on the decision object for the full structure.
 
 ### Errors vs warnings (failing open)
 
@@ -188,7 +203,32 @@ The package provides both variants:
 
 **Pick the variant that matches the function you're protecting.** A FastAPI handler or an `AsyncOpenAI` agent loop is async — use `launch_arcjet`. A Celery task, a queue poller defined with `def`, or anything wrapped by a sync framework is sync — use `launch_arcjet_sync`. Mixing them produces "coroutine was never awaited" warnings or blocking calls inside an event loop. Both variants provide the same protection.
 
+## Capture and flush
+
+`capture()` records that an action happened. It is not a security decision — it never denies and is not awaited, even on the async client.
+
+```python
+aj.capture(
+    action="refund.issued",
+    correlation_id=workflow_id,
+    decision_id=decision.id,
+    metadata={"amount_cents": 4999, "invoice": {"id": "inv_123"}},
+)
+```
+
+Call `await aj.flush()` (async) or `aj.flush()` (sync) on shutdown. Default deadline is 1000 ms. There is no `close()`.
+
+## Optional registration
+
+`launch_arcjet()` never touches global state. `register_arcjet(aj)` is a separate, explicit call for code too deep to receive a client.
+
+`capture()` is one free function for both client flavors. `guard` / `flush` come in pairs: `await guard(...)` / `await flush()` for `launch_arcjet()`, and `guard_sync(...)` / `flush_sync()` for `launch_arcjet_sync()`. Calling the wrong pair fail-opens and reports `AJ3007`.
+
+Free `guard()` / `guard_sync()` fail-open if nothing is registered — check `has_failed_open()`. Free `capture()` drops silently. A second `register_arcjet` does not displace the first. `unregister_arcjet()` clears whatever is there — libraries should not call it. Registration is a module-level global, not a `ContextVar`, so it is visible from WSGI worker threads.
+
+For tests, `from arcjet.guard.testing import register_test_client` and use `with register_test_client() as arcjet:`. Its `guard()` always returns fail-open ALLOW.
+
 ## Key Patterns
 
-- Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the Console.
+- Use `metadata` for analytics/auditing context — nested JSON, not a flat string map. It appears in the Console and does not affect the decision. Do not put secrets or PII in it.
 - The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"queue.process-job"`) — it appears in the Console and helps you understand which operations are being limited or blocked.

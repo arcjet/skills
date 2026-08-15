@@ -6,7 +6,7 @@ Guard protects code paths that do not have an HTTP request — agent tool calls,
 
 ## Installation
 
-Requires the initial tagged Go SDK release: **`github.com/arcjet/arcjet-go` v0.1.0**. The module is pre-release and unstable. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (2026-06-30). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, and `GuardModerateContent` are on the module default branch — read the installed package docs after `go get`. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Install with Go tooling:
 
@@ -56,8 +56,10 @@ Call `Guard` at the specific operation with a hardcoded label. Do not protect a 
 
 ```go
 decision, err := guard.Guard(ctx, arcjet.GuardRequest{
-	Label:    "tools.get-weather",
-	Metadata: map[string]string{"user_id": userID},
+	Label: "tools.get-weather",
+	Metadata: arcjet.Metadata{
+		"user": map[string]any{"id": userID},
+	},
 	Rules: []arcjet.GuardRuleInput{
 		userLimit.Key(userID, requestedTokens),
 		promptScan.Text(userMessage),
@@ -90,10 +92,30 @@ The second argument to `Key` is the amount consumed. Passing `1` creates a per-o
 
 ## Content Scanning Rules
 
-- `GuardPromptInjection` — use on untrusted text before it reaches a model or tool argument.
-- `GuardSensitiveInfo` — use to block PII entering or leaving the system; scanning happens locally.
-- `ExperimentalGuardModerateContent` — available in **`arcjet-go` v0.1.0**, but experimental. The name/result shape may change, and the server may return an error result while the rule is experimental. Treat those errors as fail-open and inspect `HasFailedOpen()` / `ErrorResults()`.
+- `GuardPromptInjection` — use on untrusted text before it reaches a model or tool argument. The result may include optional `Billing` (`tokens`).
+- `GuardSensitiveInfo` — use to block PII entering or leaving the system; scanning happens locally. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`. Create the backend once at startup.
+- `GuardModerateContent` — Guard-only content moderation. Result is binary `Detected` plus optional `Billing` (`text_units`). `ExperimentalGuardModerateContent` remains a deprecated alias until 1.0.
 - `GuardCustom` — runs your local custom function and reports the result to Arcjet. Keep the function deterministic and side-effect free.
+
+Go has no registration / free `guard()` API. Pass the client.
+
+## Capture and flush
+
+`Capture` records that an action happened. It is not a security decision — it never denies, never returns an error, and never sets `HasFailedOpen()`.
+
+```go
+guard.Capture(arcjet.CaptureEvent{
+	Action:        "refund.issued",
+	CorrelationId: runID,
+	DecisionId:    decision.ID,
+	Metadata: arcjet.Metadata{
+		"invoice":  map[string]any{"id": "inv_123", "amount": 4200},
+		"refunded": true,
+	},
+})
+```
+
+Call `Flush(ctx)` on shutdown (one-second deadline if `ctx` has none). `Close` flushes first, then releases local wasm.
 
 ## Errors vs Warnings
 
@@ -115,7 +137,11 @@ for _, w := range decision.Warnings {
 
 ## Correlation IDs
 
-Available in **`arcjet-go` v0.1.0**: set `GuardRequest.CorrelationId` to correlate this guard call with HTTP requests, workflow runs, or agent traces. It is a dedicated field, not metadata, and does not affect the decision.
+Set `GuardRequest.CorrelationId` to correlate this guard call with HTTP requests, workflow runs, or agent traces. It is a dedicated field, not metadata, and does not affect the decision.
+
+## Metadata
+
+`Metadata` is `arcjet.Metadata` (`map[string]any`), not `map[string]string`. Values may be nested maps, slices, numbers, and booleans. Do not put secrets or PII in it. Dropped keys appear on `decision.Warnings`.
 
 ## Outbound HTTP Proxy
 

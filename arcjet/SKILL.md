@@ -1,7 +1,7 @@
 ---
 name: arcjet
 license: Apache-2.0
-description: Add Arcjet security protection to any code path — HTTP route handlers, API endpoints, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking, content moderation, and abuse prevention. Works with JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, net/http, and non-HTTP contexts. Use this skill when the user wants to add security, rate limiting, bot protection, or abuse prevention to any part of their application — whether they say "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," "add security to my MCP server," or "prevent abuse" without mentioning Arcjet specifically.
+description: Add Arcjet security protection to any code path — HTTP route handlers, API endpoints, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking (including Rampart NER), content moderation, capture/flush, and abuse prevention. Works with JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, net/http, Vercel AI SDK, Vercel Eve, Mastra, LangChain, and other non-HTTP contexts. Use this skill when the user wants to add security, rate limiting, bot protection, or abuse prevention to any part of their application — whether they say "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," "add security to my MCP server," "guard this Mastra/Eve/AI SDK agent," or "prevent abuse" without mentioning Arcjet specifically.
 metadata:
   author: arcjet
 ---
@@ -73,7 +73,7 @@ Determine which protection type applies:
 | **Go SDK** | `github.com/arcjet/arcjet-go` (with `NewClient`) | `github.com/arcjet/arcjet-go` (with `NewGuardClient`) |
 | **Entry point** | `protect(request)` / `Protect(ctx, r)` | `guard(label, rules)` / `Guard(ctx, request)` |
 
-A single project can use both — e.g. request-based on API routes and guard on agent tool calls.
+A single project can use both — e.g. request-based on API routes and guard on agent tool calls. If the project already uses Vercel AI SDK, Vercel Eve, Mastra, or LangChain, prefer the versioned Guard wrappers in the language reference over hand-wrapping every tool.
 
 **Common misclassifications to watch for:**
 
@@ -105,6 +105,8 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - Call `protect()` / `Protect()` inside each route handler (not in app-level middleware), once per request.
 - Map denial reasons to HTTP responses. Only branch on reasons that produce a *different* response — there is no point in a Shield-specific arm that returns the same status as the default 403.
 - Put the language's `userId` characteristic selector on the specific rule that needs it, then pass a **trusted, authenticated** user ID at protection time. Never rate limit by a client-controlled header unless a trusted proxy strips and rewrites it.
+- If the application already has a trusted client IP, pass it explicitly: `ipSrc` (JS), `ip_src` (Python — also set `disable_automatic_ip_detection=True`), `WithIPSrc` (Go). The SDK trusts the value; do not pass a client-controlled header.
+- `protect()` accepts nested-JSON `metadata` (same shape as Guard). It does not affect fingerprinting. Do not put secrets or PII in it. When present, request decisions also expose optional IP threat intelligence (`decision.ip.threat` / `ip_details.threat` / `IP.Threat`).
 
 #### Guard (non-HTTP code):
 - Client at module scope with `launchArcjet()` (JS) or `launch_arcjet()` / `launch_arcjet_sync()` (Python — pick async vs sync to match the function you're protecting).
@@ -112,7 +114,10 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - Rules declared at module scope. Give each rule a meaningful `label` so they show up usefully in the Console.
 - **One `guard()` call per specific operation, with a hardcoded `label`** like `"tools.get-weather"` or `"queue.summarize"`. Put it wherever you already know exactly what's happening — that can be inside the tool/task function itself, or right before calling it from a dispatch arm. Both work; pick whichever makes error propagation cleaner. What to avoid is the generic-dispatcher pattern (`handleToolCall(name, args)` calling `guard(label=f"tools.{name}")`) — interpolated labels break grep and produce messy Console groupings.
 - **Label naming rules**: labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and slashes are rejected even though some SDK TSDoc comments claim otherwise. Use `tools.get-weather`, not `tools.get_weather` or `Tools.GetWeather`.
-- **Pass `metadata` on the `guard()` call** when you have useful auditing context (`metadata={"user_id": user_id, "request_id": ...}`). It appears in the Console alongside the decision.
+- **Pass `metadata` on the `guard()` call** when you have useful auditing context. It is nested JSON — objects, arrays, numbers, booleans — not a flat string map (`metadata={ user: { id: userId }, requestId }`). It appears in the Console and does not affect the decision. Do not put secrets or PII in it.
+- **`capture()` records what happened** after an action (refund issued, tool completed). It is visibility data, never a security decision — it does not deny and never sets `hasFailedOpen()`. Call `flush()` on shutdown so the last batch is not lost. On serverless, pass a platform `waitUntil` (JS) or flush at the end of the invocation.
+- **Optional registration (JS/Python only):** `registerArcjet` / `register_arcjet` is a separate call from launch. It enables free `guard()` / `capture()` / `flush()` when you cannot thread a client. Free `guard()` fail-opens if nothing is registered — check `hasFailedOpen()` / `has_failed_open()`; do not treat that ALLOW as a pass. Go has no registration API; pass the client. Prefer an explicit client everywhere you can.
+- **Framework wrappers** (JS `@arcjet/guard/vercel-ai/v7`, `@arcjet/guard/vercel-eve/v0`, `@arcjet/guard/mastra/v1`; Python `arcjet.guard.langchain`) fail closed by default when Guard is unavailable. Import the versioned path — unversioned aliases do not resolve.
 - **Branch on which rule denied**, not just on `DENY`. Use the per-rule accessors (e.g. `userLimit.deniedResult(decision)` for retry-after info) or the flat reason string (`decision.reason === "PROMPT_INJECTION"` in JS, `decision.reason == "PROMPT_INJECTION"` in Python) so the error you surface to the caller tells them *why* — "rate limited, retry in 12s" vs "input flagged as prompt injection" — instead of a generic "blocked." Note: guard's `decision.reason` is a flat string literal, unlike the request-based SDK's tagged-helper API.
 - Every rate-limit rule needs a `key` and a `bucket`:
   - **Per-user context** (agent tool calls inside a logged-in session, queue jobs with a `user_id`): use the user/session id as the key.
@@ -163,6 +168,6 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 
 - **Python SDK**: https://github.com/arcjet/arcjet-py — `arcjet` package (request protection) and `arcjet.guard` subpackage (non-HTTP guard).
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js — monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`, etc.).
-- **Go SDK**: https://github.com/arcjet/arcjet-go — `github.com/arcjet/arcjet-go` module with request and guard clients. The initial tagged release is `v0.1.0`.
+- **Go SDK**: https://github.com/arcjet/arcjet-go — `github.com/arcjet/arcjet-go` module with request and guard clients. The latest tag is `v0.1.0`; current APIs described in the Go references live on the default branch.
 - **Docs**: https://docs.arcjet.com — narrative guides, blueprints, and product reference.
 - **Console**: https://app.arcjet.com — sites, keys, and decision history.

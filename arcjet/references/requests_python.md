@@ -10,7 +10,7 @@ Request protection inspects HTTP requests — headers, IP, body — to enforce s
 - **FastAPI / Flask:** no formal peer dependency — the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes.
 - **`libgcc`:** needed by the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Version info last verified against the `arcjet` v0.9.0 release on **2026-06-30**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI**. Nested metadata, Rampart, and `ip_details.threat` are in 0.10.0b1 / main. `ip_src` already exists on 0.9.0. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -69,7 +69,7 @@ See the "Choosing the Right Rules" section in the main skill for rule selection 
 - **detect_bot** — `allow` and `deny` are mutually exclusive.
 - **Rate limits** — use `characteristics` to key by something other than IP.
 - **validate_email** — for signup/login forms.
-- **detect_sensitive_info** — blocks PII in request bodies.
+- **detect_sensitive_info** — blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()` from `arcjet_sensitive_info_rampart`.
 - **detect_prompt_injection** — for AI endpoints receiving user prompts.
 - **filter_request** — block by IP metadata (VPN, Tor, country).
 
@@ -121,11 +121,30 @@ A branch that returns 403 for SHIELD when the default already returns 403 is dea
 
 ### Correlation IDs
 
-Available from **`arcjet` 0.9.0**: pass `correlation_id` to `protect()` when the Arcjet decision should be correlated with a guard call, workflow run, or agent trace. It is a dedicated field, not `extra`, and it does not affect fingerprinting or the decision cache key.
+Available from **`arcjet` 0.9.0**: pass `correlation_id` to `protect()` when the Arcjet decision should be correlated with a guard call, workflow run, or agent trace. It is a dedicated field, not `extra` or `metadata`, and it does not affect fingerprinting or the decision cache key.
 
 ```python
 decision = await aj.protect(request, correlation_id=request_id)
 ```
+
+### Explicit client IP
+
+If the application has already determined the client IP from a trusted source, disable automatic detection when creating the client and pass `ip_src` to every `protect()` call:
+
+```python
+aj = arcjet(key=os.environ["ARCJET_KEY"], rules=[...], disable_automatic_ip_detection=True)
+decision = await aj.protect(request, ip_src=get_client_ip_from_trusted_source(request))
+```
+
+When automatic detection is disabled, omitting `ip_src` or passing `""` raises `ArcjetMisconfiguration`. Passing a non-empty `ip_src` while automatic detection is enabled also raises. The SDK trusts `ip_src` without validating it — do not pass a client-controlled header. This option cannot be combined with `proxies`.
+
+### Metadata
+
+`protect()` accepts `metadata` — nested JSON, not a flat string map. It is attached to the decision for analytics and does not affect fingerprinting or the cache key. Do not put secrets or PII in it. `protect()` has no warnings channel; keys the SDK cannot encode are logged at `WARNING`.
+
+### IP threat intelligence
+
+When present, `decision.ip_details.threat` is optional threat metadata (`risk_level`, `confidence`, `reputation`, `is_safe`, `activities`, …). Always check before reading — it is omitted when unavailable.
 
 ### Outbound HTTP proxy
 
@@ -140,7 +159,7 @@ As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New c
 - **`PromptInjectionReason.score`** — the `score` field on the reason returned for prompt-injection denials is no longer populated meaningfully and will be removed. Don't read it; rely on `reason_v2.type == "PROMPT_INJECTION"` instead.
 - **`arcjet._decision.Reason`** — internal type; use `arcjet._dataclasses.Reason` (re-exported as `arcjet.Reason`) if you need the type annotation. Most callers won't touch this directly.
 
-> _Deprecations last verified against the `arcjet` v0.9.0 release on **2026-06-30**. Before relying on the items above, grep the installed package for new `@deprecated` markers — see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py) and [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py)._
+> _Deprecations last verified against the published `arcjet` v0.9.0 on **2026-06-30**. Before relying on the items above, grep the installed package for new `@deprecated` markers — see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py) and [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py)._
 
 ## Key Patterns
 

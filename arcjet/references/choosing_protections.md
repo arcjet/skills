@@ -34,19 +34,23 @@ Jailbreaks, role-play escapes, and instruction overrides allow attackers to mani
 
 Some AI workflows need to block unsafe, abusive, or policy-violating text even when it is not prompt injection or PII.
 
-**Rules:** Guard content moderation only: `experimental_moderateContent` in `@arcjet/guard` **>= 1.6.0**, `experimental_ModerateContent` in Python `arcjet` **>= 0.9.0**, and `ExperimentalGuardModerateContent` in Go `arcjet-go` **>= v0.1.0**. These APIs are experimental: the name/result shape may change, and server support may fail open with an error result. Use `hasFailedOpen()` / `has_failed_open()` / `HasFailedOpen()` as the fail-closed gate for sensitive operations.
+**Rules:** Guard content moderation only (not available on `protect()`). JS: `moderateContent` (graduated; published `@arcjet/guard` 1.10.0 still exports `experimental_moderateContent` — read the installed types). Python: `experimental_ModerateContent` (still experimental). Go: `GuardModerateContent` (`ExperimentalGuardModerateContent` remains a deprecated alias). The result is a binary `detected` / `Detected` plus optional `billing` (`text_units`). Use `hasFailedOpen()` / `has_failed_open()` / `HasFailedOpen()` as the fail-closed gate when evaluation is incomplete.
 
 ## Data loss prevention
 
-Sensitive data leaks into AI model context, logs, third-party tool calls, or model memory through unguarded inputs and outputs. Arcjet detects card numbers, email addresses, phone numbers, and custom patterns — entirely locally via WASM, with no data leaving your infrastructure.
+Sensitive data leaks into AI model context, logs, third-party tool calls, or model memory through unguarded inputs and outputs. Detection always runs locally — raw text never leaves the SDK.
 
-**Rules:** `sensitiveInfo` / `localDetectSensitiveInfo` (request-based and guard). Use to block PII from entering the system (users sending credit card numbers) or leaving it (tool outputs leaking email addresses).
+The **default backend** is a bundled WebAssembly engine that detects four structured types: card numbers, email addresses, phone numbers, and IP addresses. For names, addresses, and government / financial identifiers, pass the optional on-device **Rampart NER** backend: `@arcjet/sensitive-info-rampart` (`rampart()`), Python `arcjet[sensitive-info-rampart]` (`from arcjet_sensitive_info_rampart import rampart`), or Go `github.com/arcjet/arcjet-go/sensitiveinfo/rampart` (`rampart.New(...)`). Rampart needs a server runtime with filesystem / native-addon access (not edge). Listing a Rampart-only entity without a Rampart backend never matches (JS) or is a configuration error (Python / Go).
+
+**Rules:** `sensitiveInfo` / `localDetectSensitiveInfo` / `LocalDetectSensitiveInfo` / `SensitiveInfo` / `GuardSensitiveInfo` (request-based and guard). Use to block PII from entering the system (users sending credit card numbers) or leaving it (tool outputs leaking email addresses).
 
 ## Unauthorized tool invocation
 
 Agents invoke tools in ways they shouldn't — issuing refunds, accessing data, escalating privileges. The prompt can be benign; the tool call is catastrophic.
 
 **Rules:** Guard protection with per-tool rate limits and labels. Each tool call site gets its own `label` and rules, so you can enforce different budgets and detect abuse per operation. Combine with prompt injection detection on tool inputs.
+
+`capture()` is not a protection rule. Use it after an action to record that it happened.
 
 ## Common web attacks
 
