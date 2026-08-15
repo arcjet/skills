@@ -8,6 +8,7 @@ Request protection inspects HTTP requests — headers, IP, body — to enforce s
 
 - **Python:** ≥ 3.10 (declared in `pyproject.toml`). Older versions will fail to install — warn the user and stop.
 - **FastAPI / Flask:** no formal peer dependency — the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes.
+- **`libgcc`:** needed by the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
 > _Version info last verified against the `arcjet` v0.9.0 release on **2026-06-30**. Before relying on these numbers, check the `requires-python` field in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml) — minimums tend to creep upward over time._
 
