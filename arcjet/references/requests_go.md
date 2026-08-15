@@ -6,7 +6,7 @@ Request protection inspects `net/http` requests — headers, IP, body — to enf
 
 ## Installation
 
-Requires the initial tagged Go SDK release: **`github.com/arcjet/arcjet-go` v0.1.0**. The module is pre-release and unstable. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (2026-06-30). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Nested `Metadata`, `WithIPSrc`, Rampart, and `decision.IP.Threat` are on the module default branch. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Install with Go tooling, not by editing `go.mod` directly:
 
@@ -68,7 +68,7 @@ Use `client.WithRule(...)` to derive a route-specific client when a handler need
 - `DetectBot` — request-based only; use `Allow` for a safelist or `Deny` for specific categories.
 - Rate limits — `TokenBucket`, `FixedWindow`, `SlidingWindow`; use `WithRequested(n)` for variable-cost calls and `WithCharacteristics(...)` for user/session keys.
 - `ValidateEmail` / `ProtectSignup` — signup and login forms.
-- `SensitiveInfo` — scans text locally before it leaves the process; pass text with `WithSensitiveInfoValue(...)`.
+- `SensitiveInfo` — scans text locally before it leaves the process; pass text with `WithSensitiveInfoValue(...)`. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`.
 - `DetectPromptInjection` — pass untrusted user text with `WithDetectPromptInjectionMessage(...)`.
 - `Filter` — block by IP metadata, country, VPN/proxy/Tor, or request-local fields.
 
@@ -80,7 +80,19 @@ For user-based characteristics, use identity established by trusted authenticati
 
 ## Correlation IDs
 
-Available in **`arcjet-go` v0.1.0**: pass `arcjet.WithCorrelationId(id)` to `Protect` to correlate this decision with guard calls, workflow runs, or agent traces. It is a dedicated field, not `WithExtra`, and does not affect the decision.
+Pass `arcjet.WithCorrelationId(id)` to `Protect` to correlate this decision with guard calls, workflow runs, or agent traces. It is a dedicated field, not `WithExtra` or `Metadata`, and does not affect the decision.
+
+## Explicit client IP
+
+If the application has already determined the client IP from a trusted source, pass `arcjet.WithIPSrc(ip)`. The SDK trusts the value without validating it — do not pass a client-controlled header.
+
+## Metadata
+
+`Protect` accepts `Metadata` as `arcjet.Metadata` (`map[string]any`) — nested JSON, not `map[string]string`. It does not affect fingerprinting or the cache key. Do not put secrets or PII in it.
+
+## IP threat intelligence
+
+When present, `decision.IP.Threat` is optional threat metadata (`RiskLevel`, `Confidence`, `Reputation`, `IsSafe`, `Activities`, …). Always check for `nil` before reading.
 
 ## Outbound HTTP Proxy
 

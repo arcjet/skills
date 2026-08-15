@@ -12,7 +12,7 @@ Install with whichever package manager the project already uses (`npm install`, 
 npm install @arcjet/guard
 ```
 
-Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. New release features called out below require **`@arcjet/guard` 1.6.0**. Runtime minimums match the current Arcjet JS SDK line:
+Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called out as 1.6.0 below still apply. Capture, registration, remote policies, Rampart, nested metadata, and threat/billing require **`@arcjet/guard` 1.10.0**. Runtime minimums match the current Arcjet JS SDK line:
 
 | Runtime            | Minimum version          |
 | ------------------ | ------------------------ |
@@ -25,7 +25,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the `@arcjet/guard` v1.8.0 release on **2026-07-07**. Before relying on these numbers, check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README — minimums tend to creep upward over time._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **2026-08-11**. `moderateContent` (graduated name) and `@arcjet/guard/mastra/v1` are on current docs and `main`; they are not in 1.10.0 (the next release line is unpublished). Read the installed package's types before using either. Minimums tend to creep upward — check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README._
 
 ## Architecture: Why Things Go Where They Do
 
@@ -90,7 +90,7 @@ async function getWeather(city: string, userId: string) {
   const decision = await arcjet.guard({
     label: "tools.get-weather",
     rules: [toolCallLimit({ key: userId, requested: 1 })],
-    metadata: { userId },
+    metadata: { user: { id: userId } },
   });
   if (decision.conclusion === "DENY") throw new Error(decision.reason);
   // ...do the work
@@ -102,7 +102,7 @@ switch (toolName) {
     const decision = await arcjet.guard({
       label: "tools.get-weather",
       rules: [toolCallLimit({ key: userId, requested: 1 })],
-      metadata: { userId },
+      metadata: { user: { id: userId } },
     });
     if (decision.conclusion === "DENY") throw new Error(decision.reason);
     return getWeather(args.city);
@@ -120,7 +120,7 @@ The `label` should be a hardcoded string — `"tools.get-weather"`, not `` `tool
 
 **Label naming rules (often surprising):** labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected even though the `GuardOptions.label` TSDoc lists them as allowed. Use `tools.get-weather`, not `tools.get_weather`. Same rules apply to rate-limit `bucket` names.
 
-Pass `metadata` whenever you have useful auditing context (`{ userId, requestId }`) — it shows up in the Console alongside the decision and makes debugging much easier later.
+Pass `metadata` whenever you have useful auditing context. It is nested JSON, not a flat string map — `{ user: { id: userId }, requestId }` is valid. It shows up in the Console and does not affect the decision. Do not put secrets or PII in it.
 
 ## Choosing a Rate Limit Strategy
 
@@ -146,7 +146,41 @@ Use `localDetectSensitiveInfo()` to block PII from entering or leaving the syste
 
 ### Content moderation
 
-Available from **`@arcjet/guard` 1.6.0**: `experimental_moderateContent()` flags unsafe or policy-violating text for Guard call sites. It is explicitly experimental — the name and result shape may change, and the server may return an error result while the rule is experimental. Treat those errors as fail-open and inspect `decision.hasFailedOpen()` / `decision.errorResults()`.
+`moderateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is `{ detected, billing? }` — `billing.unit` is `text_units` when present. Published **1.10.0** still exports `experimental_moderateContent` as the public name; current docs and `main` graduate it to `moderateContent` and keep the old name as a deprecated alias. Import whichever the installed types export. `decision.reason` is `"MODERATE_CONTENT"` on deny.
+
+### Remote policies
+
+A Console policy selected by `label` can run without a matching SDK rule. Pass a trusted `actor` and construct typed `inputs` with `policyInput` — plain strings/objects are rejected:
+
+```typescript
+import { launchArcjet, policyInput } from "@arcjet/guard";
+
+const decision = await arcjet.guard({
+  label: "email.sent",
+  actor: user.id,
+  inputs: {
+    recipient: policyInput.server.string(to),
+    allowed_recipients: policyInput.server.stringList(user.allowedRecipients),
+    body: policyInput.local.string(body),
+  },
+});
+```
+
+`SERVER` values are sent to Arcjet. `LOCAL` strings stay in SDK memory (today used by the remote sensitive-info rule). `rules` may be `[]` — that still calls Guard. Inspect `decision.policyEvaluation` / `decision.policyResults` separately from positional SDK `results`. `INCOMPLETE` or `UNAVAILABLE` is a failed-open evaluation, not a policy denial.
+
+### On-device Rampart backend
+
+`localDetectSensitiveInfo()` defaults to the bundled WASM engine (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `@arcjet/sensitive-info-rampart` and pass `backend: rampart()`. Detection still runs locally. Rampart needs Node/Bun/Deno with filesystem access — not edge. Also pass `sensitiveInfoBackend: rampart()` to `launchArcjet()` when a remote policy will evaluate a `LOCAL` string.
+
+```typescript
+import { localDetectSensitiveInfo } from "@arcjet/guard";
+import { rampart } from "@arcjet/sensitive-info-rampart";
+
+const si = localDetectSensitiveInfo({
+  deny: ["GIVEN_NAME", "SURNAME", "EMAIL", "SSN"],
+  backend: rampart(),
+});
+```
 
 ## Decision Handling
 
@@ -167,7 +201,7 @@ if (decision.conclusion === "DENY") {
 }
 ```
 
-`decision.reason` is a flat string when `conclusion === "DENY"` — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. (On ALLOW it's `undefined`.) Read the types on the decision object for the full structure.
+`decision.reason` is a flat string when `conclusion === "DENY"` — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"MODERATE_CONTENT"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. (On ALLOW it's `undefined`.) Prompt-injection and content-moderation results may include optional `billing` (`{ unit, count }` as bigint). Prompt injection uses `tokens`; moderation uses `text_units`. Read the types on the decision object for the full structure.
 
 ### Errors vs warnings (failing open)
 
@@ -197,8 +231,51 @@ Available from **`@arcjet/guard` 1.6.0**: pass `correlationId` to `.guard()` to 
 
 Available from **`@arcjet/guard` 1.6.0**: standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables are auto-detected for outbound Arcjet API calls where the runtime supports proxying. Do not log proxy URLs because they may contain credentials.
 
+## Capture and flush
+
+`capture()` records that an action happened. It is not a security decision — it never denies, never throws, and never sets `hasFailedOpen()`.
+
+```typescript
+arcjet.capture({
+  action: "refund.issued",
+  correlationId: runId,
+  decisionId: decision.id,
+  metadata: { invoice: { id, amount: 4200 }, refunded: true },
+});
+```
+
+Events batch in memory and send in the background. Call `await arcjet.flush()` on shutdown (default 1s deadline). On Cloudflare, pass `waitUntil` per capture or `ctx.waitUntil(arcjet.flush())` at the end of the handler. Vercel discovers `waitUntil` automatically.
+
+## Optional registration
+
+`launchArcjet()` never touches global state. `registerArcjet(arcjet)` is a separate, explicit call for code too deep to receive a client:
+
+```typescript
+import { launchArcjet, registerArcjet, capture, guard } from "@arcjet/guard";
+
+registerArcjet(launchArcjet({ key: process.env.ARCJET_KEY! }));
+// later, with no client in scope:
+capture({ action: "refund.issued", metadata: { invoice: id } });
+```
+
+Free `guard()` fail-opens if nothing is registered — `hasFailedOpen()` is true; treat that as "policy did not run." Free `capture()` drops silently. A second `registerArcjet` does not displace the first. `unregisterArcjet()` clears whatever is there — libraries should not call it.
+
+For tests, `registerTestClient()` from `@arcjet/guard/testing` records calls and talks to nothing. Use `using` (or `unregister()` in `finally` on Node 22). Its `guard()` always returns fail-open ALLOW, so fail-closed wrappers (`guardTool`, `guardAction`) will deny against it.
+
+## Framework integrations
+
+Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/vercel-eve`, `/mastra`) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`).
+
+| Integration | Import | Use when |
+| --- | --- | --- |
+| Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | Authored `tool({ execute })`. `guardTool` + `aiToolsContext(createAgentContext(), tools)`. Also exports `guardAction`, `captureAction`, `securityMetadata`. Wrapped tools cannot already declare `contextSchema`. |
+| Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | Eve agents. `guardInbound` on channels (only place to decline a turn before it starts). `guardApproval` on OpenAPI/MCP connections (no local `execute`). `arcjetHooks` is observe-only. Eve needs Node ≥ 24. |
+| Mastra v1 | `@arcjet/guard/mastra/v1` | On current docs/`main`, not published 1.10.0. `guardProcessor` for inbound/outbound text (no `guardInbound`). `guardTool` for authored tools. `guardHooks` for unwrapped MCP/workspace tools (`beforeToolCall` can deny). No `guardApproval` — Mastra `requireApproval` is human HITL. Do not also wrap with `vercel-ai/v7`. |
+
+See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/vercel-eve/, and https://docs.arcjet.com/guards/mastra/.
+
 ## Key Patterns
 
 - Pass `signal` (an `AbortSignal`) on the `.guard()` call when one is available (e.g. from the caller or a timeout) so guard respects cancellation. `timeoutSeconds` is also available for a simple deadline.
-- Use `metadata` for analytics/auditing context (user ID, session, etc.) — this appears in the Console.
-- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"mcp.query-database"`) — it appears in the Console and helps you understand which operations are being rate limited or blocked.
+- Use `metadata` for analytics/auditing context — nested JSON, not a flat string map. It appears in the Console and does not affect the decision. Do not put secrets or PII in it.
+- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"email.sent"`) — it appears in the Console and selects a remote policy when one is published. Hardcode it.
