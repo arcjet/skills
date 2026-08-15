@@ -2,7 +2,7 @@
 
 ## What Guard Is
 
-Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 below still apply. Capture, registration, remote policy inputs, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
+Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 below still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK — they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
@@ -134,27 +134,7 @@ Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the syste
 
 `experimental_ModerateContent()` flags unsafe or policy-violating text for Guard call sites. **Python is still experimental** — import the `experimental_` name (the class exists as `ModerateContent` but is not in `__all__`). The name and result shape may change; treat errors as fail-open and inspect `decision.has_failed_open()` / `decision.error_results()`.
 
-### Remote policies
-
-A Console policy selected by `label` can run without a matching SDK rule. Pass a trusted `actor` and construct typed `inputs` with `server_input` / `local_input` — plain values are rejected:
-
-```python
-from arcjet.guard import local_input, server_input
-
-decision = await aj.guard(
-    label="email.sent",
-    actor=user_id,
-    inputs={
-        "recipient": server_input.string(to),
-        "allowed_recipients": server_input.string_list(allowed_recipients),
-        "body": local_input.string(body),
-    },
-)
-```
-
-`SERVER` values are sent to Arcjet. `LOCAL` strings stay in SDK memory. `rules` may be omitted or `[]` — that still calls Guard. Inspect `decision.policy_evaluation` / `decision.policy_results` separately from positional SDK `results`.
-
-LangChain: `pip install "arcjet[langchain]"` then `from arcjet.guard.langchain import guard_tool`. The wrapper fails closed by default (`on_guard_error="deny"`). Derive `actor` from server-controlled `RunnableConfig`, not model arguments.
+LangChain: `pip install "arcjet[langchain]"` then `from arcjet.guard.langchain import guard_tool`. The wrapper fails closed by default (`on_guard_error="deny"`).
 
 ### On-device Rampart backend
 
@@ -251,4 +231,4 @@ For tests, `from arcjet.guard.testing import register_test_client` and use `with
 ## Key Patterns
 
 - Use `metadata` for analytics/auditing context — nested JSON, not a flat string map. It appears in the Console and does not affect the decision. Do not put secrets or PII in it.
-- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"email.sent"`) — it appears in the Console and selects a remote policy when one is published. Hardcode it.
+- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"queue.process-job"`) — it appears in the Console and helps you understand which operations are being limited or blocked.

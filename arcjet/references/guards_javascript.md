@@ -12,7 +12,7 @@ Install with whichever package manager the project already uses (`npm install`, 
 npm install @arcjet/guard
 ```
 
-Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called out as 1.6.0 below still apply. Capture, registration, remote policies, Rampart, nested metadata, and threat/billing require **`@arcjet/guard` 1.10.0**. Runtime minimums match the current Arcjet JS SDK line:
+Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called out as 1.6.0 below still apply. Capture, registration, Rampart, nested metadata, and threat/billing require **`@arcjet/guard` 1.10.0**. Runtime minimums match the current Arcjet JS SDK line:
 
 | Runtime            | Minimum version          |
 | ------------------ | ------------------------ |
@@ -148,29 +148,9 @@ Use `localDetectSensitiveInfo()` to block PII from entering or leaving the syste
 
 `moderateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is `{ detected, billing? }` — `billing.unit` is `text_units` when present. Published **1.10.0** still exports `experimental_moderateContent` as the public name; current docs and `main` graduate it to `moderateContent` and keep the old name as a deprecated alias. Import whichever the installed types export. `decision.reason` is `"MODERATE_CONTENT"` on deny.
 
-### Remote policies
-
-A Console policy selected by `label` can run without a matching SDK rule. Pass a trusted `actor` and construct typed `inputs` with `policyInput` — plain strings/objects are rejected:
-
-```typescript
-import { launchArcjet, policyInput } from "@arcjet/guard";
-
-const decision = await arcjet.guard({
-  label: "email.sent",
-  actor: user.id,
-  inputs: {
-    recipient: policyInput.server.string(to),
-    allowed_recipients: policyInput.server.stringList(user.allowedRecipients),
-    body: policyInput.local.string(body),
-  },
-});
-```
-
-`SERVER` values are sent to Arcjet. `LOCAL` strings stay in SDK memory (today used by the remote sensitive-info rule). `rules` may be `[]` — that still calls Guard. Inspect `decision.policyEvaluation` / `decision.policyResults` separately from positional SDK `results`. `INCOMPLETE` or `UNAVAILABLE` is a failed-open evaluation, not a policy denial.
-
 ### On-device Rampart backend
 
-`localDetectSensitiveInfo()` defaults to the bundled WASM engine (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `@arcjet/sensitive-info-rampart` and pass `backend: rampart()`. Detection still runs locally. Rampart needs Node/Bun/Deno with filesystem access — not edge. Also pass `sensitiveInfoBackend: rampart()` to `launchArcjet()` when a remote policy will evaluate a `LOCAL` string.
+`localDetectSensitiveInfo()` defaults to the bundled WASM engine (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `@arcjet/sensitive-info-rampart` and pass `backend: rampart()`. Detection still runs locally. Rampart needs Node/Bun/Deno with filesystem access — not edge.
 
 ```typescript
 import { localDetectSensitiveInfo } from "@arcjet/guard";
@@ -278,4 +258,4 @@ See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.
 
 - Pass `signal` (an `AbortSignal`) on the `.guard()` call when one is available (e.g. from the caller or a timeout) so guard respects cancellation. `timeoutSeconds` is also available for a simple deadline.
 - Use `metadata` for analytics/auditing context — nested JSON, not a flat string map. It appears in the Console and does not affect the decision. Do not put secrets or PII in it.
-- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"email.sent"`) — it appears in the Console and selects a remote policy when one is published. Hardcode it.
+- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"mcp.query-database"`) — it appears in the Console and helps you understand which operations are being rate limited or blocked.

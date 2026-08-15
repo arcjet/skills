@@ -6,7 +6,7 @@ Guard protects code paths that do not have an HTTP request — agent tool calls,
 
 ## Installation
 
-The latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (2026-06-30). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Capture, remote policies, Rampart, nested metadata, `WithIPSrc`, threat/billing, and `GuardModerateContent` are on the module default branch — read the installed package docs after `go get`. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (2026-06-30). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, and `GuardModerateContent` are on the module default branch — read the installed package docs after `go get`. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Install with Go tooling:
 
@@ -97,26 +97,7 @@ The second argument to `Key` is the amount consumed. Passing `1` creates a per-o
 - `GuardModerateContent` — Guard-only content moderation. Result is binary `Detected` plus optional `Billing` (`text_units`). `ExperimentalGuardModerateContent` remains a deprecated alias until 1.0.
 - `GuardCustom` — runs your local custom function and reports the result to Arcjet. Keep the function deterministic and side-effect free.
 
-## Remote policies
-
-A Console policy selected by `Label` can run without SDK rules. Pass a trusted `Actor` and construct typed `Inputs` — plain strings are rejected:
-
-```go
-actor := authenticatedUser.ID
-decision, err := guard.Guard(ctx, arcjet.GuardRequest{
-	Label: "email.sent",
-	Actor: &actor,
-	Inputs: map[string]arcjet.GuardPolicyInput{
-		"recipient": arcjet.GuardPolicyServerString(recipient),
-		"allowedRecipients": arcjet.GuardPolicyServerStringList(allowedRecipients),
-		"body":              arcjet.GuardPolicyLocalString(body),
-	},
-})
-```
-
-Server inputs are sent to Arcjet. Local strings stay in process. `Rules` may be empty for a policy-only call. Remote results are on `decision.PolicyResults`, separate from positional `decision.Results`. Incomplete or unavailable policy evaluation fail-opens — check `HasFailedOpen()`.
-
-Go has no `registerArcjet` / free `guard()` API. Pass the client.
+Go has no registration / free `guard()` API. Pass the client.
 
 ## Capture and flush
 

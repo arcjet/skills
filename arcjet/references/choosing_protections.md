@@ -50,8 +50,6 @@ Agents invoke tools in ways they shouldn't — issuing refunds, accessing data, 
 
 **Rules:** Guard protection with per-tool rate limits and labels. Each tool call site gets its own `label` and rules, so you can enforce different budgets and detect abuse per operation. Combine with prompt injection detection on tool inputs.
 
-For actions a security team must change without a deploy, add an **Agent guard remote policy** in the Console for that `label` and map a trusted `actor` plus typed `inputs` at the `guard()` call. Remote policies are selected by label; they are not request Remote rules (those apply to `protect()` site-wide). Do not duplicate the same rule in code and in the remote policy unless one is an intentional backstop.
-
 `capture()` is not a protection rule. Use it after an action to record that it happened.
 
 ## Common web attacks
