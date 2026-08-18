@@ -1,7 +1,7 @@
 ---
 name: arcjet
 license: Apache-2.0
-description: Add Arcjet security protection to any code path — HTTP route handlers, API endpoints, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking (including Rampart NER), content moderation, capture/flush, and abuse prevention. Works with JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, net/http, Vercel AI SDK, Vercel Eve, Mastra, LangChain, and other non-HTTP contexts. Use this skill when the user wants to add security, rate limiting, bot protection, or abuse prevention to any part of their application — whether they say "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," "add security to my MCP server," "guard this Mastra/Eve/AI SDK agent," or "prevent abuse" without mentioning Arcjet specifically.
+description: Add Arcjet security protection to any code path — HTTP route handlers, API endpoints, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking (including Rampart NER), content moderation, capture/flush, and abuse prevention. Works with JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, net/http, Vercel AI SDK, Vercel Eve, Mastra, LangChain, LangGraph, and other non-HTTP contexts. Use this skill when the user wants to add security, rate limiting, bot protection, or abuse prevention to any part of their application — whether they say "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," "add security to my MCP server," "guard this Mastra/Eve/LangGraph/AI SDK agent," or "prevent abuse" without mentioning Arcjet specifically.
 metadata:
   author: arcjet
 ---
@@ -73,7 +73,7 @@ Determine which protection type applies:
 | **Go SDK** | `github.com/arcjet/arcjet-go` (with `NewClient`) | `github.com/arcjet/arcjet-go` (with `NewGuardClient`) |
 | **Entry point** | `protect(request)` / `Protect(ctx, r)` | `guard(label, rules)` / `Guard(ctx, request)` |
 
-A single project can use both — e.g. request-based on API routes and guard on agent tool calls. If the project already uses Vercel AI SDK, Vercel Eve, Mastra, or LangChain, prefer the versioned Guard wrappers in the language reference over hand-wrapping every tool.
+A single project can use both — e.g. request-based on API routes and guard on agent tool calls. If the project already uses Vercel AI SDK, Vercel Eve, Mastra, LangChain, or LangGraph, prefer the versioned Guard wrappers in the language reference over hand-wrapping every tool.
 
 **Common misclassifications to watch for:**
 
@@ -117,7 +117,7 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - **Pass `metadata` on the `guard()` call** when you have useful auditing context. It is nested JSON — objects, arrays, numbers, booleans — not a flat string map (`metadata={ user: { id: userId }, requestId }`). It appears in the Console and does not affect the decision. Do not put secrets or PII in it.
 - **`capture()` records what happened** after an action (refund issued, tool completed). It is visibility data, never a security decision — it does not deny and never sets `hasFailedOpen()`. Call `flush()` on shutdown so the last batch is not lost. On serverless, pass a platform `waitUntil` (JS) or flush at the end of the invocation.
 - **Optional registration (JS/Python only):** `registerArcjet` / `register_arcjet` is a separate call from launch. It enables free `guard()` / `capture()` / `flush()` when you cannot thread a client. Free `guard()` fail-opens if nothing is registered — check `hasFailedOpen()` / `has_failed_open()`; do not treat that ALLOW as a pass. Go has no registration API; pass the client. Prefer an explicit client everywhere you can.
-- **Framework wrappers** (JS `@arcjet/guard/vercel-ai/v7`, `@arcjet/guard/vercel-eve/v0`, `@arcjet/guard/mastra/v1`; Python `arcjet.guard.langchain`) fail closed by default when Guard is unavailable. Import the versioned path — unversioned aliases do not resolve.
+- **Framework wrappers** (JS `@arcjet/guard/vercel-ai/v7`, `@arcjet/guard/vercel-eve/v0`, `@arcjet/guard/mastra/v1`, `@arcjet/guard/langgraph/v1`; Python `arcjet.guard.langchain`) fail closed by default when Guard is unavailable. Import the versioned path — unversioned aliases do not resolve.
 - **Branch on which rule denied**, not just on `DENY`. Use the per-rule accessors (e.g. `userLimit.deniedResult(decision)` for retry-after info) or the flat reason string (`decision.reason === "PROMPT_INJECTION"` in JS, `decision.reason == "PROMPT_INJECTION"` in Python) so the error you surface to the caller tells them *why* — "rate limited, retry in 12s" vs "input flagged as prompt injection" — instead of a generic "blocked." Note: guard's `decision.reason` is a flat string literal, unlike the request-based SDK's tagged-helper API.
 - Every rate-limit rule needs a `key` and a `bucket`:
   - **Per-user context** (agent tool calls inside a logged-in session, queue jobs with a `user_id`): use the user/session id as the key.
