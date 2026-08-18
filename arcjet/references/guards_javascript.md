@@ -25,7 +25,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **2026-08-11**. `moderateContent` (graduated name) and `@arcjet/guard/mastra/v1` are on current docs and `main`; they are not in 1.10.0 (the next release line is unpublished). Read the installed package's types before using either. Minimums tend to creep upward — check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **2026-08-11**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, and `@arcjet/guard/claude-agent-sdk/v0` are on current docs and `main`; they are not in 1.10.0 (the next release line is unpublished). Read the installed package's types before using any of them. Minimums tend to creep upward — check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README._
 
 ## Architecture: Why Things Go Where They Do
 
@@ -244,15 +244,66 @@ For tests, `registerTestClient()` from `@arcjet/guard/testing` records calls and
 
 ## Framework integrations
 
-Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/vercel-eve`, `/mastra`) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`).
+Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/vercel-eve`, `/mastra`, `/claude-agent-sdk`) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`).
 
 | Integration | Import | Use when |
 | --- | --- | --- |
 | Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | Authored `tool({ execute })`. `guardTool` + `aiToolsContext(createAgentContext(), tools)`. Also exports `guardAction`, `captureAction`, `securityMetadata`. Wrapped tools cannot already declare `contextSchema`. |
 | Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | Eve agents. `guardInbound` on channels (only place to decline a turn before it starts). `guardApproval` on OpenAPI/MCP connections (no local `execute`). `arcjetHooks` is observe-only. Eve needs Node ≥ 24. |
 | Mastra v1 | `@arcjet/guard/mastra/v1` | On current docs/`main`, not published 1.10.0. `guardProcessor` for inbound/outbound text (no `guardInbound`). `guardTool` for authored tools. `guardHooks` for unwrapped MCP/workspace tools (`beforeToolCall` can deny). No `guardApproval` — Mastra `requireApproval` is human HITL. Do not also wrap with `vercel-ai/v7`. |
+| Claude Agent SDK v0 | `@arcjet/guard/claude-agent-sdk/v0` | On current docs/`main`, not published 1.10.0. Authored `tool()` via `guardTool`. Inbound via `guardHooks` `UserPromptSubmit` (no `guardInbound`). `PreToolUse` for built-ins and unwrapped MCP. `PostToolUse` is capture-only. `canUseTool` is not a policy gate. Optional peer `@anthropic-ai/claude-agent-sdk` `>=0.1.0 <1`. Node.js 22+. Do not also wrap with `vercel-ai/v7`. |
 
-See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/vercel-eve/, and https://docs.arcjet.com/guards/mastra/.
+### Claude Agent SDK
+
+Exports: `guardTool`, `guardHooks`, `claudeAgentContext`. There is no unversioned `@arcjet/guard/claude-agent-sdk` alias.
+
+- **`guardTool`** wraps an authored `tool()` handler. On `DENY` the handler is not called and the model receives a `CallToolResult` with `isError: true`. This wrapper never throws on deny.
+- **`guardHooks`** screens inbound prompts on `UserPromptSubmit` (there is no `guardInbound` — this is the only place a turn can be declined before the model sees the prompt). `PreToolUse` gates built-ins (Bash, Write, …) and MCP tools you did not wrap. `PostToolUse` is capture-only and cannot undo a tool that already ran.
+- **`canUseTool` is not a policy gate.** Claude skips it under `allowedTools`, allow rules, and `bypassPermissions` / `acceptEdits`. There is no `guardCanUseTool`. Use `guardTool` or `PreToolUse`.
+- **`claudeAgentContext`** reads hook `session_id` first, then `options.sessionId`. It never mints an id and never calls `createAgentContext`. If neither is a valid 1–256 printable-ASCII string, the call is uncorrelated. Subagent `agent_id` is metadata only.
+- Do not apply `guardTool` and `PreToolUse` to the same authored tool — that double-calls the guard. Do not also wrap these tools with `@arcjet/guard/vercel-ai/v7`.
+
+```typescript
+import { launchArcjet, detectPromptInjection, tokenBucket } from "@arcjet/guard";
+import { guardTool, guardHooks } from "@arcjet/guard/claude-agent-sdk/v0";
+import { query, tool, createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
+import { z } from "zod";
+
+const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });
+const limit = tokenBucket({ refillRate: 10, intervalSeconds: 60, maxTokens: 10 });
+
+const lookupOrder = guardTool(
+  arcjet,
+  tool("lookup_order", "Look up an order", { orderNumber: z.string() }, async ({ orderNumber }) => ({
+    content: [{ type: "text", text: `${orderNumber}: shipped` }],
+  })),
+  {
+    action: "order.looked-up",
+    rules: (input) => [limit({ key: input.orderNumber, requested: 1 })],
+  },
+);
+
+const sessionId = conversationId;
+
+for await (const message of query({
+  prompt: userText,
+  options: {
+    sessionId,
+    mcpServers: { app: createSdkMcpServer({ name: "app", tools: [lookupOrder] }) },
+    hooks: guardHooks(arcjet, {
+      sessionId,
+      inbound: {
+        action: "message.received",
+        rules: ({ prompt }) => [detectPromptInjection()(prompt)],
+      },
+    }),
+  },
+})) {
+  void message;
+}
+```
+
+See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, and https://docs.arcjet.com/guards/claude-agent-sdk/.
 
 ## Key Patterns
 
