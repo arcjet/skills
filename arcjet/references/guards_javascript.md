@@ -300,6 +300,7 @@ const lookupOrder = guardTool(
   },
 );
 
+const mcpTools = []; // from an MCP client you did not wrap with guardTool
 export const tools = guardToolNode(arcjet, new ToolNode([lookupOrder, ...mcpTools]), {
   action: ({ toolName }) => `${toolName}.invoked`,
   rules: ({ toolName }) => [mcpLimit({ key: toolName, requested: 1 })],
