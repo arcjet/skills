@@ -25,7 +25,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **2026-08-11**. `moderateContent` (graduated name) and `@arcjet/guard/mastra/v1` are on current docs and `main`; they are not in 1.10.0 (the next release line is unpublished). Read the installed package's types before using either. Minimums tend to creep upward — check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **2026-08-11**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, and `@arcjet/guard/langgraph/v1` are on current docs and `main`; they are not in 1.10.0 (the next release line is unpublished). Read the installed package's types before using any of them. Minimums tend to creep upward — check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README._
 
 ## Architecture: Why Things Go Where They Do
 
@@ -244,15 +244,70 @@ For tests, `registerTestClient()` from `@arcjet/guard/testing` records calls and
 
 ## Framework integrations
 
-Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/vercel-eve`, `/mastra`) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`).
+Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/vercel-eve`, `/mastra`, `/langgraph`) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`).
 
 | Integration | Import | Use when |
 | --- | --- | --- |
 | Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | Authored `tool({ execute })`. `guardTool` + `aiToolsContext(createAgentContext(), tools)`. Also exports `guardAction`, `captureAction`, `securityMetadata`. Wrapped tools cannot already declare `contextSchema`. |
 | Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | Eve agents. `guardInbound` on channels (only place to decline a turn before it starts). `guardApproval` on OpenAPI/MCP connections (no local `execute`). `arcjetHooks` is observe-only. Eve needs Node ≥ 24. |
 | Mastra v1 | `@arcjet/guard/mastra/v1` | On current docs/`main`, not published 1.10.0. `guardProcessor` for inbound/outbound text (no `guardInbound`). `guardTool` for authored tools. `guardHooks` for unwrapped MCP/workspace tools (`beforeToolCall` can deny). No `guardApproval` — Mastra `requireApproval` is human HITL. Do not also wrap with `vercel-ai/v7`. |
+| LangGraph v1 | `@arcjet/guard/langgraph/v1` | On current docs/`main`, not published 1.10.0. Graph API (`StateGraph` + `ToolNode` from `@langchain/langgraph/prebuilt`), not LangChain `createAgent` / `wrapToolCall`. Do not build on `createReactAgent`. `guardTool` for authored `tool()` / `StructuredTool`. `guardToolNode` for MCP / unwrapped tools. `langgraphAgentContext` reads `thread_id`. No `guardInbound` / `guardApproval` / `guardInterrupt` — `interrupt()` is human HITL. Optional peers `@langchain/langgraph` and `@langchain/core` `>=1 <2`. Node.js 22+. Do not also wrap with `vercel-ai/v7`. |
 
-See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/vercel-eve/, and https://docs.arcjet.com/guards/mastra/.
+### LangGraph
+
+Exports: `guardTool`, `guardToolNode`, `langgraphAgentContext`. There is no unversioned `@arcjet/guard/langgraph` alias. This is LangGraph Graph API (`StateGraph` + `ToolNode` from `@langchain/langgraph/prebuilt`). It is not LangChain `createAgent` / `wrapToolCall`. Do not build on `createReactAgent` (deprecated in LangGraph JS v1).
+
+- **`guardTool`** wraps a LangChain `tool()` / `StructuredTool` so `func` / `invoke` never runs on `DENY`. The helper does not throw. The model receives a structured `ArcjetDenialResult` (`arcjetDenied: true`). `ToolNode` wraps that object into a real `ToolMessage` whose status is `success` — the denial rides in the payload, not the envelope. Do not fabricate a `ToolMessage` to force status `error`.
+- **`guardToolNode`** guards the tools a `ToolNode` executes (MCP / runtime-discovered / unwrapped tools). It guards in place and returns the same node. A frozen tools array throws. The tools-array form returns copies and leaves the input array alone. Already-guarded tools are skipped so Guard is not called twice.
+- **`langgraphAgentContext`** reads `configurable.thread_id`, then the run id, then `configurable.checkpoint_ns`. It never mints an id. Do not call `createAgentContext` inside a LangGraph callback.
+- There is no `guardInbound` (screen before `graph.invoke` or in the first node). There is no `guardApproval` / `guardInterrupt`: `interrupt()` / `interrupt_before=["tools"]` is human HITL, not a policy gate (same trap as Mastra `requireApproval` and Claude `canUseTool`).
+- Fail closed by default (`onGuardError: "deny"`). Do not also wrap with `@arcjet/guard/vercel-ai/v7`.
+
+```typescript
+import { launchArcjet, tokenBucket } from "@arcjet/guard";
+import { guardTool, guardToolNode } from "@arcjet/guard/langgraph/v1";
+import { ToolNode } from "@langchain/langgraph/prebuilt";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
+
+const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });
+const lookupLimit = tokenBucket({
+  bucket: "lookups",
+  refillRate: 10,
+  intervalSeconds: 60,
+  maxTokens: 10,
+});
+const mcpLimit = tokenBucket({
+  bucket: "mcp-access",
+  refillRate: 20,
+  intervalSeconds: 60,
+  maxTokens: 20,
+});
+
+const lookupOrder = guardTool(
+  arcjet,
+  tool(async ({ orderId, note }) => ({ orderId, note, status: "shipped" }), {
+    name: "lookup_order",
+    description: "Look up an order by ID",
+    schema: z.object({
+      orderId: z.string(),
+      note: z.string(),
+    }),
+  }),
+  {
+    action: "order.looked-up",
+    rules: (input) => [lookupLimit({ key: input.orderId, requested: 1 })],
+  },
+);
+
+const mcpTools = []; // from an MCP client you did not wrap with guardTool
+export const tools = guardToolNode(arcjet, new ToolNode([lookupOrder, ...mcpTools]), {
+  action: ({ toolName }) => `${toolName}.invoked`,
+  rules: ({ toolName }) => [mcpLimit({ key: toolName, requested: 1 })],
+});
+```
+
+See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, and https://docs.arcjet.com/guards/langgraph/.
 
 ## Key Patterns
 
