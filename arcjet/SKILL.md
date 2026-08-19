@@ -118,7 +118,15 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - **`capture()` records what happened** after an action (refund issued, tool completed). It is visibility data, never a security decision — it does not deny and never sets `hasFailedOpen()`. Call `flush()` on shutdown so the last batch is not lost. On serverless, pass a platform `waitUntil` (JS) or flush at the end of the invocation.
 - **Optional registration (JS/Python only):** `registerArcjet` / `register_arcjet` is a separate call from launch. It enables free `guard()` / `capture()` / `flush()` when you cannot thread a client. Free `guard()` fail-opens if nothing is registered — check `hasFailedOpen()` / `has_failed_open()`; do not treat that ALLOW as a pass. Go has no registration API; pass the client. Prefer an explicit client everywhere you can.
 - **Framework wrappers** (JS `@arcjet/guard/vercel-ai/v7`, `@arcjet/guard/vercel-eve/v0`, `@arcjet/guard/mastra/v1`, `@arcjet/guard/langgraph/v1`; Python `arcjet.guard.langchain`) fail closed by default when Guard is unavailable. Import the versioned path — unversioned aliases do not resolve.
-- **Branch on which rule denied**, not just on `DENY`. Use the per-rule accessors (e.g. `userLimit.deniedResult(decision)` for retry-after info) or the flat reason string (`decision.reason === "PROMPT_INJECTION"` in JS, `decision.reason == "PROMPT_INJECTION"` in Python) so the error you surface to the caller tells them *why* — "rate limited, retry in 12s" vs "input flagged as prompt injection" — instead of a generic "blocked." Note: guard's `decision.reason` is a flat string literal, unlike the request-based SDK's tagged-helper API.
+- **Branch on which rule denied**, not just on `DENY`. Use the per-rule accessors (e.g. `userLimit.deniedResult(decision)` for retry-after info) or the flat reason string (`decision.reason === "PROMPT_INJECTION"` in JS, `decision.reason == "PROMPT_INJECTION"` in Python) so the error you surface to the caller tells them *why* — "rate limited, retry in 12s" vs "input flagged as prompt injection" — instead of a generic "blocked." Note: guard's `decision.reason` is a flat string literal, unlike the request-based SDK's tagged-helper API. It is `undefined` on ALLOW — typed `Reason | undefined` in JS — so read it after checking the conclusion, or a `strict` build rejects assigning it to a `string`.
+- **A denial by one rule still spends the others' budget.** Rules in a single
+  `guard()` call are all evaluated, so a request that trips
+  `localDetectSensitiveInfo` also consumes a token from a `tokenBucket` in the
+  same `rules` array — visible as `TOKEN_BUCKET` ALLOW with a decremented
+  `remaining` on a decision whose conclusion is DENY. Fine for the usual case
+  (a caller sending PII is a caller you are happy to slow down); split the
+  rules across two `guard()` calls if a PII false positive must not drain a
+  legitimate user's budget.
 - Every rate-limit rule needs a `key` and a `bucket`:
   - **Per-user context** (agent tool calls inside a logged-in session, queue jobs with a `user_id`): use the user/session id as the key.
   - **No user context** (stdio MCP server, single-tenant worker): use a stable identifier you control — instance id, deployment name, or a literal like `"default"`. Just be explicit.
