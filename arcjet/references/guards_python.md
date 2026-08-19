@@ -284,7 +284,7 @@ result = await guard_action(
 )
 ```
 
-`fn` takes no arguments — close over what you need. Sync code uses `guard_action_sync`. Raises `ArcjetDeniedError` on DENY, `ArcjetUnavailableError` when evaluation failed and `on_guard_error="deny"`.
+`fn` takes no arguments — close over what you need. Sync code uses `guard_action_sync`. Raises `ArcjetDeniedError` on DENY, `ArcjetUnavailableError` when evaluation failed and `on_guard_error="deny"`. Guard `TokenBucket` takes `refill_rate` / `interval_seconds` / `max_tokens` (and optional `label` / `bucket`); that is not the request helper `token_bucket` (`interval` / `capacity`).
 
 ### LangChain tool you call — `guard_tool`
 
@@ -342,12 +342,16 @@ If you can name the tool at wiring time, `guard_tool` is the smaller change. If 
 ### Observe a chain — `ArcjetCaptureHandler`
 
 ```python
-from arcjet.guard.langchain import ArcjetCaptureHandler
+from arcjet.guard.langchain import ArcjetAsyncCaptureHandler, ArcjetCaptureHandler
 
+# invoke → ArcjetCaptureHandler; ainvoke → ArcjetAsyncCaptureHandler
 chain.invoke(inputs, config={"callbacks": [ArcjetCaptureHandler(guard=aj)]})
+await chain.ainvoke(
+    inputs, config={"callbacks": [ArcjetAsyncCaptureHandler(guard=aj)]}
+)
 ```
 
-Same extra as `guard_tool`. `ArcjetAsyncCaptureHandler` is the async counterpart. Neither can deny a call.
+Same extra as `guard_tool`. Pair the handler with the call: `ArcjetCaptureHandler` with `invoke`, `ArcjetAsyncCaptureHandler` with `ainvoke`. Neither can deny a call.
 
 ## Key Patterns
 
