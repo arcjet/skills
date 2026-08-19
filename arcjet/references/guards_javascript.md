@@ -25,7 +25,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **2026-08-11**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, and `@arcjet/guard/langgraph/v1` are on current docs and `main`; they are not in 1.10.0 (the next release line is unpublished). Read the installed package's types before using any of them. Minimums tend to creep upward — check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **2026-08-11**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, `@arcjet/guard/langgraph/v1`, and `@arcjet/guard/claude-agent-sdk/v0` are on current docs and `main`; they are not in 1.10.0 (the next release line is unpublished) — importing one from 1.10.0 fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Read the installed package's types before using any of them. Minimums tend to creep upward — check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README._
 
 ## Architecture: Why Things Go Where They Do
 
@@ -144,6 +144,8 @@ Use `detectPromptInjection()` on any untrusted text before it reaches a model or
 
 Use `localDetectSensitiveInfo()` to block PII from entering or leaving the system (e.g. users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally — raw text never leaves the SDK. The default backend is WASM; see Rampart below for names and government / financial identifiers.
 
+**The default backend detects exactly four entity types** — `"EMAIL"`, `"PHONE_NUMBER"`, `"IP_ADDRESS"`, `"CREDIT_CARD_NUMBER"` — even though `SensitiveInfoEntityType` names twenty. Listing any of the other sixteen without a `backend` produces a rule that can never match: current `main` rejects it at compile time (`allow` / `deny` narrow to `NativeSensitiveInfoEntityType` when no `backend` is set), and published 1.10.0 throws at module load with a message naming the type. Either way, add `backend: rampart()` or drop the type.
+
 ### Content moderation
 
 `moderateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is `{ detected, billing? }` — `billing.unit` is `text_units` when present. Published **1.10.0** still exports `experimental_moderateContent` as the public name; current docs and `main` graduate it to `moderateContent` and keep the old name as a deprecated alias. Import whichever the installed types export. `decision.reason` is `"MODERATE_CONTENT"` on deny.
@@ -244,14 +246,75 @@ For tests, `registerTestClient()` from `@arcjet/guard/testing` records calls and
 
 ## Framework integrations
 
-Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/vercel-eve`, `/mastra`, `/langgraph`) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`).
+Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/vercel-eve`, `/mastra`, `/langgraph`, `/claude-agent-sdk`) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`).
 
 | Integration | Import | Use when |
 | --- | --- | --- |
 | Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | Authored `tool({ execute })`. `guardTool` + `aiToolsContext(createAgentContext(), tools)`. Also exports `guardAction`, `captureAction`, `securityMetadata`. Wrapped tools cannot already declare `contextSchema`. |
-| Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | Eve agents. `guardInbound` on channels (only place to decline a turn before it starts). `guardApproval` on OpenAPI/MCP connections (no local `execute`). `arcjetHooks` is observe-only. Eve needs Node ≥ 24. |
-| Mastra v1 | `@arcjet/guard/mastra/v1` | On current docs/`main`, not published 1.10.0. `guardProcessor` for inbound/outbound text (no `guardInbound`). `guardTool` for authored tools. `guardHooks` for unwrapped MCP/workspace tools (`beforeToolCall` can deny). No `guardApproval` — Mastra `requireApproval` is human HITL. Do not also wrap with `vercel-ai/v7`. |
+| Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | Eve agents. `guardInbound` on channels (only place to decline a turn before it starts) — its verdict carries `outcome` (`"DENY"` \| `"UNAVAILABLE"`, denial vs outage) and the rule category on `verdict.decision?.reason`; `verdict.reason` is a deprecated alias for `outcome`, so do not return it as the category. `guardApproval` on OpenAPI/MCP connections (no local `execute`). `arcjetHooks` is observe-only. Eve needs Node ≥ 24. |
+| Mastra v1 | `@arcjet/guard/mastra/v1` | On current docs/`main`, not published 1.10.0. Wrapping a `createTool()` result under `exactOptionalPropertyTypes` needs `main` — earlier builds constrained `guardTool` to `ToolAction<any, any>`, which a real Mastra `Tool` cannot satisfy (TS2379). `guardProcessor` for inbound/outbound text (no `guardInbound`). `guardTool` for authored tools. `guardHooks` for unwrapped MCP/workspace tools (`beforeToolCall` can deny). No `guardApproval` — Mastra `requireApproval` is human HITL. Do not also wrap with `vercel-ai/v7`. |
+| Claude Agent SDK v0 | `@arcjet/guard/claude-agent-sdk/v0` | On current docs/`main`, not published 1.10.0. `guardTool` for authored `tool()` + `createSdkMcpServer()`. `guardHooks` supplies `UserPromptSubmit` (the only place a turn can be declined before the model reads it) and `PreToolUse` (the only deny for built-ins and unwrapped MCP); `PostToolUse` is capture only. No `guardInbound`. `canUseTool` is **not** a policy gate — it is skipped by `allowedTools`, allow rules and `bypassPermissions`. `claudeAgentContext` reads `session_id` / `options.sessionId`. Optional peer `@anthropic-ai/claude-agent-sdk` `>=0.1.0 <1`. Node.js 22+. |
 | LangGraph v1 | `@arcjet/guard/langgraph/v1` | On current docs/`main`, not published 1.10.0. Graph API (`StateGraph` + `ToolNode` from `@langchain/langgraph/prebuilt`), not LangChain `createAgent` / `wrapToolCall`. Do not build on `createReactAgent`. `guardTool` for authored `tool()` / `StructuredTool`. `guardToolNode` for MCP / unwrapped tools. `langgraphAgentContext` reads `thread_id`. No `guardInbound` / `guardApproval` / `guardInterrupt` — `interrupt()` is human HITL. Optional peers `@langchain/langgraph` and `@langchain/core` `>=1 <2`. Node.js 22+. Do not also wrap with `vercel-ai/v7`. |
+
+### Claude Agent SDK
+
+Exports: `guardTool`, `guardHooks`, `claudeAgentContext`, plus the shared
+`guardAction` / `captureAction` / `securityMetadata`. There is no unversioned
+`@arcjet/guard/claude-agent-sdk` alias.
+
+- **`guardTool`** wraps an authored `tool()` definition (the ones you pass to `createSdkMcpServer`) so the handler never runs on DENY. It does not throw: the model receives a `CallToolResult` with `isError: true` and `structuredContent.arcjetDenied`.
+- **`guardHooks`** returns hooks for `query({ options.hooks })`. `inbound` screens `UserPromptSubmit` — the only place a turn can be declined before the model reads the prompt, so prompt-injection rules go here. `PreToolUse` denies with `permissionDecision: "deny"` and is the only gate for built-ins (Bash, Write) and unwrapped MCP tools. `PostToolUse` is observe-only.
+- **`exclude`** on `guardHooks` lists tools that already guard themselves via `guardTool`. `PreToolUse` fires for every tool and the hook input carries only a name, so without it a wrapped tool is guarded twice per invocation — two round trips, two quota units. Entries match the reported name exactly: pass `{ server, name }` for an authored tool (it resolves to `mcp__<server>__<tool>`) and a bare string for a built-in. A bare authored name deliberately does **not** match every server's tool of that name — two servers can expose the same name with only one wrapped.
+- **`options.sessionId` must be a UUID, and a session id can only be created once.** A non-UUID exits the CLI with `Invalid session ID. Must be a valid UUID.`; passing the same id to a second `query()` exits with `Session ID … is already in use.` Mint one UUID per conversation, then continue it with `options.resume` — which is also what keeps every turn on one Sequence, since `claudeAgentContext` reads the hook's `session_id` first.
+- `canUseTool` is not a policy gate (skipped by `allowedTools`, allow rules, `bypassPermissions` / `acceptEdits`), and annotations / sandbox settings are not enforcement. Do not double-wrap with `vercel-ai/v7`.
+
+```typescript
+import { randomUUID } from "node:crypto";
+import { launchArcjet, detectPromptInjection, tokenBucket } from "@arcjet/guard";
+import { guardHooks, guardTool } from "@arcjet/guard/claude-agent-sdk/v0";
+import { createSdkMcpServer, query, tool } from "@anthropic-ai/claude-agent-sdk";
+import { z } from "zod";
+
+const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });
+const lookupLimit = tokenBucket({ bucket: "lookups", refillRate: 10, intervalSeconds: 60, maxTokens: 10 });
+
+// The authenticated caller this conversation belongs to. Key the budget on the
+// actor, not on the object being acted on: an order id is model-supplied, so
+// keying on it lets a looping agent get a fresh budget per order and makes two
+// unrelated callers share one.
+const userId = authenticatedUserId;
+
+const lookupOrder = guardTool(
+  arcjet,
+  tool("lookup_order", "Look up an order", { orderId: z.string() }, async ({ orderId }) => ({
+    content: [{ type: "text", text: `${orderId}: shipped` }],
+  })),
+  {
+    action: "order.looked-up",
+    rules: () => [lookupLimit({ key: userId, requested: 1 })],
+  },
+);
+
+const sessionId = randomUUID(); // per conversation, not per turn
+
+for await (const message of query({
+  prompt: userText,
+  options: {
+    sessionId, // later turns: `resume: sessionId` instead
+    mcpServers: { support: createSdkMcpServer({ name: "support", tools: [lookupOrder] }) },
+    hooks: guardHooks(arcjet, {
+      sessionId,
+      exclude: [{ server: "support", name: "lookup_order" }], // guarded by guardTool
+      inbound: {
+        action: "message.received",
+        rules: ({ prompt }) => [detectPromptInjection()(prompt)],
+      },
+    }),
+  },
+})) {
+  void message;
+}
+```
 
 ### LangGraph
 
@@ -277,6 +340,9 @@ const lookupLimit = tokenBucket({
   intervalSeconds: 60,
   maxTokens: 10,
 });
+// The authenticated caller, so a budget cannot be reset by varying the order id.
+const userId = authenticatedUserId;
+
 const mcpLimit = tokenBucket({
   bucket: "mcp-access",
   refillRate: 20,
@@ -296,7 +362,8 @@ const lookupOrder = guardTool(
   }),
   {
     action: "order.looked-up",
-    rules: (input) => [lookupLimit({ key: input.orderId, requested: 1 })],
+    // Keyed on the authenticated caller, not the model-supplied order id.
+    rules: () => [lookupLimit({ key: userId, requested: 1 })],
   },
 );
 
@@ -307,7 +374,7 @@ export const tools = guardToolNode(arcjet, new ToolNode([lookupOrder, ...mcpTool
 });
 ```
 
-See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, and https://docs.arcjet.com/guards/langgraph/.
+See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, and https://docs.arcjet.com/guards/langgraph/.
 
 ## Key Patterns
 
