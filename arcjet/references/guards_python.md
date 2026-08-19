@@ -2,13 +2,13 @@
 
 ## What Guard Is
 
-Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 below still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000 ms default Guard request timeout) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site.
+Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 below still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000 ms default Guard request timeout) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site. On `main`, prefer `guard_action` / `guard_tool` / `ArcjetMiddleware` when they fit — see [Framework helpers](#framework-helpers).
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK — they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI** — `pip install arcjet` still resolves 0.9.0. The APIs below that are newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000 ms default Guard request timeout are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and defaults to 1000 ms. Read the installed package's types before using either. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI** — `pip install arcjet` still resolves 0.9.0. The APIs below that are newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000 ms default Guard request timeout are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and defaults to 1000 ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) — not in 0.9.0 or 0.10.0b1. Read the installed package's types before using either. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -18,7 +18,7 @@ Install with whichever package manager the project already uses (`pip install`, 
 pip install arcjet
 ```
 
-Guard is included in the `arcjet` package — no separate install. Read the installed package's types and docstrings for the full API surface.
+Guard is included in the `arcjet` package — no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`) — see [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
 
 ## Architecture: Why Things Go Where They Do
 
@@ -147,8 +147,6 @@ decision = await arcjet.guard(
 
 Treat evaluation errors as fail-open and inspect `decision.has_failed_open()` / `decision.error_results()`.
 
-LangChain: `pip install "arcjet[langchain]"` then `from arcjet.guard.langchain import guard_tool`. The wrapper fails closed by default (`on_guard_error="deny"`).
-
 ### On-device Rampart backend
 
 `LocalDetectSensitiveInfo()` defaults to the bundled WASM engine (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()`:
@@ -202,7 +200,7 @@ On `arcjet` ≤ 0.8.0 the only signal is `decision.has_error()`, which is **depr
 
 ### Correlation IDs
 
-Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision.
+Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision. On `main`, keep a whole run on one Sequence with `arcjet_sequence` or LangChain `config["configurable"]["arcjet_correlation_id"]` — see [Framework helpers](#framework-helpers).
 
 ### Outbound HTTP proxy
 
@@ -239,7 +237,121 @@ Call `await aj.flush()` (async) or `aj.flush()` (sync) on shutdown. Default dead
 
 Free `guard()` / `guard_sync()` fail-open if nothing is registered — check `has_failed_open()`. Free `capture()` drops silently. A second `register_arcjet` does not displace the first. `unregister_arcjet()` clears whatever is there — libraries should not call it. Registration is a module-level global, not a `ContextVar`, so it is visible from WSGI worker threads.
 
-For tests, `from arcjet.guard.testing import register_test_client` and use `with register_test_client() as arcjet:`. Its `guard()` always returns fail-open ALLOW.
+For tests, `from arcjet.guard.testing import register_test_client` and use `with register_test_client() as arcjet:`. Its `guard()` always returns fail-open ALLOW. Pass `on_guard_error="allow"` on the helpers below unless the test is asserting a denial — the recorder's fail-open ALLOW is an unevaluated policy, and the default `"deny"` refuses it.
+
+## Framework helpers
+
+These surfaces are on current `arcjet-py` **main** ([#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in PyPI 0.9.0 or the 0.10.0b1 pre-release. Read the installed package before using them.
+
+Pick the helper that matches what you hold. Do not hand-wrap every tool with raw `guard()`.
+
+| You have | Use | Extra |
+| --- | --- | --- |
+| Any Python callable (worker, MCP handler, job) | `guard_action` / `guard_action_sync` | none (`arcjet.guard`) |
+| A LangChain `BaseTool` you call yourself | `guard_tool` | `arcjet[langchain]` (`langchain-core>=1.2.5,<2`) |
+| `create_agent` (the model chooses tools) | `ArcjetMiddleware` + `ToolPolicy` | `arcjet[langchain-agents]` (`langchain>=1.3,<2`, `langgraph>=1.2,<2`) |
+| A chain or agent you want to observe | `ArcjetCaptureHandler` | `arcjet[langchain]` — cannot deny |
+
+`guard_action` is core Guard — no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`.
+
+### Gotchas
+
+- **Fail closed.** `guard_action`, `guard_tool`, and `ArcjetMiddleware` default to `on_guard_error="deny"`. Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
+- **Configure the tool before `guard_tool()`.** Narrow `args_schema`, set `handle_tool_error` / `callbacks` / `response_format` on the tool you still hold, then wrap. Changes on the guarded handle do not reach the call.
+- **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` or `config={"configurable": {"arcjet_correlation_id": session.id}}`. Do not mint a new id per turn. LangChain's `run_id` is not used. The config key wins over an enclosing `arcjet_sequence`; `configurable` is checked before `metadata`.
+- **Capture handlers never block.** LangChain ignores what a callback returns. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`.
+
+### Any callable — `guard_action`
+
+```python
+from arcjet.guard import launch_arcjet, TokenBucket, guard_action
+
+aj = launch_arcjet(key=os.environ["ARCJET_KEY"])
+job_limit = TokenBucket(
+    label="queue.process-job",
+    bucket="jobs",
+    refill_rate=10,
+    interval_seconds=60,
+    max_tokens=10,
+)
+
+result = await guard_action(
+    lambda: process_job(job),
+    action="queue.process-job",
+    guard=aj,
+    rules=[job_limit(key=user_id, requested=1)],
+    on_guard_error="deny",
+)
+```
+
+`fn` takes no arguments — close over what you need. Sync code uses `guard_action_sync`. Raises `ArcjetDeniedError` on DENY, `ArcjetUnavailableError` when evaluation failed and `on_guard_error="deny"`. Guard `TokenBucket` takes `refill_rate` / `interval_seconds` / `max_tokens` (and optional `label` / `bucket`); that is not the request helper `token_bucket` (`interval` / `capacity`).
+
+### LangChain tool you call — `guard_tool`
+
+```python
+from arcjet.guard.langchain import guard_tool
+
+send_email.args_schema = PublicEmailArgs  # narrow first, then wrap
+guarded = guard_tool(
+    guard=aj,
+    tool=send_email,
+    action="email.sent",
+    rules=[email_limit(key=user_id, requested=1)],
+    on_guard_error="deny",
+)
+```
+
+Needs `pip install "arcjet[langchain]"`. The result is still a `BaseTool`. DENY raises `ArcjetToolDeniedError` (the tool's `handle_tool_error` may convert it); unavailable raises `ArcjetToolUnavailableError`.
+
+### `create_agent` — `ArcjetMiddleware`
+
+```python
+from langchain.agents import create_agent
+from arcjet.guard.langchain import ArcjetMiddleware, ToolPolicy
+
+tools = [send_email, search_orders]
+agent = create_agent(
+    model="openai:gpt-4o",
+    tools=tools,
+    middleware=[
+        ArcjetMiddleware(
+            guard=aj,
+            policies={
+                "send_email": ToolPolicy(
+                    action="email.sent",
+                    rules=[email_limit(key=user_id, requested=1)],
+                ),
+            },
+            tools=tools,
+            on_guard_error="deny",
+        )
+    ],
+)
+
+await agent.ainvoke(
+    {"messages": [...]},
+    config={"configurable": {"arcjet_correlation_id": session.id}},
+)
+# equivalently: with arcjet_sequence(correlation_id=session.id): ...
+```
+
+Needs `pip install "arcjet[langchain-agents]"`. Pass `tools=` the same sequence you gave `create_agent` — a typo in a policy key is refused at construction instead of leaving that tool unguarded. Tools without a policy pass through. `guard=` is optional if you already `register_arcjet()`.
+
+If you can name the tool at wiring time, `guard_tool` is the smaller change. If the model picks the tool, use the middleware. They compose: a guarded tool inside a guarded agent evaluates each policy once and both land on the same Sequence.
+
+### Observe a chain — `ArcjetCaptureHandler`
+
+```python
+from arcjet.guard.langchain import ArcjetAsyncCaptureHandler, ArcjetCaptureHandler
+
+# invoke → ArcjetCaptureHandler; ainvoke → ArcjetAsyncCaptureHandler
+chain.invoke(inputs, config={"callbacks": [ArcjetCaptureHandler(guard=aj)]})
+await chain.ainvoke(
+    inputs, config={"callbacks": [ArcjetAsyncCaptureHandler(guard=aj)]}
+)
+```
+
+Same extra as `guard_tool`. Pair the handler with the call: `ArcjetCaptureHandler` with `invoke`, `ArcjetAsyncCaptureHandler` with `ainvoke`. Neither can deny a call.
 
 ## Key Patterns
 
