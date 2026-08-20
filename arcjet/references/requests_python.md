@@ -102,6 +102,25 @@ aj_signup = arcjet(
 )
 ```
 
+### Local evaluation order
+
+On `main` ([arcjet-py#213](https://github.com/arcjet/arcjet-py/pull/213)), local Protect evaluation sorts by the JS priority table (same ranks as Go), not the order of `rules=[...]`. The first LIVE DENY short-circuits, so declaration order does not control which LIVE DENY is reported. Do not reorder the list to pick a winner.
+
+| Rank | Local Protect rule |
+| ---- | ------------------ |
+| 1 | Sensitive Info (`detect_sensitive_info`) |
+| 2 | Filter (`filter_request`) |
+| 3 | Shield (`shield`) |
+| 4 | Rate limit (`token_bucket` / `fixed_window` / `sliding_window`) |
+| 5 | Bot (`detect_bot`) |
+| 6 | Email (`validate_email`) |
+| 7 | Prompt Injection (`detect_prompt_injection`) |
+| 100 | Unmapped types (sort last) |
+
+Same-priority rules keep declaration order — the three rate-limit factories share rank 4. Sensitive Info first is a privacy property: it denies before another rule can forward the payload.
+
+Rank 7 is listed for JS/Go parity only. `PromptInjectionDetection` is **not** evaluated locally today — Python does not run prompt injection in WASM on `protect()`. Do not assume a local PI deny.
+
 ## Framework-Specific protect() Calls
 
 ### FastAPI (async)
@@ -240,6 +259,7 @@ As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New c
 ## Key Patterns
 
 - `detect_bot` and `validate_email` each take exactly one of `allow` or `deny`. Passing neither (or both) raises `ValueError`. `allow=[]` is the explicit "block every bot" / "allow no email types" config — do not omit the list.
+- Local Protect evaluation follows the JS priority table, not `rules=[...]` order. The first LIVE DENY short-circuits. Do not reorder the list to pick which deny is reported. Prompt injection is in that table for parity only — it is not evaluated locally today ([arcjet-py#213](https://github.com/arcjet/arcjet-py/pull/213)).
 - Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` / `protect_signup` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
 - Signup/login: import `protect_signup` from `arcjet` and unpack with `*protect_signup(...)` into `rules`. It is three rules, not one — do not pass the helper as a single list item. `protect(..., email=...)` is unchanged.
 - Every rule accepts `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Start with DRY_RUN to verify rules match expected traffic.
