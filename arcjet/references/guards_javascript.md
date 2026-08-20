@@ -251,7 +251,7 @@ Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/ver
 | Integration | Import | Use when |
 | --- | --- | --- |
 | Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | Authored `tool({ execute })`. `guardTool` + `aiToolsContext(createAgentContext(), tools)`. Also exports `guardAction`, `captureAction`, `securityMetadata`. Wrapped tools cannot already declare `contextSchema`. |
-| Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | Eve agents. `guardInbound` on channels (only place to decline a turn before it starts) — its verdict carries `outcome` (`"DENY"` \| `"UNAVAILABLE"`, denial vs outage) and the rule category on `verdict.decision?.reason`; `verdict.reason` is a deprecated alias for `outcome`, so do not return it as the category. `guardApproval` on OpenAPI/MCP connections (no local `execute`). `arcjetHooks` is observe-only. Eve needs Node ≥ 24. |
+| Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | Eve agents. Optional peer `eve` `>=0.34.0 <1` (still 0.x). Node ≥ 24. `guardInbound` on channels (only place to decline a turn before it starts) — its verdict carries `outcome` (`"DENY"` \| `"UNAVAILABLE"`, denial vs outage) and the rule category on `verdict.decision?.reason`; `verdict.reason` is a deprecated alias for `outcome`, so do not return it as the category. `guardApproval` on OpenAPI/MCP connections (no local `execute`): `approval` is a function or `{ request, response }`; do not compose with Eve `always()`/`once()`/`never()`. `onAllow: "user-approval"` parks for HITL; optional `response` authorizes the responder. Request/response form is on current docs/`main`, not published 1.10.0. `arcjetHooks` is observe-only. |
 | Mastra v1 | `@arcjet/guard/mastra/v1` | On current docs/`main`, not published 1.10.0. Wrapping a `createTool()` result under `exactOptionalPropertyTypes` needs `main` — earlier builds constrained `guardTool` to `ToolAction<any, any>`, which a real Mastra `Tool` cannot satisfy (TS2379). `guardProcessor` for inbound/outbound text (no `guardInbound`). `guardTool` for authored tools. `guardHooks` for unwrapped MCP/workspace tools (`beforeToolCall` can deny). No `guardApproval` — Mastra `requireApproval` is human HITL. Do not also wrap with `vercel-ai/v7`. |
 | Claude Agent SDK v0 | `@arcjet/guard/claude-agent-sdk/v0` | On current docs/`main`, not published 1.10.0. `guardTool` for authored `tool()` + `createSdkMcpServer()`. `guardHooks` supplies `UserPromptSubmit` (the only place a turn can be declined before the model reads it) and `PreToolUse` (the only deny for built-ins and unwrapped MCP); `PostToolUse` is capture only. No `guardInbound`. `canUseTool` is **not** a policy gate — it is skipped by `allowedTools`, allow rules and `bypassPermissions`. `claudeAgentContext` reads `session_id` / `options.sessionId`. Optional peer `@anthropic-ai/claude-agent-sdk` `>=0.1.0 <1`. Node.js 22+. |
 | LangGraph v1 | `@arcjet/guard/langgraph/v1` | On current docs/`main`, not published 1.10.0. Graph API (`StateGraph` + `ToolNode` from `@langchain/langgraph/prebuilt`), not LangChain `createAgent` / `wrapToolCall`. Do not build on `createReactAgent`. `guardTool` for authored `tool()` / `StructuredTool`. `guardToolNode` for MCP / unwrapped tools. `langgraphAgentContext` reads `thread_id`. No `guardInbound` / `guardApproval` / `guardInterrupt` — `interrupt()` is human HITL. Optional peers `@langchain/langgraph` and `@langchain/core` `>=1 <2`. Node.js 22+. Do not also wrap with `vercel-ai/v7`. |
@@ -314,6 +314,57 @@ for await (const message of query({
 })) {
   void message;
 }
+```
+
+### Vercel Eve
+
+Exports: `guardTool`, `guardApproval`, `guardInbound`, `arcjetHooks`, `eveAgentContext`. Import `@arcjet/guard/vercel-eve/v0` — there is no unversioned alias and no `/v1`. Optional peer `eve` `>=0.34.0 <1`. Eve is still 0.x. Node.js ≥ 24. The request/response form is on current docs/`main`, not published 1.10.0.
+
+`guardInbound`, `arcjetHooks`, and `guardTool` are unchanged. `guardApproval` now supports Eve 0.34+ request/response approval:
+
+- **`approval` is one field.** It can be a function (request-time only) or `{ request, response }`. You cannot compose `guardApproval` with Eve's `always()` / `once()` / `never()`.
+- Omit `response` and `guardApproval()` returns Eve's `ApprovalPolicy` function. Set `response` and it returns `{ request, response }` (`ApprovalConfiguration`).
+- **`onAllow: "user-approval"`** parks the call for a human after the request-time gate.
+- Optional `response` is `GuardApprovalResponsePolicy` against Eve's `ApprovalResponseContext`. Use it to authorize who may approve a parked HITL request (e.g. key a limit on `ctx.responder.principalId`). The request-time policy typically keys on `ctx.session.id` — split buckets, don't share one.
+- Response-time ALLOW → `{ status: "allowed" }`. If the response policy denies the responder, or Arcjet is unreachable and `onGuardError` is `"deny"` (default), it returns `{ status: "rejected", reason }` and the approval stays pending. A rejection does not deny the tool.
+- Request-time denials remain `{ type: "denied", reason }`. HITL clients answer with `cancel`, not `deny`.
+- Fail closed by default (`onGuardError: "deny"`).
+
+```typescript
+import { launchArcjet, tokenBucket } from "@arcjet/guard";
+import { guardApproval } from "@arcjet/guard/vercel-eve/v0";
+import { defineOpenAPIConnection } from "eve/connections";
+
+const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });
+const sessionLimit = tokenBucket({
+  bucket: "weather-session",
+  refillRate: 5,
+  intervalSeconds: 60,
+  maxTokens: 5,
+});
+const approverLimit = tokenBucket({
+  bucket: "weather-approver",
+  refillRate: 5,
+  intervalSeconds: 60,
+  maxTokens: 5,
+});
+
+export default defineOpenAPIConnection({
+  description: "Weather API",
+  spec: "https://api.example.com/openapi.json",
+  approval: guardApproval(arcjet, {
+    action: "weather.fetched",
+    rules: (ctx) => [sessionLimit({ key: ctx.session.id, requested: 1 })],
+    onAllow: "user-approval",
+    response: {
+      action: "weather.approved",
+      rules: (ctx) => [approverLimit({ key: ctx.responder.principalId, requested: 1 })],
+    },
+  }),
+  operations: {
+    allow: ["GetForecast"],
+  },
+});
 ```
 
 ### LangGraph
