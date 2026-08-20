@@ -92,6 +92,8 @@ All Guard rate limit rules require an explicit key at call time. Use a user ID, 
 
 The second argument to `Key` is the amount consumed. Passing `1` creates a per-operation quota. For a token budget, pass a documented preflight token estimate or declared job cost; the SDK does not tokenize prompts or know the eventual output-token count for you.
 
+An empty `Bucket` defaults to `default-token-bucket`, `default-fixed-window`, or `default-sliding-window` (parity with JS/Python), not a shared `"default"`. Prefer an explicit `Bucket` as in the example above.
+
 ## Content Scanning Rules
 
 - `GuardPromptInjection` — use on untrusted text before it reaches a model or tool argument. The result may include optional `Billing` (`tokens`).

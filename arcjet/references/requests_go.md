@@ -80,6 +80,8 @@ Use `client.WithRule(...)` to derive a route-specific client when a handler need
 
 Pass the real `*http.Request` and `r.Context()` so Arcjet respects cancellation and extracts IP/header metadata correctly. If the app is behind trusted reverse proxies, set `Config.Proxies` to the trusted proxy IPs/CIDRs. If the app runs on a known platform, set `Config.Platform` when appropriate.
 
+When the context has no deadline, `Protect` and `ProtectDetails` apply 2s (4s when an email rule is present). The prompt-injection 1s floor is already met. A caller-supplied deadline is never shortened.
+
 For user-based characteristics, use identity established by trusted authentication middleware or a verified token/session. Do not trust a caller-controlled header as a user ID unless a trusted proxy strips incoming values and rewrites the header.
 
 ## Correlation IDs
