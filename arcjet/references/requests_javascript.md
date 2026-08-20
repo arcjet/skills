@@ -77,6 +77,8 @@ Five frameworks don't fit the "shared client file" pattern above. Use the struct
 
 Astro registers Arcjet as a build-time **integration** in `astro.config.mjs`. The configured client is exposed as a virtual module — there is no `lib/arcjet.ts` file and no `withRule()`. Rules are global to the integration; per-route variation isn't supported.
 
+If an existing config still has `detectPromptInjection({ threshold })`, drop `threshold`. `@arcjet/astro` validates with Zod `.strict()`, so leftover `threshold` throws at startup. Core adapters ignore leftover `threshold`; Astro does not.
+
 ```typescript
 // astro.config.mjs
 import arcjet, { shield } from "@arcjet/astro";
@@ -218,7 +220,7 @@ See the "Choosing the Right Rules" section in the main skill for rule selection 
 - **validateEmail** — for signup/login forms.
 - **protectSignup** — combined bot + email + rate limit, purpose-built for registration flows.
 - **sensitiveInfo** — blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `@arcjet/sensitive-info-rampart` and pass `backend: rampart()`.
-- **detectPromptInjection** — for AI endpoints receiving user prompts.
+- **detectPromptInjection** — for AI endpoints receiving user prompts. On `main` the only option is `mode`; do not pass `threshold`.
 - **filter** — block by IP metadata (VPN, Tor, country, IP range).
 
 ## Framework-Specific protect() Calls
@@ -250,7 +252,7 @@ The request object to pass differs by framework:
 - `decision.reason.isRateLimit()` → 429
 - `decision.reason.isEmail()` → 400
 - `decision.reason.isSensitiveInfo()` → 400
-- `decision.reason.isPromptInjection()` → 400
+- `decision.reason.isPromptInjection()` → 400 (`injectionDetected` is the binary verdict; there is no `score`)
 - everything else (bot, shield, filter) → default 403
 
 Writing an explicit `else if (reason.isShield())` arm that returns 403 just adds noise when the default already returns 403.
@@ -293,14 +295,14 @@ Available from **`@arcjet/*` 1.6.0**: SDK transports honor standard `HTTP_PROXY`
 
 ## Deprecations
 
-As of `@arcjet/*` 1.6.0, the request-based SDK carries a few deprecated bits. New code should avoid them; existing code that uses them should be migrated when convenient.
+As of `@arcjet/*` 1.6.0, the request-based SDK still carries a couple of deprecated bits. New code should avoid them; existing code that uses them should be migrated when convenient.
 
-- **`detectPromptInjection({ threshold })`** — the `threshold` option is no longer respected by the server and will be removed in a future release. Drop it from new configs; remove it from existing configs when touching them. Detection runs without it.
-- **`PromptInjectionReason.score`** — the `score` field on the reason returned for prompt-injection denials is no longer populated by the server and will be removed. Don't read it; branch on `decision.reason.isPromptInjection()` instead.
 - **`experimental_detectPromptInjection`** — the legacy `experimental_` alias is deprecated. Import `detectPromptInjection` directly from `@arcjet/node` / `@arcjet/next` / etc.
 - **`ArcjetEdgeRuleReason`** — currently unused; can be ignored in reason-handling switches.
 
-> _Deprecations last verified against the `@arcjet/*` v1.10.0 release on **2026-08-11**. Before relying on the items above, grep the installed package for `@deprecated` markers — see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
+On `main` ([arcjet-js#6238](https://github.com/arcjet/arcjet-js/pull/6238)), `detectPromptInjection({ threshold })` and `PromptInjectionReason.score` are **removed**, not deprecated. Only `mode` remains. Do not pass `threshold` in new code, and drop it from existing configs when you see it — especially Astro, where leftover `threshold` throws (see [Astro](#astro) above). Core adapters ignore leftover `threshold` (no throw, no effect on rule id). Don't read `score`; branch on `decision.reason.isPromptInjection()` / `injectionDetected`. Published `@arcjet/*` 1.10.0 still lists them as `@deprecated`.
+
+> _Deprecations last verified against the `@arcjet/*` v1.10.0 release on **2026-08-11**. `threshold` / `score` removal is on `main` ([arcjet-js#6238](https://github.com/arcjet/arcjet-js/pull/6238)). Before relying on the items above, grep the installed package for `@deprecated` markers — see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
 
 ## Key Patterns
 
