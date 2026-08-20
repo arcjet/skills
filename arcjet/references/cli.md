@@ -4,7 +4,7 @@ The CLI is the preferred way to connect to the Arcjet platform from a terminal s
 
 ## Install
 
-The simplest way is `npx` (no install required):
+The usual way is `npx` (no install required):
 
 ```bash
 npx -y @arcjet/cli@latest <command>
@@ -23,7 +23,7 @@ brew install arcjet/tap/arcjet
 curl -sSfL https://arcjet.com/cli/install.sh | bash
 ```
 
-Or download the latest archive for your platform from https://github.com/arcjet/cli/releases, extract it, and place the `arcjet` binary somewhere on your `PATH`. Available for macOS (Apple Silicon, Intel), Linux (x86_64, arm64), and Windows (x86_64, arm64).
+Or download a release archive for your platform from https://github.com/arcjet/cli/releases, extract it, and place the `arcjet` binary somewhere on your `PATH`. Available for macOS (Apple Silicon, Intel), Linux (x86_64, arm64), and Windows (x86_64, arm64).
 
 Verify: `arcjet version`
 
@@ -49,14 +49,14 @@ Sign out:
 arcjet auth logout
 ```
 
-> **Note:** If `arcjet auth status` reports the user is not signed in, run `arcjet auth login` and wait for confirmation in the browser before continuing. Do not prompt the user for a token — the device flow is the expected path.
+> **Note:** If `arcjet auth status` reports the user is not signed in, run `arcjet auth login` and wait for confirmation in the browser before continuing. Do not prompt the user for a token – the device flow is the expected path.
 
-## Agent Usage
+## Agent usage
 
 Two flags keep output predictable:
 
-- `--output json` — emit machine-readable JSON (default when stdout is not a TTY)
-- `--fields <a,b,c>` — limit output to listed top-level keys (use aggressively to keep context small)
+- `--output json` – emit machine-readable JSON (default when stdout is not a TTY)
+- `--fields <a,b,c>` – limit output to listed top-level keys (use aggressively to keep context small)
 
 ```bash
 arcjet teams list --output json --fields id,name
@@ -64,7 +64,7 @@ arcjet sites list --team-id team_01abc123 --output json --fields id,name
 arcjet requests list --site-id site_01abc123 --output json --fields id,conclusion,path
 ```
 
-## Common Workflows
+## Common workflows
 
 **Bootstrap a project:** `arcjet auth login` → `arcjet teams list` → `arcjet sites list --team-id <id>` (or `arcjet sites create`) → `arcjet sites get-key --site-id <id>` → write key to `.env` as `ARCJET_KEY`.
 
@@ -74,9 +74,9 @@ arcjet requests list --site-id site_01abc123 --output json --fields id,conclusio
 
 **Manage remote rules:** `arcjet rules list` → `arcjet rules create` (DRY_RUN) → `arcjet analyze dry-run-impact` → `arcjet rules promote` (LIVE)
 
-## Command Reference
+## Command reference
 
-Run `arcjet help` to see all available commands, or `arcjet <command> help` for details on a specific command (e.g. `arcjet rules help`, `arcjet analyze help`).
+Run `arcjet help` to see all available commands, or `arcjet <command> help` for details on a specific command (for example `arcjet rules help`, `arcjet analyze help`).
 
 ## Invariants
 

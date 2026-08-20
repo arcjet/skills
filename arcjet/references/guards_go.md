@@ -1,12 +1,12 @@
 # Go Guard
 
-## What Guard Is
+## What Guard is
 
-Guard protects code paths that do not have an HTTP request — agent tool calls, MCP handlers, queue workers, background jobs, and other non-HTTP operations. In Go, Guard is part of the same `github.com/arcjet/arcjet-go` module as request protection, but uses `NewGuardClient` and `Guard`.
+Guard protects code paths that do not have an HTTP request – agent tool calls, MCP handlers, queue workers, background jobs, and other non-HTTP operations. In Go, Guard is part of the same `github.com/arcjet/arcjet-go` module as request protection, but uses `NewGuardClient` and `Guard`.
 
 ## Installation
 
-The latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (2026-06-30). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, and `GuardModerateContent` are on the module default branch — read the installed package docs after `go get`. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The published tag is **`github.com/arcjet/arcjet-go` v0.1.0** (June 30, 2026). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, `GuardModerateContent`, and required Guard `Mode` are on the module default branch – read the installed package docs after `go get`. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Install with Go tooling:
 
@@ -14,7 +14,7 @@ Install with Go tooling:
 go get github.com/arcjet/arcjet-go@latest
 ```
 
-## Architecture: Why Things Go Where They Do
+## Architecture: why things go where they do
 
 ### Client at package scope
 
@@ -30,6 +30,8 @@ The client owns the connection to Arcjet. Creating it inside a tool function mea
 The snippets use a small generic `must(value, err)` startup helper; use the project's existing initialization/error pattern if it has one.
 
 Go does not load `.env` files automatically. Ensure the worker process or service manager exports `ARCJET_KEY`, or use the project's existing environment loader. Do not add a dotenv dependency solely to copy this example without reviewing it first.
+
+When `Key` is empty, `NewGuardClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewClient`), not a missing-key bug. JavaScript Guard never reads environment variables; Python Guard requires an explicit key. There is no `ARCJET_ENV` switch.
 
 ### Rules at package scope
 
@@ -49,6 +51,8 @@ var promptScan = must(arcjet.GuardPromptInjection(
 	arcjet.GuardPromptInjectionOptions{Mode: arcjet.ModeLive},
 ))
 ```
+
+Guard constructors require `Mode: arcjet.ModeLive` or `Mode: arcjet.ModeDryRun`. An empty `Mode` returns `ErrInvalidMode` – it does not fall through to dry run. HTTP Protect rules still default to `DRY_RUN`.
 
 ### Guard at the operation
 
@@ -84,24 +88,26 @@ if decision.IsDenied() {
 
 Labels and rate-limit buckets are validated as slugs: lowercase letters, digits, dash (`-`), and dot (`.`), starting and ending with a letter or digit. Use `tools.get-weather`, not `tools.get_weather`.
 
-## Rate Limits and Keys
+## Rate limits and keys
 
 All Guard rate limit rules require an explicit key at call time. Use a user ID, session ID, API key, or another stable identifier. If there is no user context, use a deliberate scope such as deployment name, process identity, or `"global"` with a comment explaining why.
 
 The second argument to `Key` is the amount consumed. Passing `1` creates a per-operation quota. For a token budget, pass a documented preflight token estimate or declared job cost; the SDK does not tokenize prompts or know the eventual output-token count for you.
 
-## Content Scanning Rules
+An empty `Bucket` defaults to `default-token-bucket`, `default-fixed-window`, or `default-sliding-window` (parity with JS/Python), not a shared `"default"`. Prefer an explicit `Bucket` as in the preceding example.
 
-- `GuardPromptInjection` — use on untrusted text before it reaches a model or tool argument. The result may include optional `Billing` (`tokens`).
-- `GuardSensitiveInfo` — use to block PII entering or leaving the system; scanning happens locally. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`. Create the backend once at startup.
-- `GuardModerateContent` — Guard-only content moderation. Result is binary `Detected` plus optional `Billing` (`text_units`). `ExperimentalGuardModerateContent` remains a deprecated alias until 1.0.
-- `GuardCustom` — runs your local custom function and reports the result to Arcjet. Keep the function deterministic and side-effect free.
+## Content scanning rules
+
+- `GuardPromptInjection` – use on untrusted text before it reaches a model or tool argument. The result may include optional `Billing` (`tokens`).
+- `GuardSensitiveInfo` – use to block PII entering or leaving the system; scanning happens locally. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`. Create the backend once at startup.
+- `GuardModerateContent` – Guard-only content moderation. Result is binary `Detected` plus optional `Billing` (`text_units`). `ExperimentalGuardModerateContent` remains a deprecated alias until 1.0.
+- `GuardCustom` – runs your local custom function and reports the result to Arcjet. Keep the function deterministic and side-effect free.
 
 Go has no registration / free `guard()` API. Pass the client.
 
 ## Capture and flush
 
-`Capture` records that an action happened. It is not a security decision — it never denies, never returns an error, and never sets `HasFailedOpen()`.
+`Capture` records that an action happened. It is not a security decision – it never denies, never returns an error, and never sets `HasFailedOpen()`.
 
 ```go
 guard.Capture(arcjet.CaptureEvent{
@@ -117,13 +123,13 @@ guard.Capture(arcjet.CaptureEvent{
 
 Call `Flush(ctx)` on shutdown (one-second deadline if `ctx` has none). `Close` flushes first, then releases local wasm.
 
-## Errors vs Warnings
+## Errors vs warnings
 
 Available in **`arcjet-go` v0.1.0**:
 
 - `decision.HasFailedOpen()` is true when the decision is `ALLOW` only because a rule or the decision itself could not be processed. This is the fail-closed gate for sensitive operations.
 - `decision.ErrorResults()` returns the errored rule results for logging.
-- Each rule also exposes a per-rule `ErrorResult(decision)` accessor — the mirror of `DeniedResult(decision)` — returning that rule's `*ArcjetError` if it errored, else `nil`. Use it to attribute a fail-open to a specific rule (e.g. only block when the prompt-injection scan errored) instead of scanning `ErrorResults()`.
+- Each rule also exposes a per-rule `ErrorResult(decision)` accessor – the mirror of `DeniedResult(decision)` – returning that rule's `*ArcjetError` if it errored, else `nil`. Use it to attribute a fail-open to a specific rule (for example only block when the prompt-injection scan errored) instead of scanning `ErrorResults()`.
 - `decision.Warnings` contains decision-level diagnostics such as invalid metadata that was stripped. Warnings never change the conclusion.
 
 ```go
@@ -143,6 +149,6 @@ Set `GuardRequest.CorrelationId` to correlate this guard call with HTTP requests
 
 `Metadata` is `arcjet.Metadata` (`map[string]any`), not `map[string]string`. Values may be nested maps, slices, numbers, and booleans. Do not put secrets or PII in it. Dropped keys appear on `decision.Warnings`.
 
-## Outbound HTTP Proxy
+## Outbound HTTP proxy
 
 Available in **`arcjet-go` v0.1.0**: standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables are honored for outbound Arcjet API calls. Do not log proxy URLs because they may contain credentials.

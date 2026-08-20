@@ -1,26 +1,40 @@
 # Python Guard
 
-## What Guard Is
+## Contents
 
-Guard protects code paths that don't have an HTTP request — tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 below still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000 ms default Guard request timeout) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site. On `main`, prefer `guard_action` / `guard_tool` / `ArcjetMiddleware` when they fit — see [Framework helpers](#framework-helpers).
+- [What Guard is](#what-guard-is)
+- [Installation](#installation)
+- [Architecture: why things go where they do](#architecture-why-things-go-where-they-do)
+- [Choose a rate limit strategy](#choose-a-rate-limit-strategy)
+- [Content scanning rules](#content-scanning-rules)
+- [Decision handling](#decision-handling)
+- [Async vs sync](#async-vs-sync)
+- [Capture and flush](#capture-and-flush)
+- [Optional registration](#optional-registration)
+- [Framework helpers](#framework-helpers)
+- [Key patterns](#key-patterns)
 
-**Version compatibility:** Python ≥ 3.10 (same as the request SDK — they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
+## What Guard is
 
-Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
+Guard protects code paths that don't have an HTTP request – tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 in the following sections still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000&nbsp;ms default request timeout for Guard; `protect()` matches on `main`) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site. On `main`, prefer `guard_action` / `guard_tool` / `ArcjetMiddleware` when they fit – see [Framework helpers](#framework-helpers).
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI** — `pip install arcjet` still resolves 0.9.0. The APIs below that are newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000 ms default Guard request timeout are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and defaults to 1000 ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) — not in 0.9.0 or 0.10.0b1. Read the installed package's types before using either. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+**Version compatibility:** Python ≥ 3.10 (same as the request SDK – they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
+
+Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
+
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1. Read the installed package's types before using either. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
-Install with whichever package manager the project already uses (`pip install`, `uv add`, `poetry add`, etc.) — don't hand-edit `requirements.txt` with a guessed version (`arcjet>=1.0.0` doesn't exist; the current minor release line is `0.x`):
+Install with whichever package manager the project already uses (`pip install`, `uv add`, or `poetry add`) – don't hand-edit `requirements.txt` with a guessed version (`arcjet>=1.0.0` doesn't exist; the current minor release line is `0.x`):
 
 ```bash
 pip install arcjet
 ```
 
-Guard is included in the `arcjet` package — no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`) — see [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
+Guard is included in the `arcjet` package – no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`) – see [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
 
-## Architecture: Why Things Go Where They Do
+## Architecture: why things go where they do
 
 ### Client at module scope
 
@@ -37,18 +51,18 @@ Use `launch_arcjet` for async code, `launch_arcjet_sync` for sync. The client ho
 
 Rate limit state is tracked server-side by the combination of `bucket` and other configuration properties, so recreating rules per call won't break counting. However, defining rules at module scope is still best practice because:
 
-- It makes the per-rule result accessors (e.g. `user_limit.denied_result(decision)`) work — you need a stable reference to call methods on.
+- It makes the per-rule result accessors (for example `user_limit.denied_result(decision)`) work – you need a stable reference to call methods on.
 - It avoids unnecessary object allocation on every invocation.
 - It keeps rule configuration visible and centralized.
 
 ```python
 from arcjet.guard import TokenBucket, DetectPromptInjection
 
-# WORKS but awkward — no stable reference for result inspection
+# WORKS but awkward – no stable reference for result inspection
 def handle_tool():
     limit = TokenBucket(...)  # hard to call limit.denied_result() later
 
-# BETTER — declare rules at module scope, dynamically choose which to apply
+# BETTER – declare rules at module scope, dynamically choose which to apply
 admin_limit = TokenBucket(
     label="admin.tool-calls",
     bucket="admin-tools",
@@ -75,7 +89,7 @@ def tool_rules(user_id: str, role: str, text: str):
 
 ### guard() at the operation, with a hardcoded label
 
-Place `guard()` wherever you already know exactly what operation is happening. That's typically inside the specific tool/task function, but the dispatch arm right before calling it works equally well — sometimes it gives cleaner error propagation:
+Place `guard()` wherever you already know exactly what operation is happening. That's typically inside the specific tool/task function, but the dispatch arm right before calling it works equally well – sometimes it gives cleaner error propagation:
 
 ```python
 # Option A: guard inside the tool function
@@ -106,21 +120,21 @@ async def handle_tool_call(name: str, args: dict, user_id: str):  # 👎
     decision = await arcjet.guard(label=f"tools.{name}", rules=[...])
 ```
 
-The `label` should be a hardcoded string — `"tools.get-weather"`, not `f"tools.{name}"`. Hardcoded labels stay greppable, and the Console groups by them.
+The `label` must be a hardcoded string – `"tools.get-weather"`, not `f"tools.{name}"`. Hardcoded labels stay greppable, and the Console groups by them.
 
-**Label naming rules (often surprising):** labels are validated server-side as slugs — **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected even though some SDK TSDoc / docstring comments list them as allowed. Use `tools.get-weather`, not `tools.get_weather`. Same rules apply to rate-limit `bucket` names.
+**Label naming rules:** labels are validated server-side as slugs – **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected. Metadata *keys* may contain underscores; labels and rate-limit `bucket` names may not. Use `tools.get-weather`, not `tools.get_weather`.
 
-Pass `metadata` whenever you have useful auditing context. It is nested JSON, not a flat string map — `{"user": {"id": user_id}, "request_id": ...}` is valid. It shows up in the Console and does not affect the decision. Do not put secrets or PII in it.
+Pass `metadata` whenever you have useful auditing context. It is nested JSON, not a flat string map – `{"user": {"id": user_id}, "request_id": ...}` is valid. It shows up in the Console and does not affect the decision. Do not put secrets or PII in it.
 
-## Choosing a Rate Limit Strategy
+## Choose a rate limit strategy
 
-See the "Rate Limiting Strategies" section in the main skill for a comparison of token bucket vs fixed window vs sliding window.
+For a comparison of token bucket vs fixed window vs sliding window, see [Choose protections](choosing_protections.md).
 
-Key guard-specific notes: all rate limit rules require a `key` parameter at call time (user ID, session ID) — without it, limits are global across all callers. They also need a `bucket` name to avoid collisions between different rules.
+Key Guard-specific notes: all rate limit rules require a `key` parameter at call time (user ID, session ID) – without it, limits are global across all callers. They also need a `bucket` name to avoid collisions between different rules.
 
-**Picking a `key` when there's no user:** Some call sites have no per-user context — e.g. a single-tenant background worker. Don't fake it with an empty string. Use whatever identifier matches the scope (`os.environ.get("HOSTNAME", "default")`, deployment name, etc.) and add a short comment if it's deliberately global.
+**Picking a `key` when there's no user:** Some call sites have no per-user context – for example a single-tenant background worker. Don't fake it with an empty string. Use whatever identifier matches the scope (`os.environ.get("HOSTNAME", "default")` or a deployment name) and add a short comment if it's deliberately global.
 
-## Content Scanning Rules
+## Content scanning rules
 
 ### Prompt injection detection
 
@@ -128,11 +142,11 @@ Use `DetectPromptInjection()` on any untrusted text before it reaches a model or
 
 ### Sensitive information detection
 
-Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (e.g. users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally — raw text never leaves the SDK. The default backend is WASM; see Rampart below for names and government / financial identifiers.
+Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (for example users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally – raw text never leaves the SDK. The default backend is WASM; see [On-device Rampart backend](#on-device-rampart-backend) for names and government / financial identifiers.
 
 ### Content moderation
 
-`ModerateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is frozen to `detected` plus optional `billing` (`text_units`) — no per-category scores. Published **0.9.0** / **0.10.0b1** still export `experimental_ModerateContent` as the public name; current `main` graduates it to `ModerateContent` and keeps the old name as a deprecated alias (`DeprecationWarning`). Import whichever the installed types export. `decision.reason` is `"MODERATE_CONTENT"` on deny.
+`ModerateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is frozen to `detected` plus optional `billing` (`text_units`) – no per-category scores. Published **0.9.0** / **0.10.0b1** still export `experimental_ModerateContent` as the public name; current `main` graduates it to `ModerateContent` and keeps the old name as a deprecated alias (`DeprecationWarning`). Import whichever the installed types export. `decision.reason` is `"MODERATE_CONTENT"` on deny.
 
 ```python
 from arcjet.guard import ModerateContent
@@ -160,32 +174,32 @@ sensitive = LocalDetectSensitiveInfo(deny=["GIVEN_NAME", "SSN"], backend=rampart
 
 Listing a backend-only entity type without a supporting `backend` raises.
 
-## Decision Handling
+## Decision handling
 
 `decision.conclusion` is either `"ALLOW"` or `"DENY"`. Always check before proceeding.
 
-For useful error messages, branch on **which rule** denied — not just on `DENY`. Each rule defined at module scope exposes a `.denied_result(decision)` accessor that returns rule-specific info (e.g. `reset_at_unix_seconds` for rate limits). Use this to give the caller something actionable:
+For useful error messages, branch on **which rule** denied – not just on `DENY`. Each rule defined at module scope exposes a `.denied_result(decision)` accessor that returns rule-specific info (for example `reset_at_unix_seconds` for rate limits). Use this to give the caller something actionable:
 
 ```python
 if decision.conclusion == "DENY":
     rate_limited = user_task_limit.denied_result(decision)
     if rate_limited:
-        raise Exception(f"rate limited — retry after unix {rate_limited.reset_at_unix_seconds}")
+        raise Exception(f"rate limited – retry after unix {rate_limited.reset_at_unix_seconds}")
     if decision.reason == "PROMPT_INJECTION":
         raise Exception("input flagged as prompt injection")
     raise Exception("blocked")
 ```
 
-`decision.reason` is a flat string — one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"MODERATE_CONTENT"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Prompt-injection and content-moderation results may include optional `billing` (`unit` / `count`). Prompt injection uses `tokens`; moderation uses `text_units`. The moderation result is `detected` plus that optional `billing` only. Read the types on the decision object for the full structure.
+`decision.reason` is a flat string – one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"MODERATE_CONTENT"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Prompt-injection and content-moderation results may include optional `billing` (`unit` / `count`). Prompt injection uses `tokens`; moderation uses `text_units`. The moderation result is `detected` plus that optional `billing` only. Read the types on the decision object for the full structure.
 
 ### Errors vs warnings (failing open)
 
-`guard()` never raises for runtime degradation — a transport failure or a rule that couldn't be processed comes back as a fail-open `"ALLOW"` decision, not an exception. (Programmer errors — an invalid label, a misconfigured rule — still raise `ArcjetError`.) Two distinct signals (available from **`arcjet` 0.9.0**) tell you what happened:
+`guard()` never raises for runtime degradation – a transport failure or a rule that couldn't be processed comes back as a fail-open `"ALLOW"` decision, not an exception. (Programmer errors – an invalid label, a misconfigured rule – still raise `ArcjetError`.) Two distinct signals (available from **`arcjet` 0.9.0**) tell you what happened:
 
-- `decision.has_failed_open()` — `True` when the decision is `"ALLOW"` *only* because a rule or the decision itself could not be processed. This is the **fail-closed gate**: if the operation is sensitive enough that a degraded Arcjet signal should block rather than allow, branch on this and deny. `decision.error_results()` returns the errored results (each with a `code`/`message`) for logging.
-- `decision.warnings` — request-validation diagnostics (e.g. an invalid metadata key that was stripped). The decision is still valid and trustworthy; warnings never change the conclusion. Log them so the config gets fixed, but don't block on them.
+- `decision.has_failed_open()` – `True` when the decision is `"ALLOW"` *only* because a rule or the decision itself could not be processed. This is the **fail-closed gate**: if the operation is sensitive enough that a degraded Arcjet signal must block rather than allow, branch on this and deny. `decision.error_results()` returns the errored results (each with a `code`/`message`) for logging.
+- `decision.warnings` – request-validation diagnostics (for example an invalid metadata key that was stripped). The decision is still valid and trustworthy; warnings never change the conclusion. Log them so the config gets fixed, but don't block on them.
 
-To attribute a failure to a *specific* rule rather than scanning the whole decision, each rule also exposes `.error_result(decision)` (new in **`arcjet` 0.9.0**) — the mirror of `.denied_result(decision)`. It returns that rule's `RuleResultError` (with `code`/`message`) if that rule errored, else `None`. Use it when only one rule failing open is actually unsafe (e.g. the prompt-injection scan) while others failing open is tolerable.
+To attribute a failure to a *specific* rule rather than scanning the whole decision, each rule also exposes `.error_result(decision)` (added in **`arcjet` 0.9.0**) – the mirror of `.denied_result(decision)`. It returns that rule's `RuleResultError` (with `code`/`message`) if that rule errored, else `None`. Use it when only one rule failing open is actually unsafe (for example the prompt-injection scan) while others failing open is tolerable.
 
 ```python
 decision = await arcjet.guard(label="tools.get-weather", rules=rules)
@@ -196,27 +210,27 @@ for w in decision.warnings:
     logging.warning("%s: %s", w.code, w.message)
 ```
 
-On `arcjet` ≤ 0.8.0 the only signal is `decision.has_error()`, which is **deprecated** from 0.9.0 (it conflated request diagnostics with rule errors, and now emits a `DeprecationWarning`). Check the installed package's types — if `has_failed_open` exists, prefer it over `has_error()`.
+On `arcjet` ≤ 0.8.0 the only signal is `decision.has_error()`, which is **deprecated** from 0.9.0 (it conflated request diagnostics with rule errors, and emits a `DeprecationWarning`). Check the installed package's types – if `has_failed_open` exists, prefer it over `has_error()`.
 
 ### Correlation IDs
 
-Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision. On `main`, keep a whole run on one Sequence with `arcjet_sequence` or LangChain `config["configurable"]["arcjet_correlation_id"]` — see [Framework helpers](#framework-helpers).
+Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision. On `main`, keep a whole run on one Sequence with `arcjet_sequence` or LangChain `config["configurable"]["arcjet_correlation_id"]` – see [Framework helpers](#framework-helpers).
 
 ### Outbound HTTP proxy
 
 Available from **`arcjet` 0.9.0**: standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables are honored for outbound Arcjet API calls. Do not log proxy URLs because they may contain credentials.
 
-## Async vs Sync
+## Async vs sync
 
 The package provides both variants:
-- `launch_arcjet` / `await arcjet.guard(...)` — async, use in `async def` functions
-- `launch_arcjet_sync` / `arcjet.guard(...)` — sync, use in regular `def` functions
+- `launch_arcjet` / `await arcjet.guard(...)` – async, use in `async def` functions
+- `launch_arcjet_sync` / `arcjet.guard(...)` – sync, use in regular `def` functions
 
-**Pick the variant that matches the function you're protecting.** A FastAPI handler or an `AsyncOpenAI` agent loop is async — use `launch_arcjet`. A Celery task, a queue poller defined with `def`, or anything wrapped by a sync framework is sync — use `launch_arcjet_sync`. Mixing them produces "coroutine was never awaited" warnings or blocking calls inside an event loop. Both variants provide the same protection.
+**Pick the variant that matches the function you're protecting.** A FastAPI handler or an `AsyncOpenAI` agent loop is async – use `launch_arcjet`. A Celery task, a queue poller defined with `def`, or anything wrapped by a sync framework is sync – use `launch_arcjet_sync`. Mixing them produces "coroutine was never awaited" warnings or blocking calls inside an event loop. Both variants provide the same protection.
 
 ## Capture and flush
 
-`capture()` records that an action happened. It is not a security decision — it never denies and is not awaited, even on the async client.
+`capture()` records that an action happened. It is not a security decision – it never denies and is not awaited, even on the async client.
 
 ```python
 aj.capture(
@@ -235,9 +249,9 @@ Call `await aj.flush()` (async) or `aj.flush()` (sync) on shutdown. Default dead
 
 `capture()` is one free function for both client flavors. `guard` / `flush` come in pairs: `await guard(...)` / `await flush()` for `launch_arcjet()`, and `guard_sync(...)` / `flush_sync()` for `launch_arcjet_sync()`. Calling the wrong pair fail-opens and reports `AJ3007`.
 
-Free `guard()` / `guard_sync()` fail-open if nothing is registered — check `has_failed_open()`. Free `capture()` drops silently. A second `register_arcjet` does not displace the first. `unregister_arcjet()` clears whatever is there — libraries should not call it. Registration is a module-level global, not a `ContextVar`, so it is visible from WSGI worker threads.
+Free `guard()` / `guard_sync()` fail-open if nothing is registered – check `has_failed_open()`. Free `capture()` drops silently. A second `register_arcjet` does not displace the first. `unregister_arcjet()` clears whatever is there – libraries must not call it. Registration is a module-level global, not a `ContextVar`, so it is visible from WSGI worker threads.
 
-For tests, `from arcjet.guard.testing import register_test_client` and use `with register_test_client() as arcjet:`. Its `guard()` always returns fail-open ALLOW. Pass `on_guard_error="allow"` on the helpers below unless the test is asserting a denial — the recorder's fail-open ALLOW is an unevaluated policy, and the default `"deny"` refuses it.
+For tests, `from arcjet.guard.testing import register_test_client` and use `with register_test_client() as arcjet:`. Its `guard()` always returns fail-open ALLOW. Pass `on_guard_error="allow"` on the helpers below unless the test is asserting a denial – the recorder's fail-open ALLOW is an unevaluated policy, and the default `"deny"` refuses it.
 
 ## Framework helpers
 
@@ -250,9 +264,9 @@ Pick the helper that matches what you hold. Do not hand-wrap every tool with raw
 | Any Python callable (worker, MCP handler, job) | `guard_action` / `guard_action_sync` | none (`arcjet.guard`) |
 | A LangChain `BaseTool` you call yourself | `guard_tool` | `arcjet[langchain]` (`langchain-core>=1.2.5,<2`) |
 | `create_agent` (the model chooses tools) | `ArcjetMiddleware` + `ToolPolicy` | `arcjet[langchain-agents]` (`langchain>=1.3,<2`, `langgraph>=1.2,<2`) |
-| A chain or agent you want to observe | `ArcjetCaptureHandler` | `arcjet[langchain]` — cannot deny |
+| A chain or agent you want to observe | `ArcjetCaptureHandler` | `arcjet[langchain]` – cannot deny |
 
-`guard_action` is core Guard — no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`.
+`guard_action` is core Guard – no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`.
 
 ### Gotchas
 
@@ -261,7 +275,7 @@ Pick the helper that matches what you hold. Do not hand-wrap every tool with raw
 - **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` or `config={"configurable": {"arcjet_correlation_id": session.id}}`. Do not mint a new id per turn. LangChain's `run_id` is not used. The config key wins over an enclosing `arcjet_sequence`; `configurable` is checked before `metadata`.
 - **Capture handlers never block.** LangChain ignores what a callback returns. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`.
 
-### Any callable — `guard_action`
+### Any callable – `guard_action`
 
 ```python
 from arcjet.guard import launch_arcjet, TokenBucket, guard_action
@@ -284,9 +298,9 @@ result = await guard_action(
 )
 ```
 
-`fn` takes no arguments — close over what you need. Sync code uses `guard_action_sync`. Raises `ArcjetDeniedError` on DENY, `ArcjetUnavailableError` when evaluation failed and `on_guard_error="deny"`. Guard `TokenBucket` takes `refill_rate` / `interval_seconds` / `max_tokens` (and optional `label` / `bucket`); that is not the request helper `token_bucket` (`interval` / `capacity`).
+`fn` takes no arguments – close over what you need. Sync code uses `guard_action_sync`. Raises `ArcjetDeniedError` on DENY, `ArcjetUnavailableError` when evaluation failed and `on_guard_error="deny"`. Guard `TokenBucket` takes `refill_rate` / `interval_seconds` / `max_tokens` (and optional `label` / `bucket`); that is not the request helper `token_bucket` (`interval` / `capacity`).
 
-### LangChain tool you call — `guard_tool`
+### LangChain tool you call – `guard_tool`
 
 ```python
 from arcjet.guard.langchain import guard_tool
@@ -303,7 +317,7 @@ guarded = guard_tool(
 
 Needs `pip install "arcjet[langchain]"`. The result is still a `BaseTool`. DENY raises `ArcjetToolDeniedError` (the tool's `handle_tool_error` may convert it); unavailable raises `ArcjetToolUnavailableError`.
 
-### `create_agent` — `ArcjetMiddleware`
+### `create_agent` – `ArcjetMiddleware`
 
 ```python
 from langchain.agents import create_agent
@@ -335,11 +349,11 @@ await agent.ainvoke(
 # equivalently: with arcjet_sequence(correlation_id=session.id): ...
 ```
 
-Needs `pip install "arcjet[langchain-agents]"`. Pass `tools=` the same sequence you gave `create_agent` — a typo in a policy key is refused at construction instead of leaving that tool unguarded. Tools without a policy pass through. `guard=` is optional if you already `register_arcjet()`.
+Needs `pip install "arcjet[langchain-agents]"`. Pass `tools=` the same sequence you gave `create_agent` – a typo in a policy key is refused at construction instead of leaving that tool unguarded. Tools without a policy pass through. `guard=` is optional if you already `register_arcjet()`.
 
 If you can name the tool at wiring time, `guard_tool` is the smaller change. If the model picks the tool, use the middleware. They compose: a guarded tool inside a guarded agent evaluates each policy once and both land on the same Sequence.
 
-### Observe a chain — `ArcjetCaptureHandler`
+### Observe a chain – `ArcjetCaptureHandler`
 
 ```python
 from arcjet.guard.langchain import ArcjetAsyncCaptureHandler, ArcjetCaptureHandler
@@ -353,7 +367,8 @@ await chain.ainvoke(
 
 Same extra as `guard_tool`. Pair the handler with the call: `ArcjetCaptureHandler` with `invoke`, `ArcjetAsyncCaptureHandler` with `ainvoke`. Neither can deny a call.
 
-## Key Patterns
+## Key patterns
 
-- Use `metadata` for analytics/auditing context — nested JSON, not a flat string map. It appears in the Console and does not affect the decision. Do not put secrets or PII in it.
-- The `label` string should identify the operation (e.g. `"tools.get-weather"`, `"queue.process-job"`) — it appears in the Console and helps you understand which operations are being limited or blocked.
+- An empty `rules` list still calls `guard()` / the Decide API. `rules=[]` is a real decision, not a no-op skip.
+- Use `metadata` for analytics/auditing context – nested JSON, not a flat string map. It appears in the Console and does not affect the decision. Do not put secrets or PII in it.
+- The `label` string must identify the operation (`"tools.get-weather"`, `"queue.process-job"`) – it appears in the Console and groups which operations are being limited or blocked.
