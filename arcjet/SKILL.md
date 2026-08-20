@@ -36,7 +36,7 @@ Before writing any code, the project needs a real `ARCJET_KEY` in its env file. 
 
 1. **Arcjet CLI** (preferred). Check whether you're already signed in, then retrieve a key.
 2. **Arcjet MCP server** (endpoint: `https://api.arcjet.com/mcp`) – for clients with built-in MCP. See [references/mcp.md](references/mcp.md).
-3. **Manual** (last resort): tell the user to grab a key from https://app.arcjet.com.
+3. **Manual** (last resort): tell the user to grab a key from https://console.arcjet.com.
 
 #### CLI bootstrap (the normal path)
 
@@ -153,7 +153,7 @@ After wiring up protection, confirm it's actually firing. Three steps:
 
 - **CLI**: `npx -y @arcjet/cli@latest requests list --site-id <id>` (request-based) or `... guards list --site-id <id>` (Guard)
 - **MCP**: `list-requests` / `list-guards`
-- **Console**: https://app.arcjet.com
+- **Console**: https://console.arcjet.com
 
 For deeper investigation: `arcjet requests explain --site-id <id> --request-id <id>` or `arcjet guards explain --site-id <id> --guard-id <id>`.
 
@@ -182,4 +182,4 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`).
 - **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. The published tag is `v0.1.0`; APIs described in the Go references live on the default branch.
 - **Docs**: https://docs.arcjet.com – narrative guides, blueprints, and product reference.
-- **Console**: https://app.arcjet.com – sites, keys, and decision history.
+- **Console**: https://console.arcjet.com – sites, keys, and decision history.
