@@ -6,7 +6,7 @@ Request protection inspects `net/http` requests — headers, IP, body — to enf
 
 ## Installation
 
-The latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (2026-06-30). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Nested `Metadata`, `WithIPSrc`, Rampart, and `decision.IP.Threat` are on the module default branch. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (2026-06-30). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Nested `Metadata`, `WithIPSrc`, Rampart, `decision.IP.Threat`, and Protect transport-failure ERROR decisions are on the module default branch. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Install with Go tooling, not by editing `go.mod` directly:
 
@@ -59,6 +59,8 @@ if err != nil {
 	return
 }
 ```
+
+On a Decide transport failure, `Protect` returns an `ERROR` decision alongside `err`. `IsAllowed()` and `IsErrored()` are both true — do not treat a missing `err` as the only fail-open signal. Programmer errors (nil client, nil request) still return the zero `Decision{}`.
 
 Use `client.WithRule(...)` to derive a route-specific client when a handler needs extra rules beyond the shared base protection. It returns `(*arcjet.Client, error)`, so construct derived clients during initialization and handle the error rather than ignoring it.
 
