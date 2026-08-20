@@ -8,7 +8,7 @@ Request protection inspects HTTP requests — headers, IP, body — to enforce s
 
 - **Python:** ≥ 3.10 (declared in `pyproject.toml`). Older versions will fail to install — warn the user and stop.
 - **FastAPI / Flask:** no formal peer dependency — the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes.
-- **`libgcc`:** needed by the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
+- **Platforms:** CPython 3.10+ on macOS, Windows, and glibc Linux (Debian, Ubuntu, RHEL, `*-slim` / manylinux). Native deps are `wasmtime` (local WASM) and `pyqwest` (HTTP via `connect-python`). Those publish `musllinux` wheels today, so Alpine often installs — but Alpine/musl is **not a supported install target**. If the project is Alpine/musl, warn and steer to a glibc image (`python:3.10-slim` or `astral/uv:python3.10-trixie-slim`). Do not treat `apk add libgcc` as a fix.
 
 > _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI**. Nested metadata, Rampart, and `ip_details.threat` are in 0.10.0b1 / main. `ip_src` already exists on 0.9.0. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
@@ -19,6 +19,8 @@ Install with whichever package manager the project already uses (`pip install`, 
 ```bash
 pip install arcjet
 ```
+
+In containers, prefer a glibc image (`python:3.10-slim` or `astral/uv:python3.10-trixie-slim`). Alpine/musl is not a supported install target — see Version compatibility above.
 
 Read the installed package's types and docstrings for the full API surface.
 

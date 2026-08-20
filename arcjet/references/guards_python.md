@@ -6,7 +6,7 @@ Guard protects code paths that don't have an HTTP request — tool calls, agent 
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK — they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
-Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
+Supported install targets are CPython 3.10+ on macOS, Windows, and glibc Linux. Native deps are `wasmtime` and `pyqwest`. `musllinux` wheels often work today, but Alpine/musl is **not supported** — do not treat `apk add libgcc` as a fix. If the project is Alpine/musl, warn and steer to a glibc image such as `python:3.10-slim` or `astral/uv:python3.10-trixie-slim`.
 
 > _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI** — `pip install arcjet` still resolves 0.9.0. The APIs below that are newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000 ms default Guard request timeout are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and defaults to 1000 ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) — not in 0.9.0 or 0.10.0b1. Read the installed package's types before using either. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
@@ -17,6 +17,8 @@ Install with whichever package manager the project already uses (`pip install`, 
 ```bash
 pip install arcjet
 ```
+
+In containers, prefer a glibc image (`python:3.10-slim` or `astral/uv:python3.10-trixie-slim`). Alpine/musl is not a supported install target — see Version compatibility above.
 
 Guard is included in the `arcjet` package — no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`) — see [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
 
