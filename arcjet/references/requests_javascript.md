@@ -15,7 +15,7 @@ Pick the adapter for the project's framework, then install it with whichever pac
 | Framework         | Package                                                   | Min framework version                                |
 | ----------------- | --------------------------------------------------------- | ---------------------------------------------------- |
 | Next.js           | `@arcjet/next`                                            | Next.js 15 or 16 (supported target; SDK peer range is broader) |
-| Express / Node.js | `@arcjet/node`                                            | Node `>=22.21.0 <23 || >=24.5.0` (no framework peer) |
+| Express / Node.js | `@arcjet/node`                                            | Node `>=22.21.0 <23 \|\| >=24.5.0` (no framework peer) |
 | Fastify           | `@arcjet/fastify`                                         | Fastify ≥ 5                                          |
 | NestJS            | `@arcjet/nest`                                            | `@nestjs/common` ^10 \|\| ^11                        |
 | SvelteKit         | `@arcjet/sveltekit`                                       | Svelte ^3.54 \|\| ^4 \|\| ^5                         |

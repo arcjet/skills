@@ -16,7 +16,7 @@ Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called o
 
 | Runtime            | Minimum version          |
 | ------------------ | ------------------------ |
-| Node.js            | `>=22.21.0 <23 || >=24.5.0` |
+| Node.js            | `>=22.21.0 <23 \|\| >=24.5.0` |
 | Bun                | 1.3.0                    |
 | Deno               | `stable` / `lts`         |
 | Cloudflare Workers | compat date `2025-09-01` |
