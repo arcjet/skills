@@ -41,6 +41,8 @@ var Client = must(arcjet.NewClient(arcjet.Config{
 
 Do not construct a client inside each handler; it wastes connections and makes rules harder to manage.
 
+When `Key` is empty, `NewClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewGuardClient`), not a missing-key bug. There is no `ARCJET_ENV` switch.
+
 ### Protect inside handlers
 
 Call `Protect(ctx, r, ...)` inside each route handler, once per request. Do not put it in generic middleware that runs on every path, including static assets; that removes per-route control and can double-count traffic.
@@ -70,13 +72,17 @@ Use `client.WithRule(...)` to derive a route-specific client when a handler need
 - `DetectBot` — request-based only; use `Allow` for a safelist or `Deny` for specific categories.
 - Rate limits — `TokenBucket`, `FixedWindow`, `SlidingWindow`; use `WithRequested(n)` for variable-cost calls and `WithCharacteristics(...)` for user/session keys.
 - `ValidateEmail` / `ProtectSignup` — signup and login forms.
-- `SensitiveInfo` — scans text locally before it leaves the process; pass text with `WithSensitiveInfoValue(...)`. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`.
+- `SensitiveInfo` — scans text locally before it leaves the process; pass text with `WithSensitiveInfoValue(...)`. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`. `SensitiveInfoOptions.ContextWindowSize` is an `int` (default 1); a custom `SensitiveInfoDetect` sees a window of that size. `GuardSensitiveInfo` does not expose this option — its window is always 1.
 - `DetectPromptInjection` — pass untrusted user text with `WithDetectPromptInjectionMessage(...)`.
 - `Filter` — block by IP metadata, country, VPN/proxy/Tor, or request-local fields.
+
+`NewClient` and `WithRule` sort local Protect rules like JS: SensitiveInfo → Filter → Shield → RateLimit → Bot → Email → PromptInjection. Same-priority rules keep declaration order. Do not treat Go Protect as declaration-order evaluation. SensitiveInfo-first is a privacy property — it denies before another rule can forward the payload.
 
 ## Request Context
 
 Pass the real `*http.Request` and `r.Context()` so Arcjet respects cancellation and extracts IP/header metadata correctly. If the app is behind trusted reverse proxies, set `Config.Proxies` to the trusted proxy IPs/CIDRs. If the app runs on a known platform, set `Config.Platform` when appropriate.
+
+When the context has no deadline, `Protect` and `ProtectDetails` apply 2s (4s when an email rule is present). The prompt-injection 1s floor is already met. A caller-supplied deadline is never shortened.
 
 For user-based characteristics, use identity established by trusted authentication middleware or a verified token/session. Do not trust a caller-controlled header as a user ID unless a trusted proxy strips incoming values and rewrites the header.
 

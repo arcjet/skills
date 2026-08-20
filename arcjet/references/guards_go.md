@@ -31,6 +31,8 @@ The snippets use a small generic `must(value, err)` startup helper; use the proj
 
 Go does not load `.env` files automatically. Ensure the worker process or service manager exports `ARCJET_KEY`, or use the project's existing environment loader. Do not add a dotenv dependency solely to copy this example without reviewing it first.
 
+When `Key` is empty, `NewGuardClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewClient`), not a missing-key bug. JavaScript Guard never reads environment variables; Python Guard requires an explicit key. There is no `ARCJET_ENV` switch.
+
 ### Rules at package scope
 
 Declare configured rules at package scope so their result accessors are available and the configuration stays visible.
@@ -91,6 +93,8 @@ Labels and rate-limit buckets are validated as slugs: lowercase letters, digits,
 All Guard rate limit rules require an explicit key at call time. Use a user ID, session ID, API key, or another stable identifier. If there is no user context, use a deliberate scope such as deployment name, process identity, or `"global"` with a comment explaining why.
 
 The second argument to `Key` is the amount consumed. Passing `1` creates a per-operation quota. For a token budget, pass a documented preflight token estimate or declared job cost; the SDK does not tokenize prompts or know the eventual output-token count for you.
+
+An empty `Bucket` defaults to `default-token-bucket`, `default-fixed-window`, or `default-sliding-window` (parity with JS/Python), not a shared `"default"`. Prefer an explicit `Bucket` as in the example above.
 
 ## Content Scanning Rules
 
