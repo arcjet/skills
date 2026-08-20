@@ -152,6 +152,53 @@ When present, `decision.ip_details.threat` is optional threat metadata (`risk_le
 
 Available from **`arcjet` 0.9.0**: the SDK honors standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables for outbound Arcjet API calls. Because Arcjet is contacted over HTTPS, `HTTPS_PROXY` is the relevant variable for most deployments. Do not log proxy URLs because they may contain credentials.
 
+### Inspect helpers
+
+When the handler needs to treat a verified crawler, a missing `User-Agent`, or a spoofed bot differently from a plain `is_denied()`, import the helpers from `arcjet` — there is no Python `@arcjet/inspect` package. Parsing `reason_v2` by hand recreates the same checks and usually misses the `DRY_RUN` filter.
+
+`is_verified_bot` and `is_missing_user_agent` are on `main` ([arcjet-py#214](https://github.com/arcjet/arcjet-py/pull/214)). `is_spoofed_bot` already exists on 0.9.0 / 0.10.0b1; on `main` it also ignores `DRY_RUN` ([arcjet-py#216](https://github.com/arcjet/arcjet-py/pull/216)). The new helpers are not in those published wheels — read the installed package before importing.
+
+```python
+from arcjet import is_missing_user_agent, is_spoofed_bot, is_verified_bot
+
+# Verified search-engine crawler — skip other signals and return SEO content
+if any(is_verified_bot(r) for r in decision.results):
+    return {"message": "Hello bot"}
+
+# Missing User-Agent is a strong non-browser signal (RFC 9110 recommends the header)
+if any(is_missing_user_agent(r) for r in decision.results):
+    raise HTTPException(status_code=400, detail="User-Agent required")
+
+# Client claimed to be a known crawler from an unverified IP
+if any(is_spoofed_bot(r) for r in decision.results):
+    raise HTTPException(status_code=403, detail="Spoofed bot")
+```
+
+- `is_verified_bot(result)` — a live bot rule matched the client IP against official crawler ranges.
+- `is_missing_user_agent(result)` — a live bot rule failed because `User-Agent` was missing.
+- `is_spoofed_bot(result)` — a live bot rule found a spoofed user agent.
+
+All three ignore `DRY_RUN` results (same as JS `isActive`) so an observation-only rule cannot drive the response ([arcjet-py#216](https://github.com/arcjet/arcjet-py/pull/216) aligned `is_spoofed_bot`). They return `False` for dry-run and non-bot results — Python is `bool`, not JS's `boolean | undefined`.
+
+### Rate-limit headers
+
+When a rate-limit rule is in play and the client should see remaining budget, call `set_rate_limit_headers` from `arcjet` instead of formatting IETF headers by hand. JS uses a separate `@arcjet/decorate` package; Python exports the same writer from `arcjet`. On `main` only ([arcjet-py#214](https://github.com/arcjet/arcjet-py/pull/214)).
+
+```python
+from arcjet import set_rate_limit_headers
+
+decision = await aj.protect(request)
+set_rate_limit_headers(response, decision)
+# RateLimit: limit=100, remaining=3, reset=9
+# RateLimit-Policy: 100;w=60
+if decision.is_denied():
+    raise HTTPException(status_code=429, detail="Too many requests")
+```
+
+Call it after `protect()` on the response you will return — including allowed requests. The target can be a FastAPI / Starlette / Flask `response` (uses `.headers`), a Fetch-style Headers object, a Node-style `setHeader` response, or a mutable mapping.
+
+When several rate-limit results are present, the tightest remaining budget is advertised (`remaining`, then `reset`, then `max`). Two policies that share the same `max` abort — no headers are written, because the IETF field cannot disambiguate them. Don't give two rate-limit rules the same `max` if you want these headers. No rate-limit results, or an unrecognized target, is a no-op.
+
 ## Deprecations
 
 As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New code should avoid them; existing code in the project that uses them should be migrated when convenient.
@@ -169,3 +216,4 @@ As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New c
 - Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
 - Every rule accepts `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Start with DRY_RUN to verify rules match expected traffic.
 - For existing projects, check for an existing Arcjet client before creating a new one — add the new rule to the existing client's `rules=[...]` list, or define a sibling client with the rules you need.
+- Inspect bot results with `is_verified_bot` / `is_missing_user_agent` / `is_spoofed_bot` from `arcjet` (not a separate package). All three ignore `DRY_RUN`. Write IETF `RateLimit` / `RateLimit-Policy` with `set_rate_limit_headers(response, decision)` — tightest remaining budget; two policies with the same `max` abort.
