@@ -10,7 +10,7 @@ Pick the adapter for the project's framework, then install it with whichever pac
 
 **Runtime baseline:** **Node.js `>=22.21.0 <23 || >=24.5.0`**, **Bun ≥ 1.3.0**, **Deno** `stable` / `lts`. Node 20 is end-of-life and is no longer supported by the SDK. If the project is below any of these, the install will fail or runtime behavior will misbehave — bump the runtime first.
 
-> _Version info last verified against the published `@arcjet/*` **v1.10.0** on **2026-08-11**. Numbers below may drift — before relying on them, check the current `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the latest release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
+> _Version info last verified against the published `@arcjet/*` **v1.10.0** on **2026-08-11**. The 2000 ms Decide timeout (every adapter, same as Guard) is on `main` ([arcjet-js#6236](https://github.com/arcjet/arcjet-js/pull/6236)). Numbers below may drift — before relying on them, check the current `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the latest release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
 
 | Framework         | Package                                                   | Min framework version                                |
 | ----------------- | --------------------------------------------------------- | ---------------------------------------------------- |
@@ -53,6 +53,8 @@ export const aj = arcjet({
   rules: [shield({ mode: "LIVE" })],
 });
 ```
+
+On `main`, JS adapters default the Decide API timeout to 2000 ms — same as Guard, same in production and development. An explicit `timeout` on `createRemoteClient()` still wins.
 
 ### withRule() for per-route rules
 
