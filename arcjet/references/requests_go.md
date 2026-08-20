@@ -70,9 +70,11 @@ Use `client.WithRule(...)` to derive a route-specific client when a handler need
 - `DetectBot` — request-based only; use `Allow` for a safelist or `Deny` for specific categories.
 - Rate limits — `TokenBucket`, `FixedWindow`, `SlidingWindow`; use `WithRequested(n)` for variable-cost calls and `WithCharacteristics(...)` for user/session keys.
 - `ValidateEmail` / `ProtectSignup` — signup and login forms.
-- `SensitiveInfo` — scans text locally before it leaves the process; pass text with `WithSensitiveInfoValue(...)`. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`.
+- `SensitiveInfo` — scans text locally before it leaves the process; pass text with `WithSensitiveInfoValue(...)`. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`. `SensitiveInfoOptions.ContextWindowSize` is an `int` (default 1); a custom `SensitiveInfoDetect` sees a window of that size. `GuardSensitiveInfo` does not expose this option — its window is always 1.
 - `DetectPromptInjection` — pass untrusted user text with `WithDetectPromptInjectionMessage(...)`.
 - `Filter` — block by IP metadata, country, VPN/proxy/Tor, or request-local fields.
+
+`NewClient` and `WithRule` sort local Protect rules like JS: SensitiveInfo → Filter → Shield → RateLimit → Bot → Email → PromptInjection. Same-priority rules keep declaration order. Do not treat Go Protect as declaration-order evaluation. SensitiveInfo-first is a privacy property — it denies before another rule can forward the payload.
 
 ## Request Context
 
