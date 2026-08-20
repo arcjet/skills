@@ -6,7 +6,7 @@ The MCP server connects AI coding tools to the Arcjet API over HTTP with OAuth a
 
 ## Setup
 
-### VS Code with Copilot
+### VS Code
 
 Add to `.vscode/mcp.json`:
 
@@ -70,11 +70,11 @@ Settings → Connectors → Add connection → URL: `https://api.arcjet.com/mcp`
 
 OAuth-based. On first connection, you'll be redirected to sign in with your Arcjet account. Subsequent calls authenticate automatically.
 
-## Available Tools
+## Available tools
 
 Once connected, the MCP server exposes tools for managing teams, sites, keys, requests, decisions, traffic analysis, anomaly detection, IP investigation, security briefings, and remote rules. The agent can discover available tools through the MCP protocol directly.
 
-## Common Workflows
+## Common workflows
 
 **Bootstrap a project:** `list-teams` → `list-sites` → `get-site-key` → write to `.env` as `ARCJET_KEY`
 
@@ -84,7 +84,7 @@ Once connected, the MCP server exposes tools for managing teams, sites, keys, re
 
 **Add protection without redeploying:** `create-rule` (bot/filter in DRY_RUN) → `get-dry-run-impact` → `promote-rule`
 
-## Security Notes
+## Security notes
 
 - Verify the endpoint is `https://api.arcjet.com/mcp`
 - Enable confirmation prompts in your AI client for write operations
