@@ -10,7 +10,7 @@ Request protection inspects HTTP requests — headers, IP, body — to enforce s
 - **FastAPI / Flask:** no formal peer dependency — the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes.
 - **`libgcc`:** needed by the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI**. Nested metadata, Rampart, and `ip_details.threat` are in 0.10.0b1 / main. `ip_src` already exists on 0.9.0. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI**. Nested metadata, Rampart, and `ip_details.threat` are in 0.10.0b1 / main. `protect_signup()` is on `main` only — not in those published wheels. `ip_src` already exists on 0.9.0. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -69,9 +69,36 @@ See the "Choosing the Right Rules" section in the main skill for rule selection 
 - **detect_bot** — `allow` and `deny` are mutually exclusive.
 - **Rate limits** — use `characteristics` to key by something other than IP.
 - **validate_email** — for signup/login forms.
+- **protect_signup** — signup/login helper: sliding-window rate limit + bot detection + email validation. Returns a tuple — unpack with `*protect_signup(...)` into `arcjet(..., rules=...)` / `arcjet_sync(...)`. It is **not** a single composite rule like JS `protectSignup`. Keyword-only mappings `rate_limit`, `bots`, and `email` are forwarded to those factories. Nested `bots` / `email` still need exactly one of `allow` or `deny` (`allow=[]` is valid). On `main` only — not in published 0.9.0 / 0.10.0b1.
 - **detect_sensitive_info** — blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()` from `arcjet_sensitive_info_rampart`.
 - **detect_prompt_injection** — for AI endpoints receiving user prompts.
 - **filter_request** — block by IP metadata (VPN, Tor, country).
+
+For a signup/login form, unpack the helper into `rules` rather than listing the three factories as the only path:
+
+```python
+import os
+from arcjet import EmailType, Mode, arcjet, protect_signup, shield
+
+aj_signup = arcjet(
+    key=os.environ["ARCJET_KEY"],
+    rules=[
+        shield(mode=Mode.LIVE),
+        *protect_signup(
+            rate_limit={"mode": Mode.LIVE, "max": 5, "interval": 600},
+            bots={"mode": Mode.LIVE, "allow": []},
+            email={
+                "mode": Mode.LIVE,
+                "deny": [
+                    EmailType.DISPOSABLE,
+                    EmailType.INVALID,
+                    EmailType.NO_MX_RECORDS,
+                ],
+            },
+        ),
+    ],
+)
+```
 
 ## Framework-Specific protect() Calls
 
@@ -163,6 +190,7 @@ As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New c
 
 ## Key Patterns
 
-- Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
+- Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` / `protect_signup` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
+- Signup/login: import `protect_signup` from `arcjet` and unpack with `*protect_signup(...)` into `rules`. It is three rules, not one — do not pass the helper as a single list item. `protect(..., email=...)` is unchanged.
 - Every rule accepts `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Start with DRY_RUN to verify rules match expected traffic.
 - For existing projects, check for an existing Arcjet client before creating a new one — add the new rule to the existing client's `rules=[...]` list, or define a sibling client with the rules you need.
