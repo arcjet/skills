@@ -68,9 +68,9 @@ Call `protect()` inside each route handler, once per request. Pass the framework
 See the "Choosing the Right Rules" section in the main skill for rule selection guidance and rate limiting strategy comparisons. Key framework-specific notes:
 
 - **shield** — always include. No configuration needed.
-- **detect_bot** — `allow` and `deny` are mutually exclusive.
+- **detect_bot** — pass exactly one of `allow` or `deny`. Neither or both raises `ValueError` — the factory no longer treats an omitted list as empty. Empty `allow=[]` is valid and means "block every detected bot"; that is an allow-config, not the same as writing `detect_bot()` with no lists. The usual starting point is `allow=[BotCategory.SEARCH_ENGINE]`.
 - **Rate limits** — use `characteristics` to key by something other than IP.
-- **validate_email** — for signup/login forms.
+- **validate_email** — for signup/login forms. Same XOR contract as `detect_bot`: exactly one of `allow` or `deny`. Typical signup config is `deny=[EmailType.DISPOSABLE, EmailType.INVALID]`. Empty `allow=[]` allows no email types. `validate_email()` with no lists raises the same `ValueError`.
 - **detect_sensitive_info** — blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()` from `arcjet_sensitive_info_rampart`.
 - **detect_prompt_injection** — for AI endpoints receiving user prompts.
 - **filter_request** — block by IP metadata (VPN, Tor, country).
@@ -165,6 +165,7 @@ As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New c
 
 ## Key Patterns
 
+- `detect_bot` and `validate_email` each take exactly one of `allow` or `deny`. Passing neither (or both) raises `ValueError`. `allow=[]` is the explicit "block every bot" / "allow no email types" config — do not omit the list.
 - Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
 - Every rule accepts `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Start with DRY_RUN to verify rules match expected traffic.
 - For existing projects, check for an existing Arcjet client before creating a new one — add the new rule to the existing client's `rules=[...]` list, or define a sibling client with the rules you need.
