@@ -70,7 +70,7 @@ See the "Choosing the Right Rules" section in the main skill for rule selection 
 - **Rate limits** — use `characteristics` to key by something other than IP.
 - **validate_email** — for signup/login forms.
 - **detect_sensitive_info** — blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()` from `arcjet_sensitive_info_rampart`.
-- **detect_prompt_injection** — for AI endpoints receiving user prompts. On `main`, do not pass `threshold` — it is a `TypeError`. New configs are `detect_prompt_injection(mode=Mode.LIVE)`.
+- **detect_prompt_injection** — for AI endpoints receiving user prompts. On `main`, do not pass `threshold` — it is a `TypeError`. `mode` is required; omitting it is also a `TypeError`. New configs are `detect_prompt_injection(mode=Mode.LIVE)`.
 - **filter_request** — block by IP metadata (VPN, Tor, country).
 
 ## Framework-Specific protect() Calls
@@ -158,9 +158,9 @@ As of `arcjet` 0.9.0, the request-based SDK still carries a few deprecated bits.
 - **`PromptInjectionReason.score`** — the `score` field on the reason returned for prompt-injection denials is no longer populated meaningfully and will be removed. Don't read it; rely on `reason_v2.type == "PROMPT_INJECTION"` instead.
 - **`arcjet._decision.Reason`** — internal type; use `arcjet._dataclasses.Reason` (re-exported as `arcjet.Reason`) if you need the type annotation. Most callers won't touch this directly.
 
-On `main` ([arcjet-py#217](https://github.com/arcjet/arcjet-py/pull/217)), `detect_prompt_injection(threshold=...)` is **removed**, not deprecated. Passing `threshold` raises `TypeError`. The server never honored it. New configs are `detect_prompt_injection(mode=Mode.LIVE)` — `mode` still defaults to `LIVE`, so do not treat it as required. Drop leftover `threshold` from existing configs; unlike JS core, which ignores leftover `threshold`, Python throws. Published `arcjet` 0.9.0 / 0.10.0b1 still accept the kwarg (deprecated).
+On `main` ([arcjet-py#217](https://github.com/arcjet/arcjet-py/pull/217)), `detect_prompt_injection(threshold=...)` is **removed**, not deprecated. Passing `threshold` raises `TypeError`. The server never honored it. New configs are `detect_prompt_injection(mode=Mode.LIVE)` — `mode` is required; omitting it is a `TypeError` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)). Drop leftover `threshold` from existing configs; unlike JS core, which ignores leftover `threshold`, Python throws. Published `arcjet` 0.9.0 / 0.10.0b1 still accept `threshold` (deprecated) and still default `mode` to `LIVE`.
 
-> _Deprecations last verified against the published `arcjet` v0.9.0 on **2026-06-30**. `threshold` removal is on `main` ([arcjet-py#217](https://github.com/arcjet/arcjet-py/pull/217)). Before relying on the items above, grep the installed package for new `@deprecated` markers — see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py), [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py), and [`src/arcjet/_rules.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_rules.py)._
+> _Deprecations last verified against the published `arcjet` v0.9.0 on **2026-06-30**. `threshold` removal is on `main` ([arcjet-py#217](https://github.com/arcjet/arcjet-py/pull/217)); required `mode` is on `main` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)). Before relying on the items above, grep the installed package for new `@deprecated` markers — see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py), [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py), and [`src/arcjet/_rules.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_rules.py)._
 
 ## Key Patterns
 
