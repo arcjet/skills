@@ -6,7 +6,7 @@ Guard protects code paths that do not have an HTTP request — agent tool calls,
 
 ## Installation
 
-The latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (2026-06-30). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, and `GuardModerateContent` are on the module default branch — read the installed package docs after `go get`. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (2026-06-30). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, `GuardModerateContent`, and required Guard `Mode` are on the module default branch — read the installed package docs after `go get`. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Install with Go tooling:
 
@@ -49,6 +49,8 @@ var promptScan = must(arcjet.GuardPromptInjection(
 	arcjet.GuardPromptInjectionOptions{Mode: arcjet.ModeLive},
 ))
 ```
+
+Guard constructors require `Mode: arcjet.ModeLive` or `Mode: arcjet.ModeDryRun`. An empty `Mode` returns `ErrInvalidMode` — it does not fall through to dry run. HTTP Protect rules still default to `DRY_RUN`.
 
 ### Guard at the operation
 
