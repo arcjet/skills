@@ -100,7 +100,7 @@ Follow the patterns in the reference file from Step 3. Key principles:
 #### Request-based (HTTP routes):
 - Create shared clients outside handlers and include Shield as a base rule. Use the exact constructor and rule names from the language reference.
 - In JavaScript/TypeScript, use `withRule()` for route-specific rules and `decision.isDenied()` for the result.
-- In Python, pass the complete rule list to `arcjet()` / `arcjet_sync()`; there is no `with_rule()` client method. Check `decision.is_denied()`.
+- In Python, create one `arcjet()` / `arcjet_sync()` client and use `with_rule()` for route-specific extras so clones share `DecisionCache`. Check `decision.is_denied()`.
 - In Go, create one `NewClient` at package scope. `WithRule()` derives route-specific clients and returns `(*Client, error)`, so handle initialization errors. Check `decision.IsDenied()`.
 - Call `protect()` / `Protect()` inside each route handler (not in app-level middleware), once per request.
 - Map denial reasons to HTTP responses. Only branch on reasons that produce a *different* response — there is no point in a Shield-specific arm that returns the same status as the default 403.
