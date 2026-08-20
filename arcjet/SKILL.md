@@ -167,6 +167,7 @@ If you can't run the app in the current environment, tell the user exactly what 
 - **Python capture handlers never block**: `ArcjetCaptureHandler` only records. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`.
 - **Hand-edited dependency manifests**: don't append `"arcjet": "^1.0.0"` to `package.json` or `arcjet>=1.0.0` to `requirements.txt`. Run the project's package manager so the version is real and the lockfile updates.
 - **Double-counting**: Calling `protect()` or `guard()` multiple times for the same operation counts against rate limits multiple times.
+- **JS denial envelopes:** one shared `ArcjetDenialResult` payload (`{ arcjetDenied: true, … }`, wording `"Arcjet denied this call …"`). Delivery is per-framework — AI SDK / Mastra / OpenAI Agents return the object (a throw drops the fields); Claude wraps it in a MCP `CallToolResult` with `isError: true` (a throw is a raw exception; omitting `isError` looks like success); LangGraph returns the object so `ToolMessage.status` is `success` (do not fabricate `status: "error"`); Eve `guardTool` still throws `ArcjetDeniedError` (opt in to a returned payload with `onDeny: "result"`). `guardTool` and `guardAction` are different handlers — envelope vs throw. Details in the JS Guard reference.
 - **Never hardcode `ARCJET_KEY`** — always use environment variables.
 
 ## Choosing Protections

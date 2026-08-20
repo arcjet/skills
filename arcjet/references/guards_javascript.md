@@ -25,7 +25,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **2026-08-11**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, `@arcjet/guard/langgraph/v1`, `@arcjet/guard/claude-agent-sdk/v0`, and `@arcjet/guard/openai-agents/v0` are on current docs and `main`; they are not in 1.10.0 (the next release line is unpublished) — importing one from 1.10.0 fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. OpenAI Agents teaching is pinned to arcjet-js merge `0099fb76e9229fa0b5922f938f4f1ce2e1033ce1` ([#6233](https://github.com/arcjet/arcjet-js/pull/6233)). Read the installed package's types before using any of them. Minimums tend to creep upward — check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **2026-08-11**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, `@arcjet/guard/langgraph/v1`, `@arcjet/guard/claude-agent-sdk/v0`, and `@arcjet/guard/openai-agents/v0` are on current docs and `main`; they are not in 1.10.0 (the next release line is unpublished) — importing one from 1.10.0 fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. OpenAI Agents teaching is pinned to arcjet-js merge `0099fb76e9229fa0b5922f938f4f1ce2e1033ce1` ([#6233](https://github.com/arcjet/arcjet-js/pull/6233)). Shared `ArcjetDenialResult` plus per-framework envelopes are on `main` ([#6240](https://github.com/arcjet/arcjet-js/pull/6240)). Read the installed package's types before using any of them. Minimums tend to creep upward — check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the current README._
 
 ## Architecture: Why Things Go Where They Do
 
@@ -257,13 +257,39 @@ Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/ver
 | LangGraph v1 | `@arcjet/guard/langgraph/v1` | On current docs/`main`, not published 1.10.0. Graph API (`StateGraph` + `ToolNode` from `@langchain/langgraph/prebuilt`), not LangChain `createAgent` / `wrapToolCall`. Do not build on `createReactAgent`. `guardTool` for authored `tool()` / `StructuredTool`. `guardToolNode` for MCP / unwrapped tools. `langgraphAgentContext` reads `thread_id`. No `guardInbound` / `guardApproval` / `guardInterrupt` — `interrupt()` is human HITL. Optional peers `@langchain/langgraph` and `@langchain/core` `>=1 <2`. Node.js 22+. Do not also wrap with `vercel-ai/v7`. |
 | OpenAI Agents v0 | `@arcjet/guard/openai-agents/v0` | On `main` at merge `0099fb76` ([#6233](https://github.com/arcjet/arcjet-js/pull/6233)), not published 1.10.0. Text `Agent` + `run()` / `Runner` + authored `tool()`. Not Realtime, Sandbox, hosted, MCP, `asTool`, computer/shell. `guardTool` + `openaiAgentsContext` only. No `guardInbound` / `guardApproval` / `guardToolNode` / `guardHooks`. `needsApproval` is HITL. Optional peer `@openai/agents` `>=0.17.0 <1`. Node.js 22+. Do not also wrap with `vercel-ai/v7`. |
 
+### Denial responses
+
+Every JS adapter uses one payload — `ArcjetDenialResult` — built by a single shared helper ([arcjet-js#6240](https://github.com/arcjet/arcjet-js/pull/6240)). The fields are identical so a model trained on denial objects sees the same shape regardless of which integration is in use. The envelope is per-framework, because each SDK has a different idiomatic way to report that a tool did not run. Canonical table: the [Denial responses](https://github.com/arcjet/arcjet-js/blob/main/arcjet-guard/README.md) section of the Guard README.
+
+```typescript
+const result: ArcjetDenialResult = {
+  arcjetDenied: true,
+  reason: "RATE_LIMIT",
+  message: "Arcjet denied this call (RATE_LIMIT). It may be retried after 30 seconds.",
+  retryable: true,
+  retryAfterSeconds: 30,
+};
+```
+
+AI SDK wording is `"Arcjet denied this call …"` (no longer `"tool call"`).
+
+| Adapter | Idiomatic envelope | Why not the others |
+| --- | --- | --- |
+| AI SDK / Mastra | Return `{ arcjetDenied: true, … }` as the tool result | A throw becomes a generic tool error and drops the fields |
+| OpenAI Agents | Return `{ arcjetDenied: true, … }` from `invoke` | A throw hits `errorFunction` or `ToolCallError` and can kill the run |
+| LangGraph | Return `{ arcjetDenied: true, … }`; `ToolNode` wraps it as a `ToolMessage` with `status: "success"` | Faking a `ToolMessage` to force `status: "error"` crashes the graph reducer |
+| Claude Agent SDK | MCP `CallToolResult` with `isError: true` and the payload on `structuredContent` | A throw is a raw exception; omitting `isError` looks like success |
+| Vercel Eve | Throw `ArcjetDeniedError`. Opt in to a returned payload with `onDeny: "result"` | Eve projects a throw as a failed `action.result`. A silent return can violate `outputSchema` |
+
+`guardTool` and `guardAction` remain different handlers. A model-facing `onDeny` must return an envelope the model can inspect; `guardAction` throws `ArcjetDeniedError` so application code can `catch`. Sharing one callback would either leak a throw into the tool loop or swallow a policy denial as a successful action.
+
 ### Claude Agent SDK
 
 Exports: `guardTool`, `guardHooks`, `claudeAgentContext`, plus the shared
 `guardAction` / `captureAction` / `securityMetadata`. There is no unversioned
 `@arcjet/guard/claude-agent-sdk` alias.
 
-- **`guardTool`** wraps an authored `tool()` definition (the ones you pass to `createSdkMcpServer`) so the handler never runs on DENY. It does not throw: the model receives a `CallToolResult` with `isError: true` and `structuredContent.arcjetDenied`.
+- **`guardTool`** wraps an authored `tool()` definition (the ones you pass to `createSdkMcpServer`) so the handler never runs on DENY. Delivery is the shared `ArcjetDenialResult` in a MCP `CallToolResult` with `isError: true` (payload on `structuredContent`). A throw is a raw exception; omitting `isError` looks like success.
 - **`guardHooks`** returns hooks for `query({ options.hooks })`. `inbound` screens `UserPromptSubmit` — the only place a turn can be declined before the model reads the prompt, so prompt-injection rules go here. `PreToolUse` denies with `permissionDecision: "deny"` and is the only gate for built-ins (Bash, Write) and unwrapped MCP tools. `PostToolUse` is observe-only.
 - **`exclude`** on `guardHooks` lists tools that already guard themselves via `guardTool`. `PreToolUse` fires for every tool and the hook input carries only a name, so without it a wrapped tool is guarded twice per invocation — two round trips, two quota units. Entries match the reported name exactly: pass `{ server, name }` for an authored tool (it resolves to `mcp__<server>__<tool>`) and a bare string for a built-in. A bare authored name deliberately does **not** match every server's tool of that name — two servers can expose the same name with only one wrapped.
 - **`options.sessionId` must be a UUID, and a session id can only be created once.** A non-UUID exits the CLI with `Invalid session ID. Must be a valid UUID.`; passing the same id to a second `query()` exits with `Session ID … is already in use.` Mint one UUID per conversation, then continue it with `options.resume` — which is also what keeps every turn on one Sequence, since `claudeAgentContext` reads the hook's `session_id` first.
@@ -321,7 +347,7 @@ for await (const message of query({
 
 Exports: `guardTool`, `guardApproval`, `guardInbound`, `arcjetHooks`, `eveAgentContext`. Import `@arcjet/guard/vercel-eve/v0` — there is no unversioned alias and no `/v1`. Optional peer `eve` `>=0.34.0 <1`. Eve is still 0.x. Node.js ≥ 24. The request/response form is on current docs/`main`, not published 1.10.0.
 
-`guardInbound`, `arcjetHooks`, and `guardTool` are unchanged. `guardApproval` now supports Eve 0.34+ request/response approval:
+`guardInbound` and `arcjetHooks` are unchanged. `guardTool` still throws `ArcjetDeniedError` (Eve projects that as a failed `action.result`). Opt in to a returned `ArcjetDenialResult` with `onDeny: "result"` so an `outputSchema` is not silently violated. `guardApproval` now supports Eve 0.34+ request/response approval:
 
 - **`approval` is one field.** It can be a function (request-time only) or `{ request, response }`. You cannot compose `guardApproval` with Eve's `always()` / `once()` / `never()`.
 - Omit `response` and `guardApproval()` returns Eve's `ApprovalPolicy` function. Set `response` and it returns `{ request, response }` (`ApprovalConfiguration`).
@@ -372,7 +398,7 @@ export default defineOpenAPIConnection({
 
 Exports: `guardTool`, `guardToolNode`, `langgraphAgentContext`. There is no unversioned `@arcjet/guard/langgraph` alias. This is LangGraph Graph API (`StateGraph` + `ToolNode` from `@langchain/langgraph/prebuilt`). It is not LangChain `createAgent` / `wrapToolCall`. Do not build on `createReactAgent` (deprecated in LangGraph JS v1).
 
-- **`guardTool`** wraps a LangChain `tool()` / `StructuredTool` so `func` / `invoke` never runs on `DENY`. The helper does not throw. The model receives a structured `ArcjetDenialResult` (`arcjetDenied: true`). `ToolNode` wraps that object into a real `ToolMessage` whose status is `success` — the denial rides in the payload, not the envelope. Do not fabricate a `ToolMessage` to force status `error`.
+- **`guardTool`** wraps a LangChain `tool()` / `StructuredTool` so `func` / `invoke` never runs on `DENY`. Return the shared `ArcjetDenialResult` — do not throw (that drops the fields). `ToolNode` wraps that object into a real `ToolMessage` whose `status` is `success`. Do not fabricate a `ToolMessage` to force `status: "error"` (crashes the reducer).
 - **`guardToolNode`** guards the tools a `ToolNode` executes (MCP / runtime-discovered / unwrapped tools). It guards in place and returns the same node. A frozen tools array throws. The tools-array form returns copies and leaves the input array alone. Already-guarded tools are skipped so Guard is not called twice.
 - **`langgraphAgentContext`** reads `configurable.thread_id`, then the run id, then `configurable.checkpoint_ns`. It never mints an id. Do not call `createAgentContext` inside a LangGraph callback.
 - There is no `guardInbound` (screen before `graph.invoke` or in the first node). There is no `guardApproval` / `guardInterrupt`: `interrupt()` / `interrupt_before=["tools"]` is human HITL, not a policy gate (same trap as Mastra `requireApproval` and Claude `canUseTool`).
@@ -436,7 +462,7 @@ Three gotchas first:
 2. **`needsApproval` is not a policy gate.** `needsApproval` / `requireApproval` / `onApproval` is human-in-the-loop (`result.state.approve` / `reject`). Same trap as Mastra `requireApproval`, Claude `canUseTool`, and LangGraph `interrupt()`. There is no `guardApproval`.
 3. **Deny is inside `tool({ execute })`.** After `tool()` the object is a `FunctionTool`; the runner calls `invoke`. Hosted tools, handoffs, computer / shell / apply_patch, and MCP (`mcpServers` → `mcpToFunctionTool`) skip that authored-`execute` path. `agent_tool_start` / `agent_tool_end` are void observe-only hooks. There is no `guardHooks` and no `guardToolNode`.
 
-- **`guardTool`** wraps `FunctionTool.invoke` so the closed-over `execute` never runs on `DENY`. The helper does not throw. The model receives `{ arcjetDenied: true, reason, message, retryable, retryAfterSeconds? }` on a `function_call_result` with `status: "completed"` — the denial rides in the payload. Throwing would hit the SDK `errorFunction` (a generic string, or `ToolCallError` when `outputSchema` / `errorFunction: null`). `timeoutMs` races the guard round trip as well as `execute`, so leave headroom; `outputGuardrails` / `customDataExtractor` receive the denial object and must not assume the tool's own shape. `guardTool` warns if `invoke` is handed neither a string nor an object (rules would silently see `{}`).
+- **`guardTool`** wraps `FunctionTool.invoke` so the closed-over `execute` never runs on `DENY`. Return the shared `ArcjetDenialResult` (`{ arcjetDenied: true, … }`) on a `function_call_result` with `status: "completed"`. A throw hits `errorFunction` or `ToolCallError` and drops the fields. `timeoutMs` races the guard round trip as well as `execute`, so leave headroom; `outputGuardrails` / `customDataExtractor` receive the denial object and must not assume the tool's own shape. `guardTool` warns if `invoke` is handed neither a string nor an object (rules would silently see `{}`).
 - **`openaiAgentsContext`** preference: `context.correlationId` → `sessionId` → `conversationId` → `groupId`, then envelope copies (`conversationId`, `groupId`, already-resolved `sessionId`). It never mints an id. It never reads `traceId` (the SDK mints one when omitted). It never calls `session.getSessionId()` (`MemorySession` mints a UUID when constructed without `sessionId`). Do not call `createAgentContext` inside a run callback.
 - Fail closed by default (`onGuardError: "deny"`). Optional peer `@openai/agents` `>=0.17.0 <1`. Zod is their peer, not ours. Node.js 22+. Do not also wrap with `@arcjet/guard/vercel-ai/v7`.
 
