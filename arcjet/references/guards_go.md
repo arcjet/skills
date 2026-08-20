@@ -31,6 +31,8 @@ The snippets use a small generic `must(value, err)` startup helper; use the proj
 
 Go does not load `.env` files automatically. Ensure the worker process or service manager exports `ARCJET_KEY`, or use the project's existing environment loader. Do not add a dotenv dependency solely to copy this example without reviewing it first.
 
+When `Key` is empty, `NewGuardClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewClient`), not a missing-key bug. JavaScript Guard never reads environment variables; Python Guard requires an explicit key. There is no `ARCJET_ENV` switch.
+
 ### Rules at package scope
 
 Declare configured rules at package scope so their result accessors are available and the configuration stays visible.

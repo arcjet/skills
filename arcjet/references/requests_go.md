@@ -41,6 +41,8 @@ var Client = must(arcjet.NewClient(arcjet.Config{
 
 Do not construct a client inside each handler; it wastes connections and makes rules harder to manage.
 
+When `Key` is empty, `NewClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewGuardClient`), not a missing-key bug. There is no `ARCJET_ENV` switch.
+
 ### Protect inside handlers
 
 Call `Protect(ctx, r, ...)` inside each route handler, once per request. Do not put it in generic middleware that runs on every path, including static assets; that removes per-route control and can double-count traffic.
