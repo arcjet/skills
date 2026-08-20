@@ -10,7 +10,7 @@ Request protection inspects HTTP requests — headers, IP, body — to enforce s
 - **FastAPI / Flask:** no formal peer dependency — the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes.
 - **`libgcc`:** needed by the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not — run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI**. Nested metadata, Rampart, and `ip_details.threat` are in 0.10.0b1 / main. `ip_src` already exists on 0.9.0. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **2026-06-30**. GitHub has a **v0.10.0b1** pre-release (**2026-08-12**) that is **not on PyPI**. Nested metadata, Rampart, and `ip_details.threat` are in 0.10.0b1 / main. `ip_src` already exists on 0.9.0. HTTP rule factories require explicit `mode` on `main` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)); published wheels still default `mode` to LIVE. Check `requires-python` in the current [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -53,6 +53,8 @@ aj_write = arcjet(
 )
 ```
 
+Each HTTP factory requires `mode=` — `shield()`, `detect_bot()`, and `sliding_window()` have no LIVE default.
+
 For projects with multiple route files, put these clients in a separate `lib/arcjet.py` and import them. For single-file apps, define at the top of the file. Use `arcjet()` for async (FastAPI) and `arcjet_sync()` for sync (Flask). Create clients at module scope only — never inside a handler.
 
 If you only need one rule set across the whole app, a single client is fine.
@@ -65,7 +67,9 @@ Call `protect()` inside each route handler, once per request. Pass the framework
 
 See the "Choosing the Right Rules" section in the main skill for rule selection guidance and rate limiting strategy comparisons. Key framework-specific notes:
 
-- **shield** — always include. No configuration needed.
+On `main` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)), `shield`, `detect_bot`, `token_bucket`, `fixed_window`, `sliding_window`, `validate_email`, `detect_prompt_injection`, `detect_sensitive_info`, and `filter_request` require `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Omitting `mode` raises `TypeError` — they do not default to LIVE, and they do not silently default to DRY_RUN (the JS HTTP default). Nested mappings passed to `protect_signup` must include `mode` because they forward to those factories. Published `arcjet` 0.9.0 / 0.10.0b1 still default `mode` to LIVE.
+
+- **shield** — always include. Requires `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`.
 - **detect_bot** — `allow` and `deny` are mutually exclusive.
 - **Rate limits** — use `characteristics` to key by something other than IP.
 - **validate_email** — for signup/login forms.
@@ -164,5 +168,5 @@ As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New c
 ## Key Patterns
 
 - Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
-- Every rule accepts `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Start with DRY_RUN to verify rules match expected traffic.
+- HTTP rule factories require `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Omitting `mode` raises `TypeError` — not a LIVE default, and not a silent DRY_RUN default (JS HTTP). Nested mappings passed to `protect_signup` must include `mode` because they forward to those factories. Start with DRY_RUN to verify rules match expected traffic. Guard constructors still default to LIVE.
 - For existing projects, check for an existing Arcjet client before creating a new one — add the new rule to the existing client's `rules=[...]` list, or define a sibling client with the rules you need.
