@@ -26,31 +26,31 @@ Read the installed package's types and docstrings for the full API surface.
 
 ### Client(s) at module scope
 
-The Python SDK's `arcjet()` / `arcjet_sync()` constructor takes the full rule set at creation time — there is **no** `with_rule()` chain method on the resulting client (that pattern only exists in the JS SDKs). To apply different rules to different routes, create one client per rule set:
+Create one `arcjet()` / `arcjet_sync()` client at module scope with the shared base rules. For route-specific extras, call `with_rule(...)` — `Arcjet.with_rule()` / `ArcjetSync.with_rule()` return a client with the extra rule(s) appended. The clone shares this instance's `DecisionCache`, key, characteristics, and transport. The original client is unchanged.
+
+Prefer a base client plus `with_rule(...)` over constructing a second `arcjet()` / `arcjet_sync()` with overlapping rules. Sibling constructors each get their own cache, so the same fingerprint pays a second Decide call. Use a new constructor only when the rule set is wholly different.
+
+`with_rule()` accepts a single rule or a sequence. Stored order is declaration order. Local evaluation still re-sorts (Sensitive Info first).
+
+On `main` only ([arcjet-py#218](https://github.com/arcjet/arcjet-py/pull/218)). Published `arcjet` 0.9.0 / 0.10.0b1 do **not** have `with_rule()`.
 
 ```python
 import os
 from arcjet import BotCategory, Mode, arcjet, detect_bot, shield, sliding_window
 
-# Read endpoints: shield + bot detection + lenient rate limit
-aj_read = arcjet(
+aj = arcjet(
     key=os.environ["ARCJET_KEY"],
     rules=[
         shield(mode=Mode.LIVE),
         detect_bot(mode=Mode.LIVE, allow=[BotCategory.SEARCH_ENGINE]),
-        sliding_window(mode=Mode.LIVE, interval=60, max=100),
     ],
 )
 
-# Write endpoints: same plus a stricter limit
-aj_write = arcjet(
-    key=os.environ["ARCJET_KEY"],
-    rules=[
-        shield(mode=Mode.LIVE),
-        detect_bot(mode=Mode.LIVE, allow=[BotCategory.SEARCH_ENGINE]),
-        sliding_window(mode=Mode.LIVE, interval=60, max=15),
-    ],
-)
+# Read endpoints: extra lenient limit; shares aj's DecisionCache
+aj_read = aj.with_rule(sliding_window(mode=Mode.LIVE, interval=60, max=100))
+
+# Write endpoints: extra stricter limit; same shared cache
+aj_write = aj.with_rule(sliding_window(mode=Mode.LIVE, interval=60, max=15))
 ```
 
 For projects with multiple route files, put these clients in a separate `lib/arcjet.py` and import them. For single-file apps, define at the top of the file. Use `arcjet()` for async (FastAPI) and `arcjet_sync()` for sync (Flask). Create clients at module scope only — never inside a handler.
@@ -165,4 +165,4 @@ As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New c
 
 - Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
 - Every rule accepts `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Start with DRY_RUN to verify rules match expected traffic.
-- For existing projects, check for an existing Arcjet client before creating a new one — add the new rule to the existing client's `rules=[...]` list, or define a sibling client with the rules you need.
+- For existing projects, check for an existing Arcjet client before creating a new one. Prefer `with_rule(...)` for route-specific extras so clones share `DecisionCache`. A second `arcjet()` / `arcjet_sync()` with overlapping rules does not share cache and pays a second Decide call for the same fingerprint. Use a new constructor only for a wholly different rule set.
