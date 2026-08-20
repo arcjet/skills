@@ -53,7 +53,7 @@ aj_write = arcjet(
 )
 ```
 
-Each HTTP factory requires `mode=` — `shield()`, `detect_bot()`, and `sliding_window()` have no LIVE default.
+Each HTTP factory requires `mode=` — `shield()`, `detect_bot()`, `sliding_window()`, and `detect_prompt_injection(*, mode=)` have no LIVE default. Guard `DetectPromptInjection` still defaults to LIVE.
 
 For projects with multiple route files, put these clients in a separate `lib/arcjet.py` and import them. For single-file apps, define at the top of the file. Use `arcjet()` for async (FastAPI) and `arcjet_sync()` for sync (Flask). Create clients at module scope only — never inside a handler.
 
@@ -67,14 +67,14 @@ Call `protect()` inside each route handler, once per request. Pass the framework
 
 See the "Choosing the Right Rules" section in the main skill for rule selection guidance and rate limiting strategy comparisons. Key framework-specific notes:
 
-On `main` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)), `shield`, `detect_bot`, `token_bucket`, `fixed_window`, `sliding_window`, `validate_email`, `detect_prompt_injection`, `detect_sensitive_info`, and `filter_request` require `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Omitting `mode` raises `TypeError` — they do not default to LIVE, and they do not silently default to DRY_RUN (the JS HTTP default). Nested mappings passed to `protect_signup` must include `mode` because they forward to those factories. Published `arcjet` 0.9.0 / 0.10.0b1 still default `mode` to LIVE.
+On `main` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)), `shield`, `detect_bot`, `token_bucket`, `fixed_window`, `sliding_window`, `validate_email`, `detect_prompt_injection(*, mode=)`, `detect_sensitive_info`, and `filter_request` require `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Omitting `mode` raises `TypeError` — they do not default to LIVE, and they do not silently default to DRY_RUN (the JS HTTP default). Nested mappings passed to `protect_signup` must include `mode` because they forward to those factories. Published `arcjet` 0.9.0 / 0.10.0b1 still default `mode` to LIVE. Guard `DetectPromptInjection` still defaults to LIVE.
 
 - **shield** — always include. Requires `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`.
 - **detect_bot** — `allow` and `deny` are mutually exclusive.
 - **Rate limits** — use `characteristics` to key by something other than IP.
 - **validate_email** — for signup/login forms.
 - **detect_sensitive_info** — blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()` from `arcjet_sensitive_info_rampart`.
-- **detect_prompt_injection** — for AI endpoints receiving user prompts.
+- **detect_prompt_injection** — for AI endpoints receiving user prompts. HTTP `detect_prompt_injection(*, mode=)` is required; omitting `mode` is a `TypeError`. Guard `DetectPromptInjection` still defaults to LIVE.
 - **filter_request** — block by IP metadata (VPN, Tor, country).
 
 ## Framework-Specific protect() Calls
@@ -168,5 +168,5 @@ As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New c
 ## Key Patterns
 
 - Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
-- HTTP rule factories require `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Omitting `mode` raises `TypeError` — not a LIVE default, and not a silent DRY_RUN default (JS HTTP). Nested mappings passed to `protect_signup` must include `mode` because they forward to those factories. Start with DRY_RUN to verify rules match expected traffic. Guard constructors still default to LIVE.
+- HTTP rule factories require `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Omitting `mode` raises `TypeError` — not a LIVE default, and not a silent DRY_RUN default (JS HTTP). That includes HTTP `detect_prompt_injection(*, mode=)`. Nested mappings passed to `protect_signup` must include `mode` because they forward to those factories. Start with DRY_RUN to verify rules match expected traffic. Guard constructors — including `DetectPromptInjection` — still default to LIVE.
 - For existing projects, check for an existing Arcjet client before creating a new one — add the new rule to the existing client's `rules=[...]` list, or define a sibling client with the rules you need.
