@@ -62,7 +62,7 @@ SQLi, XSS, and other injection attacks targeting web endpoints.
 
 Credential stuffing, spam registrations, and disposable email abuse on signup/login forms.
 
-**Rules:** `validateEmail` + `protectSignup` (request-based only). Rejects disposable, no-MX, and invalid addresses. `protectSignup` combines bot detection + email validation + rate limiting in one rule.
+**Rules:** `validateEmail` / `validate_email` plus the signup helper (request-based only). Rejects disposable, no-MX, and invalid addresses. JS `protectSignup` is one composite rule (bot detection + email validation + rate limiting). Python `protect_signup()` returns those three factories as a tuple — unpack with `*protect_signup(...)` into `arcjet(..., rules=...)`. Same combo, different shape. The Python helper is on `main` only (not in published 0.9.0 / 0.10.0b1).
 
 ## IP-based filtering
 
