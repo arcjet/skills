@@ -154,7 +154,7 @@ Available from **`arcjet` 0.9.0**: the SDK honors standard `HTTP_PROXY`, `HTTPS_
 
 When the handler needs to treat a verified crawler, a missing `User-Agent`, or a spoofed bot differently from a plain `is_denied()`, import the helpers from `arcjet` — there is no Python `@arcjet/inspect` package. Parsing `reason_v2` by hand recreates the same checks and usually misses the `DRY_RUN` filter.
 
-`is_verified_bot` and `is_missing_user_agent` are on `main` ([arcjet-py#214](https://github.com/arcjet/arcjet-py/pull/214)). `is_spoofed_bot` already exists on 0.9.0 / 0.10.0b1. The new helpers are not in those published wheels — read the installed package before importing.
+`is_verified_bot` and `is_missing_user_agent` are on `main` ([arcjet-py#214](https://github.com/arcjet/arcjet-py/pull/214)). `is_spoofed_bot` already exists on 0.9.0 / 0.10.0b1; on `main` it also ignores `DRY_RUN` ([arcjet-py#216](https://github.com/arcjet/arcjet-py/pull/216)). The new helpers are not in those published wheels — read the installed package before importing.
 
 ```python
 from arcjet import is_missing_user_agent, is_spoofed_bot, is_verified_bot
@@ -174,9 +174,9 @@ if any(is_spoofed_bot(r) for r in decision.results):
 
 - `is_verified_bot(result)` — a live bot rule matched the client IP against official crawler ranges.
 - `is_missing_user_agent(result)` — a live bot rule failed because `User-Agent` was missing.
-- `is_spoofed_bot(result)` — a bot rule found a spoofed user agent.
+- `is_spoofed_bot(result)` — a live bot rule found a spoofed user agent.
 
-`is_verified_bot` and `is_missing_user_agent` ignore `DRY_RUN` results (same as JS `isActive`) so an observation-only rule cannot drive the response. They return `False` for dry-run and non-bot results — Python is `bool`, not JS's `boolean | undefined`. `is_spoofed_bot` does not apply that filter.
+All three ignore `DRY_RUN` results (same as JS `isActive`) so an observation-only rule cannot drive the response ([arcjet-py#216](https://github.com/arcjet/arcjet-py/pull/216) aligned `is_spoofed_bot`). They return `False` for dry-run and non-bot results — Python is `bool`, not JS's `boolean | undefined`.
 
 ### Rate-limit headers
 
@@ -213,4 +213,4 @@ As of `arcjet` 0.9.0, the request-based SDK carries a few deprecated bits. New c
 - Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
 - Every rule accepts `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Start with DRY_RUN to verify rules match expected traffic.
 - For existing projects, check for an existing Arcjet client before creating a new one — add the new rule to the existing client's `rules=[...]` list, or define a sibling client with the rules you need.
-- Inspect bot results with `is_verified_bot` / `is_missing_user_agent` / `is_spoofed_bot` from `arcjet` (not a separate package). The first two ignore `DRY_RUN`. Write IETF `RateLimit` / `RateLimit-Policy` with `set_rate_limit_headers(response, decision)` — tightest remaining budget; two policies with the same `max` abort.
+- Inspect bot results with `is_verified_bot` / `is_missing_user_agent` / `is_spoofed_bot` from `arcjet` (not a separate package). All three ignore `DRY_RUN`. Write IETF `RateLimit` / `RateLimit-Policy` with `set_rate_limit_headers(response, decision)` — tightest remaining budget; two policies with the same `max` abort.
