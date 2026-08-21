@@ -572,7 +572,7 @@ const mcpLimit = tokenBucket({
   maxTokens: 20,
 });
 // The authenticated caller, so a budget cannot be reset by varying the order id.
-const userId = authenticatedUserId;
+const userId = authenticatedUserId; // from your auth layer
 
 const lookupOrder = guardTool(
   arcjet,
@@ -623,7 +623,7 @@ await ai.generate({
 });
 ```
 
-See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, and https://docs.arcjet.com/guards/langgraph/.
+See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, https://docs.arcjet.com/guards/langgraph/, and https://docs.arcjet.com/guards/genkit/.
 
 ## Key patterns
 
