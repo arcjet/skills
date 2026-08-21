@@ -157,6 +157,8 @@ After wiring up protection, confirm it's actually firing. Three steps:
 
 For deeper investigation: `arcjet requests explain --site-id <id> --request-id <id>` or `arcjet guards explain --site-id <id> --guard-id <id>`.
 
+Those lists and details only include events inside the site's plan retention window. An empty history can mean the event aged out, not that protection is unwired. See https://arcjet.com/pricing.
+
 If you can't run the app in the current environment, tell the user exactly what to do (which command to run, what to look for in the output) instead of silently skipping verification.
 
 ### Gotchas
@@ -182,4 +184,4 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`).
 - **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. The published tag is `v0.1.0`; APIs described in the Go references live on the default branch.
 - **Docs**: https://docs.arcjet.com – narrative guides, blueprints, and product reference.
-- **Console**: https://console.arcjet.com – sites, keys, and decision history.
+- **Console**: https://console.arcjet.com – sites, keys, and decision history within the site's plan retention window (https://arcjet.com/pricing).

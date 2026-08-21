@@ -80,6 +80,8 @@ Once connected, the MCP server exposes tools for managing teams, sites, keys, re
 
 **Investigate suspicious traffic:** `analyze-traffic` → `list-requests` (filter DENY) → `investigate-ip` → `create-rule` (DRY_RUN) → `get-dry-run-impact` → `promote-rule`
 
+Request and guard lists and details only include events inside the site's plan retention window. An empty history can mean the event aged out, not that protection is unwired. See https://arcjet.com/pricing.
+
 **Daily security briefing:** `get-security-briefing`
 
 **Add protection without redeploying:** `create-rule` (bot/filter in DRY_RUN) → `get-dry-run-impact` → `promote-rule`

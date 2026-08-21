@@ -70,6 +70,8 @@ arcjet requests list --site-id site_01abc123 --output json --fields id,conclusio
 
 **Investigate a request:** `arcjet requests list --site-id <id>` → `arcjet requests details --site-id <id> --request-id <id>` → `arcjet requests explain --site-id <id> --request-id <id>`
 
+Request and guard lists and details only include events inside the site's plan retention window. An empty history can mean the event aged out, not that protection is unwired. See https://arcjet.com/pricing.
+
 **Daily security briefing:** `arcjet briefing --site-id <id>`
 
 **Manage remote rules:** `arcjet rules list` → `arcjet rules create` (DRY_RUN) → `arcjet analyze dry-run-impact` → `arcjet rules promote` (LIVE)
