@@ -22,7 +22,7 @@ Guard protects code paths that don't have an HTTP request – tool calls, agent 
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1. `arcjet[crewai]` / `arcjet.guard.crewai` is until-published – it is not an extra on PyPI 0.9.0 or current main (`langchain` / `langchain-agents` / `sensitive-info-rampart` only) and has no adapter SHA to pin yet. Read the installed package's types before using either. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1. `arcjet[crewai]` / `arcjet.guard.crewai` is until-published – it is not an extra on PyPI 0.9.0 or current main (`langchain` / `langchain-agents` / `sensitive-info-rampart` only). Teaching is pinned to arcjet-py `cc7dd09260cabe3bfac7aff8fa07e085c209b1db` ([`david/cursor/guard-crewai-hooks`](https://github.com/arcjet/arcjet-py/compare/main...david/cursor/guard-crewai-hooks)). Read the installed package's types before using either. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -32,7 +32,7 @@ Install with whichever package manager the project already uses (`pip install`, 
 pip install arcjet
 ```
 
-Guard is included in the `arcjet` package – no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`). Official CrewAI needs `arcjet[crewai]` once that extra ships – see [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
+Guard is included in the `arcjet` package – no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`). Official CrewAI needs `arcjet[crewai]` (`crewai>=1.15.3,<2`) once that extra ships – see [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
 
 ## Architecture: why things go where they do
 
@@ -255,7 +255,7 @@ For tests, `from arcjet.guard.testing import register_test_client` and use `with
 
 ## Framework helpers
 
-LangChain surfaces are on current `arcjet-py` **main** ([#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in PyPI 0.9.0 or the 0.10.0b1 pre-release. CrewAI (`arcjet[crewai]`, `arcjet.guard.crewai`) is until-published – not an extra on PyPI 0.9.0 or current main, and no adapter SHA to pin yet. Read the installed package before using either.
+LangChain surfaces are on current `arcjet-py` **main** ([#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in PyPI 0.9.0 or the 0.10.0b1 pre-release. CrewAI (`arcjet[crewai]`, `arcjet.guard.crewai`) is until-published – not an extra on PyPI 0.9.0 or current main. Teaching is pinned to arcjet-py `cc7dd092` ([`david/cursor/guard-crewai-hooks`](https://github.com/arcjet/arcjet-py/compare/main...david/cursor/guard-crewai-hooks)). Read the installed package before using either.
 
 Pick the helper that matches what you hold. Do not hand-wrap every tool with raw `guard()`.
 
@@ -265,17 +265,18 @@ Pick the helper that matches what you hold. Do not hand-wrap every tool with raw
 | A LangChain `BaseTool` you call yourself | `guard_tool` | `arcjet[langchain]` (`langchain-core>=1.2.5,<2`) |
 | `create_agent` (the model chooses tools) | `ArcjetMiddleware` + `ToolPolicy` | `arcjet[langchain-agents]` (`langchain>=1.3,<2`, `langgraph>=1.2,<2`) |
 | A chain or agent you want to observe | `ArcjetCaptureHandler` | `arcjet[langchain]` – cannot deny |
-| Official CrewAI `Agent` / `Crew` / `Task` | `arcjet.guard.crewai` (`@on(PRE_TOOL_CALL)` + `HookAborted`) | `arcjet[crewai]` – until-published |
+| Official CrewAI crew / LiteAgent / MCP or crew-injected tool | `register_arcjet_hooks` + `ToolPolicy` | `arcjet[crewai]` (`crewai>=1.15.3,<2`) – until-published |
+| A CrewAI `BaseTool` you call yourself | `guard_tool` (`arcjet.guard.crewai`) | `arcjet[crewai]` – only path that raises Arcjet errors |
 
-`guard_action` is core Guard – no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`. Python LangChain is not JS `createAgent` (docs https://docs.arcjet.com/guards/langchain-js/) and not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). CrewAI docs: https://docs.arcjet.com/guards/crewai/.
+`guard_action` is core Guard – no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`. Importing `arcjet.guard.crewai` does not load LangChain. There is no `guard_crew`. Python LangChain is not JS `createAgent` (docs https://docs.arcjet.com/guards/langchain-js/) and not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). CrewAI docs: https://docs.arcjet.com/guards/crewai/.
 
 ### Gotchas
 
-- **Fail closed.** `guard_action`, `guard_tool`, `ArcjetMiddleware`, and the CrewAI extra default to `on_guard_error="deny"` (same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196)). Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
+- **Fail closed.** `guard_action`, LangChain `guard_tool`, `ArcjetMiddleware`, `register_arcjet_hooks`, and CrewAI `guard_tool` default to `on_guard_error="deny"` (same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196)). Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
 - **Configure the tool before `guard_tool()`.** Narrow `args_schema`, set `handle_tool_error` / `callbacks` / `response_format` on the tool you still hold, then wrap. Changes on the guarded handle do not reach the call.
-- **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` or `config={"configurable": {"arcjet_correlation_id": session.id}}`. Do not mint a new id per turn. LangChain's `run_id` is not used. The config key wins over an enclosing `arcjet_sequence`; `configurable` is checked before `metadata`.
-- **Capture handlers never block.** LangChain ignores what a callback returns. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`. CrewAI `POST_TOOL_CALL` is the same – capture only; the gate is `@on(PRE_TOOL_CALL)` raising `HookAborted`.
-- **`human_input` is not a policy gate.** CrewAI Agent/Task `human_input` is human-in-the-loop, not Guard. Same trap as JS `humanInTheLoopMiddleware` and LangGraph `interrupt()`.
+- **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` or `config={"configurable": {"arcjet_correlation_id": session.id}}`. Do not mint a new id per turn. LangChain's `run_id` is not used. The config key wins over an enclosing `arcjet_sequence`; `configurable` is checked before `metadata`. CrewAI correlation is the same caller-owned `correlation_id` / `arcjet_sequence` — crew, task, and agent names are metadata, never minted into an id.
+- **Capture handlers never block.** LangChain ignores what a callback returns. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`. CrewAI `POST_TOOL_CALL` is the same – capture only; it never rewrites `tool_result`. The gate is `PRE_TOOL_CALL` raising `HookAborted(reason=..., source="arcjet")`.
+- **`human_input` is not a policy gate.** CrewAI Agent/Task `human_input` / `request_human_input` is human-in-the-loop, not Guard. Same trap as JS `humanInTheLoopMiddleware` and LangGraph `interrupt()`.
 
 ### Any callable – `guard_action`
 
@@ -371,23 +372,28 @@ await chain.ainvoke(
 
 Same extra as `guard_tool`. Pair the handler with the call: `ArcjetCaptureHandler` with `invoke`, `ArcjetAsyncCaptureHandler` with `ainvoke`. Neither can deny a call.
 
-### CrewAI – `@on(PRE_TOOL_CALL)`
+### CrewAI – `register_arcjet_hooks`
 
-Official `crewai` only – not community forks, not LangChain Crew wrappers. Install `arcjet[crewai]` and import from `arcjet.guard.crewai`. The extra is **not** on PyPI 0.9.0 or current main (those extras are `langchain` / `langchain-agents` / `sensitive-info-rampart` only). No adapter SHA to pin yet – read the installed names before wiring.
+Official `crewai` only – not community forks, not LangChain Crew wrappers. Install `arcjet[crewai]` (`crewai>=1.15.3,<2`) and import from `arcjet.guard.crewai`. Until-published: the extra is **not** on PyPI 0.9.0 or current main (`langchain` / `langchain-agents` / `sensitive-info-rampart` only). Teaching is pinned to arcjet-py `cc7dd09260cabe3bfac7aff8fa07e085c209b1db` ([`david/cursor/guard-crewai-hooks`](https://github.com/arcjet/arcjet-py/compare/main...david/cursor/guard-crewai-hooks)). Do not claim a released extra.
+
+Exports: `register_arcjet_hooks`, `unregister_arcjet_hooks`, `ArcjetCrewAIHooks`, `guard_tool`, `ToolPolicy`, `sanitize_tool_name`, `free_text_arguments`. There is no `guard_crew`.
 
 Three gotchas first:
 
-1. **The gate is `@on(PRE_TOOL_CALL)`.** A denial (or unevaluated Guard under the default `on_guard_error="deny"`) raises `HookAborted` so the tool never runs. Same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196): only `"allow"` fails open; a `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
-2. **`POST_TOOL_CALL` is capture only.** It records what happened. It cannot deny. Do not treat an after-hook as a policy gate.
-3. **`human_input` is not a policy gate.** Agent/Task `human_input` is human-in-the-loop. Same trap as JS `humanInTheLoopMiddleware`, LangGraph `interrupt()`, OpenAI Agents `needsApproval`, and Genkit `interrupt()`.
+1. **The gate is process-wide `PRE_TOOL_CALL`.** `register_arcjet_hooks` registers on CrewAI's dispatcher. Every tool a crew, LiteAgent, MCP adapter, or crew-injected list executes hits the hook. A `DENY` (or unevaluated Guard under the default `on_guard_error="deny"`) raises `HookAborted(reason=..., source="arcjet")` so the tool never runs. CrewAI swallows every other exception — raising `ArcjetDeniedError` / `ArcjetUnavailableError` from the hook would *run* the tool. Same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196): only `"allow"` fails open; a `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`). The hook path is **sync only** — pass `launch_arcjet_sync` / `ArcjetGuardSync`. Passing `launch_arcjet` is a `TypeError`.
+2. **`POST_TOOL_CALL` is capture only.** It records what happened. It never raises, never returns a replacement, and **never rewrites `tool_result`**. The agent always sees `Tool execution blocked by hook. Tool: {name}`. `HookAborted.reason` is telemetry only. Do not treat an after-hook as a policy gate.
+3. **`human_input` is not a policy gate.** Agent/Task `human_input` and `request_human_input` are human-in-the-loop. Same trap as JS `humanInTheLoopMiddleware`, LangGraph `interrupt()`, OpenAI Agents `needsApproval`, and Genkit `interrupt()`.
 
-Do not hand-wrap every CrewAI tool with raw `guard()`. Use the extra. Docs: https://docs.arcjet.com/guards/crewai/.
+`ToolPolicy` is `action` + `rules`, keyed by tool name. Keys and the optional `tools=` filter go through `sanitize_tool_name` (CrewAI 1.15.3+): `Send Email` and `send_email` name the same tool. Tools without a matching policy still get `"{sanitized_tool_name}.invoked"` and the registrar-level `rules` (empty still contacts Guard) unless you pass `tools=`. `free_text_arguments` is the model's argument mapping with opaque ids stripped (`tool_call_id`, `*_id`, …). Screen inbound user text with core `aj.guard(...)` / `guard_sync` **before** `crew.kickoff` — there is no inbound helper; core `guard()` fails open, so `ALLOW` is not proof the rules ran. Already-`guard_tool`-wrapped tools are skipped so Guard is not called twice. Tear down with `unregister_arcjet_hooks(hooks)` or `hooks.unregister()`.
+
+Do not hand-wrap every CrewAI tool with raw `guard()`. Use `register_arcjet_hooks` for crew-executed tools. Docs: https://docs.arcjet.com/guards/crewai/.
 
 ```python
 from crewai import Agent, Crew, Task
-from arcjet.guard import TokenBucket, launch_arcjet
+from arcjet.guard import DetectPromptInjection, TokenBucket, launch_arcjet_sync
+from arcjet.guard.crewai import ToolPolicy, register_arcjet_hooks, unregister_arcjet_hooks
 
-aj = launch_arcjet(key=os.environ["ARCJET_KEY"])
+aj = launch_arcjet_sync(key=os.environ["ARCJET_KEY"])
 lookup_limit = TokenBucket(
     label="order.looked-up",
     bucket="lookups",
@@ -395,14 +401,21 @@ lookup_limit = TokenBucket(
     interval_seconds=60,
     max_tokens=10,
 )
+inbound = DetectPromptInjection()
 # The authenticated caller, so a budget cannot be reset by varying the order id.
 user_id = authenticated_user_id
 
-# pip install "arcjet[crewai]" — extra is not on PyPI 0.9.0 or current main.
-# Import the hook helper from arcjet.guard.crewai and read the installed names.
-# Wire action="order.looked-up" and rules=[lookup_limit(key=user_id, requested=1)].
-# Gate: @on(PRE_TOOL_CALL) raises HookAborted (tool never runs).
-# POST_TOOL_CALL is capture only. Agent/Task human_input is HITL, not a gate.
+hooks = register_arcjet_hooks(
+    guard=aj,
+    policies={
+        "lookup_order": ToolPolicy(
+            action="order.looked-up",
+            rules=[lookup_limit(key=user_id, requested=1)],
+        ),
+    },
+    tools=["lookup_order"],
+    on_guard_error="deny",
+)
 
 agent = Agent(
     role="Support",
@@ -416,9 +429,41 @@ task = Task(
     agent=agent,
 )
 crew = Crew(agents=[agent], tasks=[task])
+
+decision = aj.guard(
+    label="message.received",
+    rules=[inbound(user_text)],
+)
+if decision.conclusion == "DENY":
+    raise RuntimeError("message blocked")
+# `guard()` fails open, so an ALLOW is not proof the rules ran. Gate
+# on `has_failed_open()` when this inbound site must fail closed.
+if decision.has_failed_open():
+    raise RuntimeError("inbound guard unavailable")
+
+crew.kickoff()
+unregister_arcjet_hooks(hooks)
+# equivalently: hooks.unregister()
 ```
 
-Use `action` + `rules` only once the extra's helper is in the installed types. Key rate limits on the authenticated caller, not a model-supplied order id.
+Use `action` + `rules` only. Key rate limits on the authenticated caller, not a model-supplied order id.
+
+### CrewAI tool you call – `guard_tool`
+
+`BaseTool.run` never dispatches `PRE_TOOL_CALL`. This wrap is for a standalone CrewAI `BaseTool` you invoke yourself, and it is the **only** CrewAI path that raises `ArcjetDeniedError` / `ArcjetUnavailableError`. A sync call needs a blocking client; an async call needs an awaitable one. A tool that is both wrapped and executed by a crew whose hooks are registered is evaluated once.
+
+```python
+from arcjet.guard.crewai import guard_tool
+
+guarded = guard_tool(
+    guard=aj,
+    tool=lookup_order,
+    action="order.looked-up",
+    rules=[lookup_limit(key=user_id, requested=1)],
+    on_guard_error="deny",
+)
+result = guarded.run(order_id=order_id)
+```
 
 ## Key patterns
 
