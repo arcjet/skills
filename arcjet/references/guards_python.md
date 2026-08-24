@@ -243,6 +243,26 @@ aj.capture(
 
 Call `await aj.flush()` (async) or `aj.flush()` (sync) on shutdown. Default deadline is 1000 ms. There is no `close()`.
 
+### Helper capture outcomes
+
+`guard_action`, `guard_tool`, and `ArcjetMiddleware` write `metadata.outcome` themselves. This is capture telemetry on those helpers ([arcjet-py#225](https://github.com/arcjet/arcjet-py/pull/225), `main` only) – not a Decision field, not a conclusion, and not a new `on_guard_error` value. The helper applies `outcome` last, so a caller metadata key of the same name cannot overwrite it. A raw `aj.capture()` does not write these values.
+
+`success` is not "the action ran." It means the action ran **and** policy judged all of it.
+
+| `metadata.outcome` | What it means |
+| --- | --- |
+| `success` | The action ran and policy judged all of it. |
+| `degraded` | The action ran only because `on_guard_error="allow"` and policy did not judge it fully. |
+| `error` | The action ran, then threw. Wins over `degraded` – do not count these in a degraded tally. |
+| `denied` | Policy denied; the action did not run. |
+| `unavailable` | Policy could not fully judge the action and the default `on_guard_error="deny"` blocked it. |
+
+`degraded` is recorded when the helper proceeds under `"allow"` because the guard call failed, its answer could not be read, the decision failed open (`has_failed_open()`), or something the decision needed could not be resolved. The same conditions still block under the default `"deny"` and record `unavailable`.
+
+A `degraded` event still carries `decision_id` when one exists: `degraded` + id means policy judged the action in part; `degraded` without an id means policy judged none of it.
+
+After an incident, filter `degraded` (ran without a full judgement) and `unavailable` (blocked without a full judgement). Those are the calls a `success` / `denied` tally used to hide.
+
 ## Optional registration
 
 `launch_arcjet()` never touches global state. `register_arcjet(aj)` is a separate, explicit call for code too deep to receive a client.
@@ -270,7 +290,7 @@ Pick the helper that matches what you hold. Do not hand-wrap every tool with raw
 
 ### Gotchas
 
-- **Fail closed.** `guard_action`, `guard_tool`, and `ArcjetMiddleware` default to `on_guard_error="deny"`. Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
+- **Fail closed.** `guard_action`, `guard_tool`, and `ArcjetMiddleware` default to `on_guard_error="deny"`. Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`). Those helpers write `metadata.outcome`: default deny records `unavailable`; `"allow"` records `degraded` when the action ran without a full judgement. See [Helper capture outcomes](#helper-capture-outcomes).
 - **Configure the tool before `guard_tool()`.** Narrow `args_schema`, set `handle_tool_error` / `callbacks` / `response_format` on the tool you still hold, then wrap. Changes on the guarded handle do not reach the call.
 - **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` or `config={"configurable": {"arcjet_correlation_id": session.id}}`. Do not mint a new id per turn. LangChain's `run_id` is not used. The config key wins over an enclosing `arcjet_sequence`; `configurable` is checked before `metadata`.
 - **Capture handlers never block.** LangChain ignores what a callback returns. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`.
