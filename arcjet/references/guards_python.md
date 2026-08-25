@@ -22,7 +22,7 @@ Guard protects code paths that don't have an HTTP request – tool calls, agent 
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1. `arcjet.guard.openai_agents` / `arcjet[openai-agents]` is until-published – PyPI `arcjet` 0.9.0 does not include the module. Teaching is pinned to arcjet-py SHA `978670d073f077eb9324654ec383150db4168c39`. Pin `arcjet` to that git SHA. Read the installed package's types before using either. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1. `arcjet.guard.openai_agents` / `arcjet[openai-agents]` is until-published – PyPI `arcjet` 0.9.0 does not include the module. Teaching is pinned to arcjet-py merge `cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d` ([#226](https://github.com/arcjet/arcjet-py/pull/226)). Pin `arcjet` to that git SHA. Read the installed package's types before using either. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -32,7 +32,7 @@ Install with whichever package manager the project already uses (`pip install`, 
 pip install arcjet
 ```
 
-Guard is included in the `arcjet` package – no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`). Official Python OpenAI Agents uses `arcjet[openai-agents]` (`openai-agents>=0.19.0,<1`) – until-published, not on PyPI 0.9.0 or current main. Pin `arcjet` to git SHA `978670d073f077eb9324654ec383150db4168c39` until that module is on PyPI. See [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
+Guard is included in the `arcjet` package – no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`). Official Python OpenAI Agents uses `arcjet[openai-agents]` (`openai-agents>=0.19.0,<1`) – until-published, not on PyPI 0.9.0. Pin `arcjet` to git SHA `cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d` ([#226](https://github.com/arcjet/arcjet-py/pull/226)) until that module is on PyPI. See [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
 
 ## Architecture: why things go where they do
 
@@ -255,7 +255,7 @@ For tests, `from arcjet.guard.testing import register_test_client` and use `with
 
 ## Framework helpers
 
-LangChain surfaces are on current `arcjet-py` **main** ([#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in PyPI 0.9.0 or the 0.10.0b1 pre-release. Python OpenAI Agents (`arcjet[openai-agents]`, `arcjet.guard.openai_agents`) is until-published – not in PyPI 0.9.0. Teaching is pinned to arcjet-py SHA `978670d0`. Read the installed package before using either.
+LangChain surfaces are on current `arcjet-py` **main** ([#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in PyPI 0.9.0 or the 0.10.0b1 pre-release. Python OpenAI Agents (`arcjet[openai-agents]`, `arcjet.guard.openai_agents`) is until-published – not in PyPI 0.9.0. Teaching is pinned to arcjet-py merge `cafe6a66` ([#226](https://github.com/arcjet/arcjet-py/pull/226)). Read the installed package before using either.
 
 Pick the helper that matches what you hold. Do not hand-wrap every tool with raw `guard()`.
 
@@ -265,7 +265,7 @@ Pick the helper that matches what you hold. Do not hand-wrap every tool with raw
 | A LangChain `BaseTool` you call yourself | `guard_tool` | `arcjet[langchain]` (`langchain-core>=1.2.5,<2`) |
 | `create_agent` (the model chooses tools) | `ArcjetMiddleware` + `ToolPolicy` | `arcjet[langchain-agents]` (`langchain>=1.3,<2`, `langgraph>=1.2,<2`) |
 | A chain or agent you want to observe | `ArcjetCaptureHandler` | `arcjet[langchain]` – cannot deny |
-| Official Python OpenAI Agents `FunctionTool` | `guard_tool` + `openai_agents_context` | `arcjet[openai-agents]` (`openai-agents>=0.19.0,<1`); pin `arcjet` to `978670d0` |
+| Official Python OpenAI Agents `FunctionTool` | `guard_tool` + `openai_agents_context` | `arcjet[openai-agents]` (`openai-agents>=0.19.0,<1`); pin `arcjet` to `cafe6a66` |
 
 `guard_action` is core Guard – no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`. Importing `arcjet.guard.openai_agents` does not load LangChain. Python OpenAI Agents is not the JS adapter (docs https://docs.arcjet.com/guards/openai-agents/). Docs once they exist: https://docs.arcjet.com/guards/openai-agents-py/.
 
@@ -371,10 +371,10 @@ Same extra as `guard_tool`. Pair the handler with the call: `ArcjetCaptureHandle
 
 ### OpenAI Agents – `guard_tool`
 
-Official `openai-agents>=0.19.0,<1` only – not the JS `@openai/agents` adapter (`/guards/openai-agents/`), not community forks. Import from `arcjet.guard.openai_agents`. Until-published: PyPI `arcjet` 0.9.0 does not include this module. Pin `arcjet` to git SHA `978670d073f077eb9324654ec383150db4168c39`:
+Official `openai-agents>=0.19.0,<1` only – not the JS `@openai/agents` adapter (`/guards/openai-agents/`), not community forks. Import from `arcjet.guard.openai_agents`. Until-published: PyPI `arcjet` 0.9.0 does not include this module. Pin `arcjet` to git SHA `cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d` ([#226](https://github.com/arcjet/arcjet-py/pull/226)):
 
 ```bash
-pip install "arcjet[openai-agents] @ git+https://github.com/arcjet/arcjet-py.git@978670d073f077eb9324654ec383150db4168c39"
+pip install "arcjet[openai-agents] @ git+https://github.com/arcjet/arcjet-py.git@cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d"
 ```
 
 Exports: `guard_tool`, `openai_agents_context`. Authored `FunctionTool` / `@function_tool` only. Not hosted tools, MCP, Computer / Shell / ApplyPatch, handoffs, or `Agent.as_tool()`.
