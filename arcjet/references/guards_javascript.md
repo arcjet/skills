@@ -38,7 +38,13 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **August 11, 2026**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, `@arcjet/guard/langgraph/v1`, `@arcjet/guard/claude-agent-sdk/v0`, `@arcjet/guard/openai-agents/v0`, and `@arcjet/guard/genkit/v1` are on docs and `main`; they are not in 1.10.0 (the following release line is unpublished) – importing one from 1.10.0 fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. `@arcjet/guard/langchain/v1` (JS `createAgent`) is until-published – it is not in npm 1.10.0 (`ERR_PACKAGE_PATH_NOT_EXPORTED`). Teaching is pinned to arcjet-js merge `c49abcc1f9afce7d284b6c294d0dcee5916ada86` ([#6248](https://github.com/arcjet/arcjet-js/pull/6248)). OpenAI Agents teaching is pinned to arcjet-js merge `0099fb76e9229fa0b5922f938f4f1ce2e1033ce1` ([#6233](https://github.com/arcjet/arcjet-js/pull/6233)). Genkit teaching is pinned to arcjet-js merge `4e416787b5aad709476173f5daf6c30212710c37` ([#6243](https://github.com/arcjet/arcjet-js/pull/6243)). Shared `ArcjetDenialResult` plus per-framework envelopes are on `main` ([#6240](https://github.com/arcjet/arcjet-js/pull/6240)). Read the installed package's types before using any of them. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **August 11, 2026**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, `@arcjet/guard/langgraph/v1`, `@arcjet/guard/claude-agent-sdk/v0`, `@arcjet/guard/openai-agents/v0`, `@arcjet/guard/genkit/v1`, and `@arcjet/guard/langchain/v1` (JS `createAgent`) are on docs/`main` or until-published; they are not in 1.10.0 – importing one from 1.10.0 fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Shared `ArcjetDenialResult` plus per-framework envelopes are on `main` ([#6240](https://github.com/arcjet/arcjet-js/pull/6240)). Read the installed package's types before using any of them. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
+>
+> Teaching pins (not in npm 1.10.0):
+>
+> - OpenAI Agents: arcjet-js merge `0099fb76e9229fa0b5922f938f4f1ce2e1033ce1` ([#6233](https://github.com/arcjet/arcjet-js/pull/6233))
+> - Genkit: arcjet-js merge `4e416787b5aad709476173f5daf6c30212710c37` ([#6243](https://github.com/arcjet/arcjet-js/pull/6243))
+> - LangChain JS `createAgent`: arcjet-js merge `c49abcc1f9afce7d284b6c294d0dcee5916ada86` ([#6248](https://github.com/arcjet/arcjet-js/pull/6248))
 
 ## Architecture: why things go where they do
 

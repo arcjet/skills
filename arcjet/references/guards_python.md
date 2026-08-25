@@ -265,7 +265,7 @@ Pick the helper that matches what you hold. Do not hand-wrap every tool with raw
 | A LangChain `BaseTool` you call yourself | `guard_tool` | `arcjet[langchain]` (`langchain-core>=1.2.5,<2`) |
 | `create_agent` (the model chooses tools) | `ArcjetMiddleware` + `ToolPolicy` | `arcjet[langchain-agents]` (`langchain>=1.3,<2`, `langgraph>=1.2,<2`) |
 | A chain or agent you want to observe | `ArcjetCaptureHandler` | `arcjet[langchain]` – cannot deny |
-| Official CrewAI crew / LiteAgent / MCP or crew-injected tool | `register_arcjet_hooks` + `ToolPolicy` | no extra – `pip install "crewai>=1.15.3,<2"`; pin `arcjet` to `b1253640` |
+| Official CrewAI crew / LiteAgent / MCP or crew-injected tool | `register_arcjet_hooks` + `ToolPolicy` | no extra – install crewai yourself |
 | A CrewAI `BaseTool` you call yourself | `guard_tool` (`arcjet.guard.crewai`) | same – only path that raises Arcjet errors |
 
 `guard_action` is core Guard – no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`. Importing `arcjet.guard.crewai` does not load LangChain. There is no `guard_crew`. Python LangChain is not JS `createAgent` (docs https://docs.arcjet.com/guards/langchain-js/) and not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). CrewAI docs: https://docs.arcjet.com/guards/crewai/.
