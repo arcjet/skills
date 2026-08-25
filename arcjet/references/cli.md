@@ -66,7 +66,7 @@ arcjet requests list --site-id site_01abc123 --output json --fields id,conclusio
 
 ## Common workflows
 
-**Bootstrap a project:** `arcjet auth login` → `arcjet teams list` → `arcjet sites list --team-id <id>` (or `arcjet sites create`) → `arcjet sites get-key --site-id <id>` → write key to `.env` as `ARCJET_KEY`.
+**Bootstrap a project:** `arcjet auth login` → `arcjet teams list` → `arcjet sites list --team-id <id>` (or `arcjet sites create`) → `arcjet sites get-key --site-id <id>` → write the site SDK key (`ajkey_`) to `.env` as `ARCJET_KEY`. That key is for `protect()` / `guard()`. Capture and OTLP HTTP also accept a project collector key (`aj_prj_key_`), which is ingest-only – do not put one in `ARCJET_KEY`.
 
 **Investigate a request:** `arcjet requests list --site-id <id>` → `arcjet requests details --site-id <id> --request-id <id>` → `arcjet requests explain --site-id <id> --request-id <id>`
 

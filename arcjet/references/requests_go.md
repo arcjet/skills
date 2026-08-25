@@ -41,7 +41,7 @@ var Client = must(arcjet.NewClient(arcjet.Config{
 
 Do not construct a client inside each handler; it wastes connections and makes rules harder to manage.
 
-When `Key` is empty, `NewClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewGuardClient`), not a missing-key bug. There is no `ARCJET_ENV` switch.
+When `Key` is empty, `NewClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewGuardClient`), not a missing-key bug. There is no `ARCJET_ENV` switch. `ARCJET_KEY` for `Protect` is a site SDK key (`ajkey_`) – a project collector key (`aj_prj_key_`) 404s on Decide in production.
 
 ### Protect inside handlers
 
@@ -112,4 +112,4 @@ Available in **`arcjet-go` v0.1.0**: standard `HTTP_PROXY`, `HTTPS_PROXY`, and `
 
 - Use `ModeLive` for enforcement and `ModeDryRun` to observe before blocking. HTTP Protect omitted `Mode` is dry run for every rule.
 - Map only denial reasons that need different responses: rate limits usually return 429; email, sensitive info, and prompt injection often return 400; bot, shield, and filter denials usually return 403.
-- Keep `ARCJET_KEY` in the environment. Never hardcode it.
+- Keep `ARCJET_KEY` in the environment. Never hardcode it. That value is a site SDK key (`ajkey_`) for `Protect` / `Guard`. A project collector key (`aj_prj_key_`) 404s on Decide in production. Capture and OTLP HTTP accept either key; OTLP is HTTP only.

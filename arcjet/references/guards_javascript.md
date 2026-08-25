@@ -236,6 +236,8 @@ Available from **`@arcjet/guard` 1.6.0**: standard `HTTP_PROXY`, `HTTPS_PROXY`, 
 
 `capture()` records that an action happened. It is not a security decision – it never denies, never throws, and never sets `hasFailedOpen()`.
 
+Capture accepts a site SDK key (`ajkey_`) or a project collector key (`aj_prj_key_`). Site keys keep working. Collector keys are ingest-only – Guard and Decide in production return 404 if you send one. Keep `ARCJET_KEY` for `guard()` as a site key. The same credential rule applies to OTLP HTTP ingest; gRPC OTLP is unsupported.
+
 ```typescript
 arcjet.capture({
   action: "refund.issued",

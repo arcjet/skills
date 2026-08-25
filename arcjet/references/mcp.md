@@ -76,7 +76,7 @@ Once connected, the MCP server exposes tools for managing teams, sites, keys, re
 
 ## Common workflows
 
-**Bootstrap a project:** `list-teams` → `list-sites` → `get-site-key` → write to `.env` as `ARCJET_KEY`
+**Bootstrap a project:** `list-teams` → `list-sites` → `get-site-key` → write the site SDK key (`ajkey_`) to `.env` as `ARCJET_KEY`. That key is for `protect()` / `guard()`. Capture and OTLP HTTP also accept a project collector key (`aj_prj_key_`), which is ingest-only – do not put one in `ARCJET_KEY`.
 
 **Investigate suspicious traffic:** `analyze-traffic` → `list-requests` (filter DENY) → `investigate-ip` → `create-rule` (DRY_RUN) → `get-dry-run-impact` → `promote-rule`
 

@@ -320,6 +320,7 @@ On `main` ([arcjet-js#6238](https://github.com/arcjet/arcjet-js/pull/6238)), `de
 
 ## Key patterns
 
+- `ARCJET_KEY` for `protect()` is a site SDK key (`ajkey_`). A project collector key (`aj_prj_key_`) 404s on Decide in production. Capture and OTLP HTTP accept either key; OTLP is HTTP only.
 - Rules that need extra input at `protect()` time: `tokenBucket` needs `{ requested: N }`, `validateEmail`/`protectSignup` needs `{ email }`, `sensitiveInfo` needs `{ sensitiveInfoValue }`, `detectPromptInjection` needs `{ detectPromptInjectionMessage }`.
 - Every rule accepts `mode: "LIVE" | "DRY_RUN"`. **Omitted `mode` is `DRY_RUN`** – the request is allowed and the match is logged. Pass `mode: "LIVE"` to enforce. Start with `DRY_RUN` to verify rules match expected traffic before enforcing.
 - `detectBot` requires exactly one of `allow` or `deny`.

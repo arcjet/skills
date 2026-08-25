@@ -31,7 +31,7 @@ The snippets use a small generic `must(value, err)` startup helper; use the proj
 
 Go does not load `.env` files automatically. Ensure the worker process or service manager exports `ARCJET_KEY`, or use the project's existing environment loader. Do not add a dotenv dependency solely to copy this example without reviewing it first.
 
-When `Key` is empty, `NewGuardClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewClient`), not a missing-key bug. JavaScript Guard never reads environment variables; Python Guard requires an explicit key. There is no `ARCJET_ENV` switch.
+When `Key` is empty, `NewGuardClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewClient`), not a missing-key bug. JavaScript Guard never reads environment variables; Python Guard requires an explicit key. There is no `ARCJET_ENV` switch. `ARCJET_KEY` for `Guard` is a site SDK key (`ajkey_`) – a project collector key (`aj_prj_key_`) 404s on Guard in production.
 
 ### Rules at package scope
 
@@ -108,6 +108,8 @@ Go has no registration / free `guard()` API. Pass the client.
 ## Capture and flush
 
 `Capture` records that an action happened. It is not a security decision – it never denies, never returns an error, and never sets `HasFailedOpen()`.
+
+Capture accepts a site SDK key (`ajkey_`) or a project collector key (`aj_prj_key_`). Site keys keep working. Collector keys are ingest-only – Guard and Decide in production return 404 if you send one. Keep `ARCJET_KEY` for `Guard` as a site key. The same credential rule applies to OTLP HTTP ingest; gRPC OTLP is unsupported.
 
 ```go
 guard.Capture(arcjet.CaptureEvent{

@@ -263,6 +263,7 @@ On `main` ([arcjet-py#217](https://github.com/arcjet/arcjet-py/pull/217)), `dete
 
 ## Key patterns
 
+- `ARCJET_KEY` for `protect()` is a site SDK key (`ajkey_`). A project collector key (`aj_prj_key_`) 404s on Decide in production. Capture and OTLP HTTP accept either key; OTLP is HTTP only.
 - `detect_bot` and `validate_email` each take exactly one of `allow` or `deny`. Passing neither (or both) raises `ValueError`. `allow=[]` is the explicit "block every bot" / "allow no email types" config – do not omit the list.
 - Local Protect evaluation follows the JS priority table, not `rules=[...]` order. The first LIVE DENY short-circuits. Do not reorder the list to pick which deny is reported. Prompt injection is in that table for parity only – it is not evaluated locally today ([arcjet-py#213](https://github.com/arcjet/arcjet-py/pull/213)).
 - Rules that need extra input at protect() time: `token_bucket` needs `requested=N`, `validate_email` / `protect_signup` needs `email="..."`, `detect_sensitive_info` needs `sensitive_info_value="..."`, `detect_prompt_injection` needs `detect_prompt_injection_message="..."`.
