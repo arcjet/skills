@@ -16,13 +16,13 @@
 
 ## What Guard is
 
-Guard protects code paths that don't have an HTTP request – tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 in the following sections still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000&nbsp;ms default request timeout for Guard; `protect()` matches on `main`) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site. On `main`, prefer `guard_action` / `guard_tool` / `ArcjetMiddleware` when they fit – see [Framework helpers](#framework-helpers).
+Guard protects code paths that don't have an HTTP request – tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 in the following sections still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000&nbsp;ms default request timeout for Guard; `protect()` matches on `main`) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site. On `main`, prefer `guard_action` / `guard_tool` / `ArcjetMiddleware` when they fit – see [Framework helpers](#framework-helpers). Official Python OpenAI Agents uses `arcjet.guard.openai_agents` (`arcjet[openai-agents]`).
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK – they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1. Read the installed package's types before using either. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1. `arcjet.guard.openai_agents` / `arcjet[openai-agents]` is until-published – not an extra on PyPI 0.9.0 or current main (those extras are `langchain` / `langchain-agents` / `sensitive-info-rampart` only), and no adapter SHA to pin yet. Read the installed package's types before using either. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -32,7 +32,7 @@ Install with whichever package manager the project already uses (`pip install`, 
 pip install arcjet
 ```
 
-Guard is included in the `arcjet` package – no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`) – see [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
+Guard is included in the `arcjet` package – no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`). Official Python OpenAI Agents uses `arcjet[openai-agents]` – until-published, not on PyPI 0.9.0 or current main, and no adapter SHA to pin yet. See [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
 
 ## Architecture: why things go where they do
 
@@ -214,7 +214,7 @@ On `arcjet` ≤ 0.8.0 the only signal is `decision.has_error()`, which is **depr
 
 ### Correlation IDs
 
-Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision. On `main`, keep a whole run on one Sequence with `arcjet_sequence` or LangChain `config["configurable"]["arcjet_correlation_id"]` – see [Framework helpers](#framework-helpers).
+Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision. On `main`, keep a whole run on one Sequence with `arcjet_sequence` or LangChain `config["configurable"]["arcjet_correlation_id"]` – see [Framework helpers](#framework-helpers). Python OpenAI Agents correlation is a caller-owned session / conversation id via `openai_agents_context` – never mint, never `trace_id`.
 
 ### Outbound HTTP proxy
 
@@ -255,7 +255,7 @@ For tests, `from arcjet.guard.testing import register_test_client` and use `with
 
 ## Framework helpers
 
-These surfaces are on current `arcjet-py` **main** ([#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in PyPI 0.9.0 or the 0.10.0b1 pre-release. Read the installed package before using them.
+LangChain surfaces are on current `arcjet-py` **main** ([#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in PyPI 0.9.0 or the 0.10.0b1 pre-release. Python OpenAI Agents (`arcjet[openai-agents]`, `arcjet.guard.openai_agents`) is until-published – not an extra on PyPI 0.9.0 or current main, and no adapter SHA to pin yet. Read the installed package before using either.
 
 Pick the helper that matches what you hold. Do not hand-wrap every tool with raw `guard()`.
 
@@ -265,15 +265,17 @@ Pick the helper that matches what you hold. Do not hand-wrap every tool with raw
 | A LangChain `BaseTool` you call yourself | `guard_tool` | `arcjet[langchain]` (`langchain-core>=1.2.5,<2`) |
 | `create_agent` (the model chooses tools) | `ArcjetMiddleware` + `ToolPolicy` | `arcjet[langchain-agents]` (`langchain>=1.3,<2`, `langgraph>=1.2,<2`) |
 | A chain or agent you want to observe | `ArcjetCaptureHandler` | `arcjet[langchain]` – cannot deny |
+| Official Python OpenAI Agents `FunctionTool` | `guard_tool` + `openai_agents_context` | `arcjet[openai-agents]` (`openai-agents>=0.19.0,<1`) – until-published |
 
-`guard_action` is core Guard – no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`.
+`guard_action` is core Guard – no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`. Importing `arcjet.guard.openai_agents` does not load LangChain. Python OpenAI Agents is not the JS adapter (docs https://docs.arcjet.com/guards/openai-agents/). Docs once they exist: https://docs.arcjet.com/guards/openai-agents-py/.
 
 ### Gotchas
 
-- **Fail closed.** `guard_action`, `guard_tool`, and `ArcjetMiddleware` default to `on_guard_error="deny"`. Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
+- **Fail closed.** `guard_action`, LangChain `guard_tool`, `ArcjetMiddleware`, and Python OpenAI Agents `guard_tool` default to `on_guard_error="deny"` (same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196)). Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
 - **Configure the tool before `guard_tool()`.** Narrow `args_schema`, set `handle_tool_error` / `callbacks` / `response_format` on the tool you still hold, then wrap. Changes on the guarded handle do not reach the call.
-- **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` or `config={"configurable": {"arcjet_correlation_id": session.id}}`. Do not mint a new id per turn. LangChain's `run_id` is not used. The config key wins over an enclosing `arcjet_sequence`; `configurable` is checked before `metadata`.
-- **Capture handlers never block.** LangChain ignores what a callback returns. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`.
+- **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` or `config={"configurable": {"arcjet_correlation_id": session.id}}`. Do not mint a new id per turn. LangChain's `run_id` is not used. The config key wins over an enclosing `arcjet_sequence`; `configurable` is checked before `metadata`. Python OpenAI Agents correlation is the same caller-owned session / conversation id via `openai_agents_context` — never mint, never `trace_id`.
+- **Capture handlers never block.** LangChain ignores what a callback returns. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`. Python OpenAI Agents denial is `reject_content` only; a raise is a tripwire halt or is swallowed by `default_tool_error_function`.
+- **`needs_approval` is not a policy gate.** Official Python OpenAI Agents `needs_approval` is human-in-the-loop, not Guard. Same trap as JS OpenAI Agents `needsApproval` and LangGraph `interrupt()`.
 
 ### Any callable – `guard_action`
 
@@ -366,6 +368,81 @@ await chain.ainvoke(
 ```
 
 Same extra as `guard_tool`. Pair the handler with the call: `ArcjetCaptureHandler` with `invoke`, `ArcjetAsyncCaptureHandler` with `ainvoke`. Neither can deny a call.
+
+### OpenAI Agents – `guard_tool`
+
+Official `openai-agents>=0.19.0,<1` only – not the JS `@openai/agents` adapter (`/guards/openai-agents/`), not community forks. Install `arcjet[openai-agents]` and import from `arcjet.guard.openai_agents`. The extra is **not** on PyPI 0.9.0 or current main (those extras are `langchain` / `langchain-agents` / `sensitive-info-rampart` only). No adapter SHA to pin yet – read the installed names before wiring.
+
+Exports: `guard_tool`, `openai_agents_context`. Authored `FunctionTool` / `@function_tool` only. Not hosted tools, MCP, `agent.as_tool()`, or computer / shell.
+
+Three gotchas first:
+
+1. **The gate is `FunctionTool.tool_input_guardrails` + `reject_content`.** `guard_tool` attaches an input guardrail so the tool body never runs on `DENY` (or unevaluated Guard under the default `on_guard_error="deny"`). Denial is `reject_content` with JSON of `ArcjetDenialResult`. Do **not** raise – a raise is a tripwire halt, or `default_tool_error_function` swallows it and drops the fields. Same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196): only `"allow"` fails open; a `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
+2. **`needs_approval` is not a policy gate.** `needs_approval` is human-in-the-loop (`state.approve` / `state.reject`). Same trap as JS OpenAI Agents `needsApproval`, LangGraph `interrupt()`, and Genkit `interrupt()`. There is no inbound helper and no approval helper.
+3. **Screen inbound before `Runner.run`.** There is no inbound helper. SDK `input_guardrails` / `output_guardrails` / tool output guardrails are the SDK's own tripwires, not Arcjet. Call `aj.guard(...)` in the application and **act on the decision**. Core `guard()` fails open: `ALLOW` is not proof the rules ran. Gate on `decision.has_failed_open()` if this call site must fail closed; `guard_tool` already defaults to that.
+
+`openai_agents_context` reads a caller-owned session / conversation id from the context you pass into `Runner.run`. It never mints an id. It never reads `trace_id`. Do not invent a correlation id per turn.
+
+Do not hand-wrap every OpenAI Agents tool with raw `guard()`. Use the extra. The example `fastapi-openai-agents-guard` stays with Runtime – do not invent a new example name. Docs once they exist: https://docs.arcjet.com/guards/openai-agents-py/. JS adapter stays at https://docs.arcjet.com/guards/openai-agents/.
+
+```python
+from agents import Agent, Runner, function_tool
+from arcjet.guard import DetectPromptInjection, TokenBucket, launch_arcjet
+
+aj = launch_arcjet(key=os.environ["ARCJET_KEY"])
+lookup_limit = TokenBucket(
+    label="order.looked-up",
+    bucket="lookups",
+    refill_rate=10,
+    interval_seconds=60,
+    max_tokens=10,
+)
+# The authenticated caller, so a budget cannot be reset by varying the order id.
+user_id = authenticated_user_id
+
+# pip install "arcjet[openai-agents]" "openai-agents>=0.19.0,<1"
+# Extra is not on PyPI 0.9.0 or current main. No adapter SHA to pin yet.
+# Import guard_tool and openai_agents_context from arcjet.guard.openai_agents
+# and read the installed names.
+# Wire action="order.looked-up" and rules=[lookup_limit(key=user_id, requested=1)].
+# Gate: FunctionTool.tool_input_guardrails + reject_content (JSON of ArcjetDenialResult).
+# Do not raise — tripwire halt or default_tool_error_function swallow.
+# needs_approval is HITL, not this policy gate.
+
+@function_tool  # needs_approval=... is HITL — not this policy gate
+def lookup_order(order_number: str) -> dict:
+    """Look up an order by number."""
+    return {"order_number": order_number, "status": "shipped"}
+
+# lookup_order = guard_tool(guard=aj, tool=lookup_order, action="order.looked-up",
+#     rules=[lookup_limit(key=user_id, requested=1)], on_guard_error="deny")
+
+agent = Agent(
+    name="support-agent",
+    instructions="Help the user.",
+    tools=[lookup_order],
+)
+
+inbound = DetectPromptInjection()
+app_context = {"session_id": conversation_id}
+decision = await aj.guard(
+    label="message.received",
+    rules=[inbound(user_text)],
+    # **openai_agents_context(...) — caller-owned session / conversation id only.
+    # Never mint. Never trace_id. Read the installed helper.
+)
+if decision.conclusion == "DENY":
+    raise Exception("message blocked")
+# `guard()` fails open, so an ALLOW is not proof the rules ran. Gate
+# on has_failed_open() when this inbound site must fail closed. Omitting
+# that gate is legitimate if an outage must not stop the agent.
+if decision.has_failed_open():
+    raise Exception("inbound guard unavailable")
+
+await Runner.run(agent, user_text, context=app_context)
+```
+
+Use `action` + `rules` only once the extra's helper is in the installed types. Key rate limits on the authenticated caller, not a model-supplied order id.
 
 ## Key patterns
 
