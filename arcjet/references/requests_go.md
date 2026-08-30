@@ -82,7 +82,7 @@ For rule selection and rate-limiting strategy comparisons, see [Choose protectio
 
 ## Request context
 
-Pass the real `*http.Request` and `r.Context()` so Arcjet respects cancellation and extracts IP/header metadata correctly. Outside a supported platform, the SDK uses `RemoteAddr` and ignores `X-Forwarded-For` until the direct peer matches `Config.Proxies`; then it walks the header right-to-left. Set `Config.Proxies` to every trusted proxy IP/CIDR, make the app reachable only through them, and ensure they overwrite or safely append forwarding headers. Malformed entries are rejected; `0.0.0.0/0` and `::/0` emit a warning. If the app runs on a known platform, set `Config.Platform` when appropriate.
+Pass the real `*http.Request` and `r.Context()` so Arcjet respects cancellation and extracts IP/header metadata correctly. Outside a supported platform, the SDK first uses a public `RemoteAddr`. When the direct peer matches `Config.Proxies`, it walks `X-Forwarded-For` right-to-left. If `RemoteAddr` is missing or non-public, it may use a public address from a common forwarding header; that result has `Provenance == "unverified-header"`, `Verified == false`, and produces one warning for the lifetime of the SDK client. Set `Config.Proxies` to every trusted proxy IP/CIDR, make the app reachable only through them, and ensure they overwrite or safely append forwarding headers. Malformed entries are rejected; `0.0.0.0/0` and `::/0` emit a warning, while the exact addresses `0.0.0.0` and `::` do not. If the app runs on a known platform, set `Config.Platform` when appropriate.
 
 When the context has no deadline, `Protect` and `ProtectDetails` apply 2s (4s when an email rule is present). The prompt-injection 1s floor is already met. A caller-supplied deadline is never shortened.
 
@@ -99,7 +99,8 @@ If the application has already determined the client IP from a trusted source, p
 Before shipping, inspect representative staging requests with
 `client.ClientIPDetails(request)`. Check `IP`, `Provenance`, `Verified`, and
 `Header`; the same values are logged at debug level with
-`client_ip_provenance`, `client_ip_verified`, and `client_ip_header`. Never copy
+`client_ip_provenance`, `client_ip_verified`, and `client_ip_header`. The
+diagnostic call does not log or consume the once-per-client warning. Never copy
 `X-Forwarded-For` into `WithIPSrc` to bypass a warning.
 
 ## Metadata

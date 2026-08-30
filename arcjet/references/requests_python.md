@@ -196,17 +196,20 @@ When the framework does not expose a usable public client IP, automatic
 detection may fall back to common forwarding headers so protection can still
 run. A directly connected client can spoof those headers unless trusted ingress
 overwrites or safely appends them. The SDK logs `client_ip_provenance` at debug
-level and warns once per client when the source is `unverified-header`.
+level and produces one warning for the lifetime of each SDK client instance
+when the source is `unverified-header`.
 
 Configure every trusted proxy IP/CIDR in `proxies` and ensure the application is
 reachable only through that ingress. Malformed entries are rejected;
 `0.0.0.0/0` and `::/0` warn because they trust every peer.
 
 Before shipping, call `aj.client_ip_details(request)` on representative staging
-requests and inspect `ip`, `provenance`, `verified`, and `header`. In manual
-mode, pass the same independently trusted `ip_src` to this method and
-`protect()`. Never make an `unverified-header` warning disappear by copying the
-same header into `ip_src`; that relabels untrusted input as manual.
+requests and inspect `ip`, `provenance`, `verified`, and `header`. This method
+does not log or consume the once-per-client warning. If and only if the client
+was constructed with `disable_automatic_ip_detection=True`, pass the same
+independently trusted `ip_src` explicitly to both `client_ip_details()` and
+every `protect()` call. Never make an `unverified-header` warning disappear by
+copying the same header into `ip_src`; that relabels untrusted input as manual.
 
 ### Metadata
 
