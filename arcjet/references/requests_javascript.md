@@ -293,7 +293,29 @@ const decision = await aj.protect(request, {
 });
 ```
 
-The SDK trusts `ipSrc` without validating it. Do not pass a client-controlled header. Validate the value first.
+On current `main`, malformed `ipSrc` values are rejected. Syntax validation
+does not establish provenance: do not pass `X-Forwarded-For` or another
+client-controlled header. The value must come from an independently trusted
+framework or infrastructure source.
+
+### Client IP provenance and proxy configuration
+
+When a framework or platform does not expose a usable client IP, adapters may
+fall back to common forwarding headers so protection can still run. A directly
+connected client can spoof those headers unless trusted ingress overwrites or
+safely appends them. The SDK logs the selection at debug level with
+`client_ip_provenance`; an `unverified-header` source also warns once per client.
+
+Configure every trusted proxy IP/CIDR in `proxies`, or use a proxy-service
+helper such as `cloudflare()`. Ensure the application is reachable only through
+that ingress. Malformed entries are rejected; `0.0.0.0/0` and `::/0` warn
+because they trust every peer.
+
+Before shipping, inspect real staging requests. `@arcjet/node` exposes
+`aj.clientIpDetails(request)`. Other adapters can use `findIpDetails()` or
+`resolveClientIp()` from `@arcjet/ip`. Check `ip`, `provenance`, `verified`, and
+`header`. Never make an `unverified-header` warning disappear by copying the
+same header into `ipSrc`; that relabels untrusted input as manual.
 
 ### Metadata
 

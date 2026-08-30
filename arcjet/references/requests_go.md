@@ -82,7 +82,7 @@ For rule selection and rate-limiting strategy comparisons, see [Choose protectio
 
 ## Request context
 
-Pass the real `*http.Request` and `r.Context()` so Arcjet respects cancellation and extracts IP/header metadata correctly. If the app is behind trusted reverse proxies, set `Config.Proxies` to the trusted proxy IPs/CIDRs. If the app runs on a known platform, set `Config.Platform` when appropriate.
+Pass the real `*http.Request` and `r.Context()` so Arcjet respects cancellation and extracts IP/header metadata correctly. Outside a supported platform, the SDK uses `RemoteAddr` and ignores `X-Forwarded-For` until the direct peer matches `Config.Proxies`; then it walks the header right-to-left. Set `Config.Proxies` to every trusted proxy IP/CIDR, make the app reachable only through them, and ensure they overwrite or safely append forwarding headers. Malformed entries are rejected; `0.0.0.0/0` and `::/0` emit a warning. If the app runs on a known platform, set `Config.Platform` when appropriate.
 
 When the context has no deadline, `Protect` and `ProtectDetails` apply 2s (4s when an email rule is present). The prompt-injection 1s floor is already met. A caller-supplied deadline is never shortened.
 
@@ -94,7 +94,13 @@ Pass `arcjet.WithCorrelationId(id)` to `Protect` to correlate this decision with
 
 ## Explicit client IP
 
-If the application has already determined the client IP from a trusted source, pass `arcjet.WithIPSrc(ip)`. The SDK trusts the value without validating it – do not pass a client-controlled header.
+If the application has already determined the client IP from a trusted source, pass `arcjet.WithIPSrc(ip)`. On current `main`, empty and malformed values are rejected. Syntax validation does not establish provenance – do not pass a client-controlled header.
+
+Before shipping, inspect representative staging requests with
+`client.ClientIPDetails(request)`. Check `IP`, `Provenance`, `Verified`, and
+`Header`; the same values are logged at debug level with
+`client_ip_provenance`, `client_ip_verified`, and `client_ip_header`. Never copy
+`X-Forwarded-For` into `WithIPSrc` to bypass a warning.
 
 ## Metadata
 
