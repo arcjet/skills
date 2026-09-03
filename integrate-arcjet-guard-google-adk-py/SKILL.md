@@ -47,7 +47,9 @@ callback error, not skip.
 
 There is no `/guards/google-adk-py/` docs page. Do not invent one.
 The JS adapter page is https://docs.arcjet.com/guards/google-adk/
-— this skill is the Python teaching.
+— this skill is the Python teaching. Example:
+[`examples/fastapi-google-adk-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-google-adk-guard)
+(pins `679423c9`). Do not invent a second example name.
 
 ## The gate is `before_tool_callback` skip dict
 
@@ -290,6 +292,7 @@ to a generated id.
 4. Manual E2E with a real `ARCJET_KEY` is still-to-verify until you
    run it.
 
-Do not invent a Google ADK Python example name. Do not add an
-example in this skills repo. Do not cite an example app until one
-exists.
+Worked example:
+[`examples/fastapi-google-adk-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-google-adk-guard)
+(pins `679423c9`). Do not invent a second example name. Do not add
+an example in this skills repo.
