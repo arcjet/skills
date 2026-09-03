@@ -47,7 +47,10 @@ Two surfaces, one decision rule:
 
 There is no `/guards/cloudflare-think/` docs page yet. Do not
 invent a second slug and do not overwrite any other `/guards/...`
-page.
+page. Example:
+[`examples/cloudflare-think-agent`](https://github.com/arcjet/examples/tree/main/examples/cloudflare-think-agent)
+(vendors `58a7d8b8`; no verify fixture). Do not invent a second
+example name.
 
 ## The gate is `beforeToolCall` block / substitute
 
@@ -254,6 +257,7 @@ the call is uncorrelated rather than joined to a generated id.
 4. Manual E2E with a real `ARCJET_KEY` is still-to-verify until you
    run it.
 
-Do not invent a Cloudflare Think example name. Do not add an
-example in this skills repo. Do not cite an example app until one
-exists.
+Worked example:
+[`examples/cloudflare-think-agent`](https://github.com/arcjet/examples/tree/main/examples/cloudflare-think-agent)
+(vendors `58a7d8b8`; no verify fixture). Do not invent a second
+example name. Do not add an example in this skills repo.
