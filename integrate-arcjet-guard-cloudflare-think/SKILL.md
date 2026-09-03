@@ -1,8 +1,8 @@
 ---
 name: integrate-arcjet-guard-cloudflare-think
-description: Integrate Arcjet Guard into Cloudflare Think — install beforeToolCall so a DENY block/substitutes the tool, and read a caller-owned id via cloudflareThinkContext. Use when asked to add Arcjet to @cloudflare/think, Cloudflare Agents Think, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Cloudflare Think, not the Vercel AI SDK and not needsApproval HITL.
+description: Integrate Arcjet Guard into Cloudflare Think — delegate beforeToolCall to guardHooks so a DENY substitutes/blocks the tool, and read a caller-owned id via cloudflareThinkContext. Use when asked to add Arcjet to @cloudflare/think, Cloudflare Agents Think, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Cloudflare Think, not the Vercel AI SDK and not needsApproval HITL.
 license: Apache-2.0
-compatibility: Requires official @cloudflare/think >= 0.3.0 on Node.js >= 22 (Workers-compatible). Gate is Think beforeToolCall block/substitute. Path is /v0. Do not use @arcjet/guard/vercel-ai/v7. Until-published — pin @arcjet/guard to git SHA ADAPTER_SHA; not in npm 1.11.0.
+compatibility: Requires official @cloudflare/think >=0.3.0 <1 on Node.js >= 22 (Workers-compatible). This is Think subclass beforeToolCall via guardHooks. Path is /v0. Do not use @arcjet/guard/vercel-ai/v7. Until-published — pin @arcjet/guard to git SHA 58a7d8b82f2a360c67eced13e9899f0c1799289f; not in npm 1.11.0.
 metadata:
   author: arcjet
   type: core
@@ -18,31 +18,32 @@ live in
 [../arcjet/references/guards_javascript.md](../arcjet/references/guards_javascript.md).
 Load that reference for anything that is not Think-specific.
 
-Official `@cloudflare/think` `>=0.3.0` only — a `Think` subclass
-with server-side `execute` tools. This is **not** the Vercel AI SDK
-(`ai` / `@arcjet/guard/vercel-ai/v7`). Think owns `streamText`
-internally; do not also wrap its tools with the AI SDK mix-in.
-Not TanStack Start HTTP `protect()`. Not Cloudflare Workers HTTP
-`protect()` (`@arcjet/node` / request-based).
+Official `@cloudflare/think` `>=0.3.0 <1` only — a `Think` subclass
+with server-side `execute` tools. The floor is 0.3.0 because
+`ToolCallDecision` intercepts before `execute`. This is **not** the
+Vercel AI SDK (`ai` / `@arcjet/guard/vercel-ai/v7`). Think owns
+`streamText` internally; do not also wrap its tools with the AI SDK
+mix-in. Not TanStack Start HTTP `protect()`. Not Cloudflare Workers
+HTTP `protect()` (`@arcjet/node` / request-based).
 
-Exports: `guardThink`, `cloudflareThinkContext`. There is **no
-`guardTool`**. Skip is the `beforeToolCall` return, not
-throw-from-execute. There is no `guardInbound` and no
-`guardApproval`. No unversioned `@arcjet/guard/cloudflare-think`
-alias.
+Exports: `guardHooks`, `cloudflareThinkContext`. There is **no
+`guardTool`** and no `guardThink` mixin. Skip is the
+`beforeToolCall` return, not throw-from-execute. There is no
+`guardInbound` and no `guardApproval`. No unversioned
+`@arcjet/guard/cloudflare-think` alias.
 
 Two surfaces, one decision rule:
 
-- **Tool calls** → `guardThink`. Installs Think's `beforeToolCall`
-  so a DENY never reaches `execute`. Delivery is a Think
+- **Tool calls** → `guardHooks`. Returns a `{ beforeToolCall }`
+  object the `Think` subclass **delegates to**. Delivery is a Think
   `ToolCallDecision`: **substitute** (`{ action: "substitute",
   output: ArcjetDenialResult }`) so the model sees the payload, or
   **block** (`{ action: "block", reason }`) so the model sees a
   reason string. `void` / `{ action: "allow" }` executes. Do not
   throw — a throw is a raw exception / `onChatError`, not a denial.
 - **Correlation** → `cloudflareThinkContext` reads a caller-owned
-  id. It never mints. It never reads Durable Object ids, `requestId`,
-  or `traceId`.
+  id. It never mints. It never reads Durable Object ids, `toolCallId`,
+  `requestId`, or `traceId`.
 
 There is no `/guards/cloudflare-think/` docs page yet. Do not
 invent a second slug and do not overwrite any other `/guards/...`
@@ -57,8 +58,8 @@ one of those on error — do not return `void` (that executes the
 tool) and do not throw. Default DENY is **substitute** with
 `ArcjetDenialResult` so the model sees `{ arcjetDenied: true, … }`.
 `onDeny: "block"` uses `{ action: "block", reason }` instead and
-drops the structured fields. `onDeny: "block"` applies to real
-DENY; unavailable still fail-closes with a decision (never void).
+drops the structured fields. `onDeny: "block"` applies to **real
+DENY only**; unavailable still fail-closes with **substitute**.
 Core `guard()` still fails open (`hasFailedOpen()`).
 
 Client tools (no server `execute`) never enter this hook. Workspace
@@ -81,7 +82,7 @@ the application (or at the start of `beforeTurn` **and act on the
 decision**) before the turn starts. Core `guard()` fails open:
 `ALLOW` is not proof the rules ran. Gate on
 `decision.hasFailedOpen()` if this call site must fail closed;
-`guardThink` already defaults to that.
+`guardHooks` already defaults to that.
 
 ## Questions to ask the human first
 
@@ -89,15 +90,15 @@ Ask only what you cannot infer from the code; suggest defaults.
 
 1. Which tools are **risky** (external side effects, irreversible,
    spends money, sends messages)? Those are gated by
-   `beforeToolCall`. Client tools with no `execute` are out of
+   `guardHooks`. Client tools with no `execute` are out of
    scope.
 2. What **limits**? (e.g. "10 lookups/min per user" →
    `tokenBucket`.)
 3. Who is the **user** for metadata — an opaque user/tenant ID
    (never PII)? Default: none. Put the conversation / session id
-   you already have on `guardThink({ sessionId })`. That id is the
+   you already have on `guardHooks({ sessionId })`. That id is the
    correlation id, not the user. Do not use the Durable Object id
-   or `requestId`.
+   or `toolCallId`.
 4. Is an Arcjet outage unacceptable? Every helper defaults to
    `onGuardError: "deny"`. Ask explicitly about inbound screening
    before the turn: failing closed there means the agent does not
@@ -115,25 +116,32 @@ Ask only what you cannot infer from the code; suggest defaults.
 3. **`needsApproval` is HITL, not policy.**
 4. **Fail closed = always return `block` or `substitute` on
    error.** `void` executes the tool. A throw is not a denial.
+   Unavailable fail-closes with **substitute**, even when
+   `onDeny: "block"`.
 5. **Default DENY is substitute** (structured `ArcjetDenialResult`).
-   `block` is the reason-string path and drops the fields.
-6. **Correlation is read, never minted.** Never Durable Object id,
-   never `requestId`, never `traceId`.
-7. **The import path is versioned.**
+   `block` is the reason-string path and drops the fields. It
+   applies to real DENY only.
+6. **`guardHooks` is not a mixin.** Delegate
+   `beforeToolCall` to `hooks.beforeToolCall(ctx)`. There is no
+   `guardThink(Think, …)`.
+7. **Correlation is read, never minted.** Never Durable Object id,
+   never `toolCallId`, never `requestId`, never `traceId`.
+8. **The import path is versioned.**
    `@arcjet/guard/cloudflare-think/v0` resolves;
    `@arcjet/guard/cloudflare-think` does not.
-8. **Key rate limits on the authenticated caller**, not a
+9. **Key rate limits on the authenticated caller**, not a
    model-supplied order id.
-9. **Do not hand-wrap every Think tool with raw `guard()`.**
+10. **Do not hand-wrap every Think tool with raw `guard()`.**
 
 ## Step 1: Install and find the guard client
 
 Until-published: npm `@arcjet/guard@1.11.0` does not export
 `./cloudflare-think/v0` (`ERR_PACKAGE_PATH_NOT_EXPORTED`). Pin
-`@arcjet/guard` to git SHA `ADAPTER_SHA`:
+`@arcjet/guard` to git SHA `58a7d8b82f2a360c67eced13e9899f0c1799289f`
+(`david/cursor/cloudflare-think-guard-v0-1b24`):
 
 ```bash
-npm install github:arcjet/arcjet-js#ADAPTER_SHA
+npm install github:arcjet/arcjet-js#58a7d8b82f2a360c67eced13e9899f0c1799289f
 npm install @cloudflare/think
 ```
 
@@ -146,12 +154,12 @@ import { launchArcjet } from "@arcjet/guard";
 export const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });
 ```
 
-## Step 2: Gate tool calls — `beforeToolCall`
+## Step 2: Gate tool calls — delegate `beforeToolCall`
 
 ```ts
 import { Think } from "@cloudflare/think";
 import { launchArcjet, tokenBucket } from "@arcjet/guard";
-import { guardThink } from "@arcjet/guard/cloudflare-think/v0";
+import { guardHooks } from "@arcjet/guard/cloudflare-think/v0";
 
 const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });
 const lookupLimit = tokenBucket({
@@ -162,31 +170,33 @@ const lookupLimit = tokenBucket({
 });
 const userId = authenticatedUserId;
 
-export class SupportAgent extends guardThink(Think, arcjet, {
+const hooks = guardHooks(arcjet, {
   action: ({ toolName }) => `${toolName}.invoked`,
   // Keyed on the authenticated caller, not the model-supplied order id.
   rules: () => [lookupLimit({ key: userId, requested: 1 })],
   sessionId: conversationId,
   onGuardError: "deny",
   // default DENY is substitute (ArcjetDenialResult). onDeny: "block"
-  // uses { action: "block", reason } and drops the fields.
-}) {
-  getModel() {
-    return "@cf/moonshotai/kimi-k2.7-code";
-  }
+  // uses { action: "block", reason } on real DENY only. Unavailable
+  // still substitutes.
+});
 
-  getSystemPrompt() {
-    return "Help the user.";
-  }
-
+export class SupportAgent extends Think<Env> {
   // needsApproval on a tool is HITL — not this policy gate
+  beforeToolCall(ctx) {
+    return hooks.beforeToolCall(ctx);
+  }
 }
 ```
 
-If the subclass already implements `beforeToolCall`, call the
-helper from that method and return its `ToolCallDecision`. Do not
-void past a DENY and do not also wrap with
+If the subclass already implements `beforeToolCall`, call
+`hooks.beforeToolCall(ctx)` and return its `ToolCallDecision`. Do
+not void past a DENY and do not also wrap with
 `@arcjet/guard/vercel-ai/v7`.
+
+Omit `rules` to submit none — the guard call still happens. ALLOW
+captures `outcome: "success"` when the policy lets the tool run,
+not when `execute` finishes.
 
 ## Step 3: Screen inbound before the turn
 
@@ -217,26 +227,30 @@ There is no `guardInbound`. `guard()` fails open — always check
 
 `cloudflareThinkContext` reads a caller-owned id. Preference:
 `correlationId`, then `sessionId`, then `conversationId` on a
-caller-owned wrap, then `guardThink({ sessionId })`. It never
-mints. It never reads the Durable Object id / `this.ctx.id` /
-`this.name`. It never reads `requestId`, `traceId`, or stream ids
-Think or the AI SDK mint. Do not invent a correlation id per turn.
-If nothing valid remains, the call is uncorrelated rather than
-joined to a generated id.
+caller-owned wrap (`cloudflareThinkContext({ context: appContext })`),
+then copies on a bare app object, then `guardHooks({ sessionId })` /
+`init.correlationId`. It never mints. It never reads the Durable
+Object id / `this.ctx.id` / `this.name`. It never reads `toolCallId`,
+`requestId`, `traceId`, or stream ids Think or the AI SDK mint. A
+`beforeToolCall` context that has `toolCallId` and `toolName` is
+Think's envelope — top-level `sessionId` on that object is ignored.
+Do not invent a correlation id per turn. If nothing valid remains,
+the call is uncorrelated rather than joined to a generated id.
 
 ## Verify the integration
 
 1. `npm run typecheck` (or the project's type-check) passes.
 2. Exercise inbound PI (before the turn, including
    `hasFailedOpen()`), a substitute-deny (model sees
-   `ArcjetDenialResult`), a block-deny (reason string), void
+   `ArcjetDenialResult`), a block-deny (reason string; real DENY
+   only), unavailable + `onDeny: "block"` still substitute, void
    execute, no-throw, never-mint, and fail-closed (an unreachable
-   guard → block or substitute, never void). Confirm
-   `needsApproval` is never treated as the gate and that tools are
-   not also wrapped with `@arcjet/guard/vercel-ai/v7`.
+   guard → substitute, never void). Confirm `needsApproval` is
+   never treated as the gate and that tools are not also wrapped
+   with `@arcjet/guard/vercel-ai/v7`.
 3. Confirm in the Arcjet Console / CLI that decisions share the
    caller-owned session / conversation id — not a Durable Object id
-   or `requestId`.
+   or `toolCallId`.
 4. Manual E2E with a real `ARCJET_KEY` is still-to-verify until you
    run it.
 

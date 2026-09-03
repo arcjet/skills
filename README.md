@@ -34,7 +34,7 @@ Dedicated Guard integration skills cover official Python LangChain, CrewAI, Open
 | `integrate-arcjet-guard-claude-managed-agents-py` | Python Claude Managed Agents |
 | `integrate-arcjet-guard-strands-agents-py` | Python Strands Agents |
 | `integrate-arcjet-guard-google-adk-py` | Python Google ADK (`guard_tool` / `guard_plugin`, `google-adk>=2.0.0,<3`) |
-| `integrate-arcjet-guard-cloudflare-think` | JS Cloudflare Think (`@cloudflare/think`) |
+| `integrate-arcjet-guard-cloudflare-think` | JS Cloudflare Think (`guardHooks` / `cloudflareThinkContext`, `@cloudflare/think>=0.3.0 <1`) |
 
 ## Related
 
