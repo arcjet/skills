@@ -38,7 +38,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **August 11, 2026**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, `@arcjet/guard/langgraph/v1`, `@arcjet/guard/claude-agent-sdk/v0`, `@arcjet/guard/openai-agents/v0`, `@arcjet/guard/genkit/v1`, `@arcjet/guard/langchain/v1` (JS `createAgent`), `@arcjet/guard/google-adk/v2`, `@arcjet/guard/tanstack-ai/v0`, and `@arcjet/guard/strands-agents/v1` are on docs/`main` or until-published; they are not in 1.10.0 – importing one from 1.10.0 fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Shared `ArcjetDenialResult` plus per-framework envelopes are on `main` ([#6240](https://github.com/arcjet/arcjet-js/pull/6240)). Read the installed package's types before using any of them. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.10.0** on **August 11, 2026**. `moderateContent` (graduated name), `@arcjet/guard/mastra/v1`, `@arcjet/guard/langgraph/v1`, `@arcjet/guard/claude-agent-sdk/v0`, `@arcjet/guard/claude-managed-agents/v0`, `@arcjet/guard/openai-agents/v0`, `@arcjet/guard/genkit/v1`, `@arcjet/guard/langchain/v1` (JS `createAgent`), `@arcjet/guard/google-adk/v2`, `@arcjet/guard/tanstack-ai/v0`, and `@arcjet/guard/strands-agents/v1` are on docs/`main` or until-published; they are not in 1.10.0 – importing one from 1.10.0 fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Shared `ArcjetDenialResult` plus per-framework envelopes are on `main` ([#6240](https://github.com/arcjet/arcjet-js/pull/6240)). Read the installed package's types before using any of them. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
 >
 > Teaching pins (not in npm 1.10.0):
 >
@@ -48,6 +48,7 @@ Read the installed package's types and doc comments for the full API surface.
 > - Google ADK: arcjet-js `41ef36816e7174f1b0288d28217e63fa14114307`
 > - TanStack AI: arcjet-js merge `d730d57a124f03843f085d41f64b0355a09d1eab` ([#6260](https://github.com/arcjet/arcjet-js/pull/6260))
 > - Strands Agents: arcjet-js merge `f3a07ee675cbdd812a36dcb778ee4325d2f89617` ([#6251](https://github.com/arcjet/arcjet-js/pull/6251))
+> - Claude Managed Agents: arcjet-js `cb35c8f92c3a2fb63fbeb9b386d79b1878c19d92` (`david/cursor/claude-managed-agents-v0-3e87`)
 
 ## Architecture: why things go where they do
 
@@ -268,7 +269,7 @@ For tests, `registerTestClient()` from `@arcjet/guard/testing` records calls and
 
 ## Framework integrations
 
-Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/vercel-eve`, `/mastra`, `/langgraph`, `/langchain`, `/claude-agent-sdk`, `/openai-agents`, `/genkit`, `/google-adk`, `/tanstack-ai`, `/strands-agents`) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`).
+Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/vercel-eve`, `/mastra`, `/langgraph`, `/langchain`, `/claude-agent-sdk`, `/claude-managed-agents`, `/openai-agents`, `/genkit`, `/google-adk`, `/tanstack-ai`, `/strands-agents`) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`).
 
 | Integration | Import | Use when |
 | --- | --- | --- |
@@ -276,6 +277,7 @@ Import the versioned path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/ver
 | Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | Eve agents. Optional peer `eve` `>=0.34.0 <1` (still 0.x). Node ≥ 24. `guardInbound` on channels (only place to decline a turn before it starts) – its verdict carries `outcome` (`"DENY"` \| `"UNAVAILABLE"`, denial vs outage) and the rule category on `verdict.decision?.reason`; `verdict.reason` is a deprecated alias for `outcome`, so do not return it as the category. `guardApproval` on OpenAPI/MCP connections (no local `execute`): `approval` is a function or `{ request, response }`; do not compose with Eve `always()`/`once()`/`never()`. `onAllow: "user-approval"` parks for HITL; optional `response` authorizes the responder. Request/response form is on current docs/`main`, not published 1.10.0. `arcjetHooks` is observe-only. |
 | Mastra v1 | `@arcjet/guard/mastra/v1` | On current docs/`main`, not published 1.10.0. Wrapping a `createTool()` result under `exactOptionalPropertyTypes` needs `main` – earlier builds constrained `guardTool` to `ToolAction<any, any>`, which a real Mastra `Tool` cannot satisfy (TS2379). `guardProcessor` for inbound/outbound text (no `guardInbound`). `guardTool` for authored tools. `guardHooks` for unwrapped MCP/workspace tools (`beforeToolCall` can deny). No `guardApproval` – Mastra `requireApproval` is human HITL. Do not also wrap with `vercel-ai/v7`. |
 | Claude Agent SDK v0 | `@arcjet/guard/claude-agent-sdk/v0` | On current docs/`main`, not published 1.10.0. `guardTool` for authored `tool()` + `createSdkMcpServer()`. `guardHooks` supplies `UserPromptSubmit` (the only place a turn can be declined before the model reads it) and `PreToolUse` (the only deny for built-ins and unwrapped MCP); `PostToolUse` is capture only. No `guardInbound`. `canUseTool` is **not** a policy gate – it is skipped by `allowedTools`, allow rules and `bypassPermissions`. `claudeAgentContext` reads `session_id` / `options.sessionId`. Optional peer `@anthropic-ai/claude-agent-sdk` `>=0.1.0 <1`. Node.js 22+. |
+| Claude Managed Agents v0 | `@arcjet/guard/claude-managed-agents/v0` | Until-published (not in npm 1.10.0; pin `@arcjet/guard` to git SHA `cb35c8f9`). Hosted harness via `@anthropic-ai/sdk` `>=0.86.0 <1` `client.beta.sessions` — not Claude Agent SDK local `query()` / `PreToolUse` (`@arcjet/guard/claude-agent-sdk/v0`). `guardCustomTool` + `guardEvents` + `claudeManagedAgentsContext` only. No unversioned `@arcjet/guard/claude-managed-agents` alias. Optional peer `@anthropic-ai/sdk` `>=0.86.0 <1` — not `@anthropic-ai/claude-agent-sdk`. Anthropic runs built-ins; default `always_allow` means no customer pre-exec for bash/files. Real gates: inbound `user.message` and custom tools on `agent.custom_tool_use`. `always_ask` + `user.tool_confirmation` is opt-in, not HITL-as-policy. MCP Guard only on servers you host (Anthropic is the MCP client). Never mint. Node.js 22+. Do not also wrap with `claude-agent-sdk/v0` or `vercel-ai/v7`. Docs https://docs.arcjet.com/guards/claude-managed-agents/. |
 | LangGraph v1 | `@arcjet/guard/langgraph/v1` | On current docs/`main`, not published 1.10.0. Graph API (`StateGraph` + `ToolNode` from `@langchain/langgraph/prebuilt`), not LangChain `createAgent` / `wrapToolCall` (that is `@arcjet/guard/langchain/v1`, docs `/guards/langchain-js/`). Do not build on `createReactAgent`. `guardTool` for authored `tool()` / `StructuredTool`. `guardToolNode` for MCP / unwrapped tools. `langgraphAgentContext` reads `thread_id`. No `guardInbound` / `guardApproval` / `guardInterrupt` – `interrupt()` is human HITL. Optional peers `@langchain/langgraph` and `@langchain/core` `>=1 <2`. Node.js 22+. Do not also wrap with `vercel-ai/v7`. |
 | LangChain JS createAgent v1 | `@arcjet/guard/langchain/v1` | Until-published (not in npm 1.10.0; pin `@arcjet/guard` to git SHA `c49abcc1`, [#6248](https://github.com/arcjet/arcjet-js/pull/6248)). JS `createAgent` + `createMiddleware({ wrapToolCall })`. Not LangGraph `StateGraph`/`ToolNode` (`/guards/langgraph/`). Not Python LangChain (`/guards/langchain/`). `guardTool` + `guardMiddleware` + `langchainContext` only. No unversioned `@arcjet/guard/langchain` alias. Optional peers `langchain` `>=1.2.0 <2` and `@langchain/core` `>=1 <2` — no `@langchain/langgraph` peer. `guardTool` returns a plain `ArcjetDenialResult`; `guardMiddleware` `wrapToolCall` short-circuit returns a real `ToolMessage` (JSON content, default status). Policy on `wrapToolCall` only. `wrapToolCall` only sees `runtime.configurable.thread_id` as of langchain 1.2.34. `humanInTheLoopMiddleware` is HITL. Node.js 22+. Do not also wrap with `langgraph/v1` or `vercel-ai/v7`. Docs https://docs.arcjet.com/guards/langchain-js/. |
 | OpenAI Agents v0 | `@arcjet/guard/openai-agents/v0` | On `main` at merge `0099fb76` ([#6233](https://github.com/arcjet/arcjet-js/pull/6233)), not published 1.10.0. Text `Agent` + `run()` / `Runner` + authored `tool()`. Not Realtime, Sandbox, hosted, MCP, `asTool`, computer/shell. `guardTool` + `openaiAgentsContext` only. No `guardInbound` / `guardApproval` / `guardToolNode` / `guardHooks`. `needsApproval` is HITL. Optional peer `@openai/agents` `>=0.17.0 <1`. Node.js 22+. Do not also wrap with `vercel-ai/v7`. |
@@ -309,6 +311,7 @@ AI SDK wording is `"Arcjet denied this call …"` (no longer `"tool call"`).
 | LangGraph | Return `{ arcjetDenied: true, … }`; `ToolNode` wraps it as a `ToolMessage` with `status: "success"` | Faking a `ToolMessage` to force `status: "error"` crashes the graph reducer |
 | LangChain JS createAgent | `guardTool` returns a plain `ArcjetDenialResult` (`createAgent` `baseHandler` wraps it). `guardMiddleware` `wrapToolCall` short-circuit returns a real `ToolMessage` (JSON `content`, default status) | A throw drops the fields. A bare object from `wrapToolCall` crashes the reducer. `humanInTheLoopMiddleware` is HITL, not a denial. Distinct from LangGraph Graph API (`ToolNode` wraps a plain object) |
 | Claude Agent SDK | MCP `CallToolResult` with `isError: true` and the payload on `structuredContent` | A throw is a raw exception; omitting `isError` looks like success |
+| Claude Managed Agents | `user.custom_tool_result` with `is_error: true` and denial text | A throw leaves the hosted session idle waiting for a result. Omitting `is_error` looks like success. Built-ins never hit this path. Distinct from Claude Agent SDK MCP `CallToolResult` / `structuredContent` |
 | TanStack AI | `guardMiddleware` default DENY is `onBeforeToolCall` skip with `{ arcjetDenied: true, … }`. Optional `onDeny: "abort"` returns `{ type: "abort", reason }` (real DENY only; unavailable stays skip; no payload) | An `execute` throw is swallowed and drops the fields. There is no `guardTool`. `needsApproval` / `defineInterrupt` / `onInterruptBoundary` is HITL, not a denial. Distinct from TanStack's own `contentGuardMiddleware` and from Vercel AI SDK |
 | Strands Agents | `guardTool` returns a plain `ArcjetDenialResult` (`FunctionTool` wraps it in a `JsonBlock`). `guardHooks` sets `BeforeToolCallEvent.cancel` to the JSON string of `{ arcjetDenied: true, … }` | `event.interrupt()` is HITL (`InterruptError`), not a denial. `cancel: true` uses a default message and drops the fields. `BeforeToolsEvent.cancel` skips per-tool hooks. A throw is a raw exception. Do not fabricate a `ToolResultBlock` |
 | Vercel Eve | Throw `ArcjetDeniedError`. Opt in to a returned payload with `onDeny: "result"` | Eve projects a throw as a failed `action.result`. A silent return can violate `outputSchema` |
@@ -374,6 +377,104 @@ for await (const message of query({
   void message;
 }
 ```
+
+### Claude Managed Agents
+
+Exports: `guardCustomTool`, `guardEvents`, `claudeManagedAgentsContext`. There is no `guardTool`, `guardHooks`, `guardInbound`, or unversioned `@arcjet/guard/claude-managed-agents` alias. This is the hosted Claude Managed Agents harness (`@anthropic-ai/sdk` `client.beta.sessions`). It is **not** Claude Agent SDK local `query()` / `PreToolUse` — that stays `@arcjet/guard/claude-agent-sdk/v0` (docs https://docs.arcjet.com/guards/claude-agent-sdk/). Optional peer `@anthropic-ai/sdk` `>=0.86.0 <1` — not `@anthropic-ai/claude-agent-sdk`. Until-published: published `@arcjet/guard@1.10.0` does not export `./claude-managed-agents/v0` (`ERR_PACKAGE_PATH_NOT_EXPORTED`). Pin `@arcjet/guard` to git SHA `cb35c8f92c3a2fb63fbeb9b386d79b1878c19d92`. Worked example: [`examples/claude-managed-agents`](https://github.com/arcjet/arcjet-js/tree/main/examples/claude-managed-agents) (vendors the same `cb35c8f9`). Read the installed package's types before wiring. Python is `arcjet.guard.claude_managed_agents` (docs https://docs.arcjet.com/guards/claude-managed-agents-py/).
+
+This is a hosted harness. Anthropic runs the agent loop and the built-in toolset (`bash`, files, web_*). The agent toolset defaults to `always_allow`, so there is **no customer pre-exec** for bash/files — `agent.tool_use` / `agent.tool_result` fire after the built-in already ran. There is no `PreToolUse`. Do not paper over that gap with `always_ask`.
+
+Three gotchas first:
+
+1. **The real gates are inbound `user.message` and custom tools on `agent.custom_tool_use`.** `guardEvents(arcjet, { events, inbound, context }, send)` screens `user.message` **before** `sessions.events.send` — the only place a turn can be declined before the hosted harness reads the prompt, so prompt-injection rules go here. `inbound.rules` receives `{ text, events }`, not `{ prompt }`. On DENY / fail-closed unavailability it returns `{ allowed: false, outcome, message }` and does **not** call `send`. `guardCustomTool` on the hosted path is `guardCustomTool(arcjet, { event, execute, send }, policy)` when the session emits `agent.custom_tool_use`. Built-ins never enter that handler. Self-hosted `EnvironmentWorker` / `betaTool({ run })` uses the wrap form `guardCustomTool(arcjet, betaTool, policy)`. The CLI worker cannot register custom tools.
+2. **`always_ask` + `user.tool_confirmation` is opt-in confirmation, not HITL-as-policy.** Permission policies apply to the agent toolset and MCP, not custom tools. Same trap as Claude Agent SDK `canUseTool`, Mastra `requireApproval`, and LangGraph `interrupt()`. Do not treat a confirmation prompt as a Guard deny.
+3. **MCP Guard only on servers you host.** Anthropic is the MCP client. You cannot intercept Anthropic-side MCP execution from this adapter. If you host the MCP server, put Guard on that server (core Guard / MCP patterns) — not `guardCustomTool`, and not Claude Agent SDK `PreToolUse`.
+
+- **`guardCustomTool`** (hosted) runs Guard before `execute`. On `DENY` (or unevaluated Guard under the default `onGuardError: "deny"`) `execute` does not run and `send` is invoked with a real `user.custom_tool_result` (`custom_tool_use_id`, denial text on `content`, **`is_error: true`**). On ALLOW the caller posts the success `user.custom_tool_result`. A throw leaves the hosted session idle waiting for a result; omitting `is_error` looks like success. This is not Claude Agent SDK `structuredContent`.
+- **`guardEvents`** is permit-then-send. `send` is `(body) => client.beta.sessions.events.send(session.id, body)`. There is no wrapper that returns `{ send }`. Events that are not `user.message` pass through without an inbound screen. Inbound `"allow"` is a legitimate `onGuardError` choice because failing closed stops the agent answering. `agent.tool_use` is observe-only — the built-in already ran.
+- **`claudeManagedAgentsContext`** reads a **caller-owned** `correlationId` only. It never mints. It never reads Anthropic `session.id` / `sesn_…` / `sevt_…` / `id` / `traceId`. Do not `randomUUID()` a correlation id the way Claude Agent SDK `options.sessionId` requires, and do not pass Anthropic's session id as correlation.
+- Fail closed by default (`onGuardError: "deny"`). Node.js 22+. Use `guardCustomTool` / `guardEvents` / `claudeManagedAgentsContext` only — not `guardTool`, `guardHooks`, `guardInbound`, `createAgentContext`, or `aiToolsContext`. Do not also wrap with `@arcjet/guard/claude-agent-sdk/v0` or `@arcjet/guard/vercel-ai/v7`. Docs: https://docs.arcjet.com/guards/claude-managed-agents/. Worked example: [`examples/claude-managed-agents`](https://github.com/arcjet/arcjet-js/tree/main/examples/claude-managed-agents).
+
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+import { launchArcjet, detectPromptInjection, tokenBucket } from "@arcjet/guard";
+import {
+  claudeManagedAgentsContext,
+  guardCustomTool,
+  guardEvents,
+} from "@arcjet/guard/claude-managed-agents/v0";
+
+const client = new Anthropic();
+const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });
+const lookupLimit = tokenBucket({
+  bucket: "lookups",
+  refillRate: 10,
+  intervalSeconds: 60,
+  maxTokens: 10,
+});
+const inbound = detectPromptInjection();
+// The authenticated caller, so a budget cannot be reset by varying the order id.
+const userId = authenticatedUserId;
+// Caller-owned Sequence id — not Anthropic session.id / sevt_...
+const conversationId = authenticatedConversationId;
+const ctx = claudeManagedAgentsContext({ correlationId: conversationId });
+
+const session = await client.beta.sessions.create({
+  agent: agentId,
+  environment_id: environmentId,
+});
+
+// Screen user.message before the hosted harness reads it. DENY does not send.
+const verdict = await guardEvents(
+  arcjet,
+  {
+    events: [{ type: "user.message", content: [{ type: "text", text: userText }] }],
+    inbound: {
+      action: "message.received",
+      rules: ({ text }) => [inbound(text)],
+    },
+    context: ctx,
+  },
+  (body) => client.beta.sessions.events.send(session.id, body),
+);
+if (!verdict.allowed) {
+  return verdict.message;
+}
+
+for await (const event of client.beta.sessions.events.stream(session.id)) {
+  if (event.type === "agent.custom_tool_use" && event.name === "lookup_order") {
+    const gated = await guardCustomTool(
+      arcjet,
+      {
+        event,
+        execute: (input) => lookupOrder(input),
+        send: (result) =>
+          client.beta.sessions.events.send(session.id, { events: [result] }),
+      },
+      {
+        action: "order.looked-up",
+        rules: () => [lookupLimit({ key: userId, requested: 1 })],
+        context: ctx,
+      },
+    );
+    if (gated.allowed) {
+      await client.beta.sessions.events.send(session.id, {
+        events: [
+          {
+            type: "user.custom_tool_result",
+            custom_tool_use_id: event.id,
+            content: [{ type: "text", text: JSON.stringify(gated.output) }],
+          },
+        ],
+      });
+    }
+    // DENY already posted user.custom_tool_result with is_error: true. Do not throw.
+  }
+  // agent.tool_use / always_ask + user.tool_confirmation are not this policy gate
+}
+```
+
+Key rate limits on the authenticated caller, not a model-supplied order id.
 
 ### Vercel Eve
 
@@ -817,7 +918,7 @@ for await (const event of runner.runAsync({
 }
 ```
 
-See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, https://docs.arcjet.com/guards/langgraph/, https://docs.arcjet.com/guards/langchain-js/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/genkit/, https://docs.arcjet.com/guards/google-adk/, https://docs.arcjet.com/guards/tanstack-ai/, and https://docs.arcjet.com/guards/strands-agents/.
+See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/claude-managed-agents/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, https://docs.arcjet.com/guards/langgraph/, https://docs.arcjet.com/guards/langchain-js/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/genkit/, https://docs.arcjet.com/guards/google-adk/, https://docs.arcjet.com/guards/tanstack-ai/, and https://docs.arcjet.com/guards/strands-agents/.
 
 ### TanStack AI
 
