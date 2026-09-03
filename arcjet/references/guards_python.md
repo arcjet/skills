@@ -689,11 +689,11 @@ Exports: `guard_custom_tool`, `guard_events`, `claude_managed_agents_context`. T
 
 Three gotchas first:
 
-1. **The real gates are inbound `user.message` and custom tools on `agent.custom_tool_use`.** `guard_events(send=client.beta.sessions.events.send, …)` wraps the send callable so `user.message` / `initial_events` are evaluated **before** the original send runs — the only place a turn can be declined before the hosted harness reads the prompt. On DENY it raises `ArcjetDeniedError` / `ArcjetUnavailableError` and does not call send. `guard_custom_tool(run=…)` returns `await handler(event, send=…, session_id=…)`. Built-ins never enter that handler. Optional `tool=` wraps a self-hosted `@beta_tool` `run` the same way; the CLI worker cannot register custom tools.
+1. **The real gates are inbound `user.message` and custom tools on `agent.custom_tool_use`.** `guard_events(send=client.beta.sessions.events.send, …)` wraps the send callable so `user.message` / `initial_events` are evaluated **before** the original send runs — the only place a turn can be declined before the hosted harness reads the prompt. On DENY it raises `ArcjetDeniedError` / `ArcjetUnavailableError` and does not call send. Inbound `rules` receive `{"prompt", "content", "type"}` from `message_arguments()` — not the JS `{ text, events }`. `guard_custom_tool(run=…)` returns `await handler(event, send=…, session_id=…)`. Built-ins never enter that handler. Optional `tool=` wraps a self-hosted `@beta_tool` `run` the same way; the CLI worker cannot register custom tools.
 2. **Custom-tool denial is `user.custom_tool_result` with schema field `is_error`.** On `DENY` (or unevaluated Guard under the default `on_guard_error="deny"`) the original `run` is not called. The helper sends a real `user.custom_tool_result` (`custom_tool_use_id`, JSON of `ArcjetDenialResult` on `content`, **`is_error`** — that field is on the events schema; do not invent a second one). Do **not** raise from the hosted handler: a throw leaves the session idle. Omitting `is_error` looks like success. This is not Claude Agent SDK `structuredContent`. Same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196): only `"allow"` fails open; a `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
 3. **`always_ask` + `user.tool_confirmation` is opt-in confirmation, not HITL-as-policy.** Permission policies apply to the agent toolset and MCP, not custom tools. Same trap as CrewAI `human_input`, JS `canUseTool`, and LangGraph `interrupt()`. MCP Guard only on servers you host — Anthropic is the MCP client. `web_search` / `web_fetch` always run on Anthropic.
 
-`claude_managed_agents_context` reads a **caller-owned** `correlation_id` / `session_id`. It never mints. It never reads Anthropic `id` / `event_id` / `session.id` (`ses_…`) / `sevt_…` / `trace_id`. Passing an Anthropic Session object is safe — those minted ids are ignored. An invalid candidate is skipped; if nothing valid remains the call is uncorrelated rather than joined to a generated id.
+`claude_managed_agents_context` is a reader that returns `ClaudeManagedAgentsContext` (a dataclass) — not a context manager and not a contextvar setter. It reads a **caller-owned** `correlation_id` / `session_id`. It never mints. It never reads Anthropic `id` / `event_id` / `session.id` (`ses_…`) / `sevt_…` / `trace_id`. Passing an Anthropic Session object is safe — those minted ids are ignored. An invalid candidate is skipped; if nothing valid remains the call is uncorrelated rather than joined to a generated id. Helpers also re-read `session_id=` / `correlation_id=` internally.
 
 Use `action` + `rules` only. Do not hand-wrap every session event with raw `guard()`. Docs: https://docs.arcjet.com/guards/claude-managed-agents-py/. Worked example: [`examples/fastapi-claude-managed-agents-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-claude-managed-agents-guard). JS adapter stays at https://docs.arcjet.com/guards/claude-managed-agents/ (`cb35c8f92c3a2fb63fbeb9b386d79b1878c19d92`).
 
@@ -720,7 +720,7 @@ inbound = DetectPromptInjection()
 user_id = authenticated_user_id
 # Caller-owned Sequence id — not Anthropic session.id / sevt_...
 conversation_id = authenticated_conversation_id
-claude_managed_agents_context(session_id=conversation_id)
+derived = claude_managed_agents_context(session_id=conversation_id)
 
 async def lookup_order(event) -> dict:
     order_id = event.input["order_id"]
@@ -731,7 +731,7 @@ handle_lookup = guard_custom_tool(
     action="order.looked-up",
     run=lookup_order,
     rules=[lookup_limit(key=user_id, requested=1)],
-    session_id=conversation_id,
+    session_id=derived.correlation_id or conversation_id,
     on_guard_error="deny",
 )
 
@@ -739,8 +739,9 @@ send = guard_events(
     guard=aj,
     send=client.beta.sessions.events.send,
     action="message.received",
+    # Python inbound ctx is {"prompt", "content", "type"} — not JS { text, events }.
     rules=lambda ctx: [inbound(ctx["prompt"])],
-    session_id=conversation_id,
+    session_id=derived.correlation_id or conversation_id,
     on_guard_error="deny",
 )
 
