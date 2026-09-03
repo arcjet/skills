@@ -293,7 +293,7 @@ with raw `guard()`.
 | Official Python Claude Agent SDK `@tool` / unwrapped built-ins | `arcjet.guard.claude_agent_sdk` | [integrate-arcjet-guard-claude-agent-sdk-py](../../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md) |
 | Claude Managed Agents custom tools / inbound events | `arcjet.guard.claude_managed_agents` | [integrate-arcjet-guard-claude-managed-agents-py](../../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md) |
 | Official Python Strands Agents `@tool` / Agent | `arcjet.guard.strands_agents` | [integrate-arcjet-guard-strands-agents-py](../../integrate-arcjet-guard-strands-agents-py/SKILL.md) |
-| Official Python Google ADK `Runner` / `LlmAgent` | `arcjet.guard.google_adk` | [integrate-arcjet-guard-google-adk-py](../../integrate-arcjet-guard-google-adk-py/SKILL.md) |
+| Official Python Google ADK `LlmAgent` / `Runner` | `arcjet.guard.google_adk` | [integrate-arcjet-guard-google-adk-py](../../integrate-arcjet-guard-google-adk-py/SKILL.md) |
 
 Do not mix adapters. Importing one adapter module does not load another.
 Python LangChain is not JS `createAgent` (docs https://docs.arcjet.com/guards/langchain-js/) and not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). Python OpenAI Agents, Claude Agent SDK, Claude Managed Agents, Strands Agents, and Google ADK are not their JS `@arcjet/guard/...` counterparts. There is no `guard_crew`. There is no `arcjet[crewai]` extra (CrewAI pulls `chromadb`, CVE-2026-45829). Teaching pins, extras, denial envelopes, and HITL traps live in the dedicated skill — do not restate them here.
