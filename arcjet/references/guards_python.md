@@ -16,13 +16,22 @@
 
 ## What Guard is
 
-Guard protects code paths that don't have an HTTP request – tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 in the following sections still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000&nbsp;ms default request timeout for Guard; `protect()` matches on `main`) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site. On `main`, prefer `guard_action` / `guard_tool` / `ArcjetMiddleware` when they fit – see [Framework helpers](#framework-helpers). Official CrewAI uses `arcjet.guard.crewai` (no extra; install CrewAI yourself). Official Python Strands Agents uses `arcjet.guard.strands_agents` (`arcjet[strands-agents]`, `strands-agents>=1.11.0,<2`).
+Guard protects code paths that don't have an HTTP request – tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 in the following sections still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000&nbsp;ms default request timeout for Guard; `protect()` matches on `main`) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site. On `main`, prefer `guard_action` / `guard_tool` / `ArcjetMiddleware` when they fit – see [Framework helpers](#framework-helpers). Official CrewAI uses `arcjet.guard.crewai` (no extra; install CrewAI yourself). Official Python Strands Agents uses `arcjet.guard.strands_agents` (`arcjet[strands-agents]`, `strands-agents>=1.11.0,<2`). Official Python Claude Agent SDK uses `arcjet.guard.claude_agent_sdk` (`arcjet[claude-agent-sdk]`). Official Python OpenAI Agents uses `arcjet.guard.openai_agents` (`arcjet[openai-agents]`).
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK – they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1. `arcjet.guard.crewai` is until-published – PyPI `arcjet` 0.9.0 does not include the module, and there is no `arcjet[crewai]` extra (CrewAI pulls `chromadb`, CVE-2026-45829). Teaching is pinned to arcjet-py merge `b1253640ce676b948594beed5fe62450d0e1c77d` ([#224](https://github.com/arcjet/arcjet-py/pull/224)). Install CrewAI yourself (`pip install "crewai>=1.15.3,<2"`) and pin `arcjet` to that git SHA. `arcjet.guard.strands_agents` (`arcjet[strands-agents]`, `strands-agents>=1.11.0,<2`) is until-published – pin `arcjet` to git SHA `a630806169b92757192f3f5cce2e305827b26567`. Read the installed package's types before using any of them. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1._
+>
+> Teaching pins (not in PyPI 0.9.0):
+>
+> - CrewAI: `arcjet.guard.crewai` – no `arcjet[crewai]` extra (CrewAI pulls `chromadb`, CVE-2026-45829). Pin `arcjet` to `b1253640ce676b948594beed5fe62450d0e1c77d` ([#224](https://github.com/arcjet/arcjet-py/pull/224)). Install CrewAI yourself (`pip install "crewai>=1.15.3,<2"`).
+> - Python Strands Agents: `arcjet[strands-agents]` (`strands-agents>=1.11.0,<2`) → `arcjet.guard.strands_agents`. Pin `arcjet` to `a630806169b92757192f3f5cce2e305827b26567`.
+> - Python Claude Agent SDK: `arcjet[claude-agent-sdk]` (`claude-agent-sdk>=0.2.127,<1`) → `arcjet.guard.claude_agent_sdk`. Extra is safe (no chromadb). Pin `arcjet` to `9ea0b06a87bcee77b8df0664338c712c4668b87b`.
+> - Python OpenAI Agents: `arcjet[openai-agents]` (`openai-agents>=0.19.0,<1`) → `arcjet.guard.openai_agents`. Pin `arcjet` to `cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d` ([#226](https://github.com/arcjet/arcjet-py/pull/226)).
+>
+> _Read the installed package's types before using any of them. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -32,7 +41,7 @@ Install with whichever package manager the project already uses (`pip install`, 
 pip install arcjet
 ```
 
-Guard is included in the `arcjet` package – no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`). Official CrewAI uses `arcjet.guard.crewai` with no extra – install `crewai>=1.15.3,<2` yourself and pin `arcjet` to git SHA `b1253640ce676b948594beed5fe62450d0e1c77d` until that module is on PyPI. Official Python Strands Agents uses `arcjet[strands-agents]` (`strands-agents>=1.11.0,<2`) → `arcjet.guard.strands_agents` — pin `arcjet` to git SHA `a630806169b92757192f3f5cce2e305827b26567` until that extra is on PyPI. See [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
+Guard is included in the `arcjet` package – no separate install. LangChain helpers need an extra (`arcjet[langchain]` or `arcjet[langchain-agents]`). Official CrewAI uses `arcjet.guard.crewai` with no extra – install `crewai>=1.15.3,<2` yourself and pin `arcjet` to git SHA `b1253640ce676b948594beed5fe62450d0e1c77d` until that module is on PyPI. Official Python Strands Agents uses `arcjet[strands-agents]` (`strands-agents>=1.11.0,<2`) → `arcjet.guard.strands_agents` — pin `arcjet` to git SHA `a630806169b92757192f3f5cce2e305827b26567` until that extra is on PyPI. Official Python Claude Agent SDK uses `arcjet[claude-agent-sdk]` (`claude-agent-sdk>=0.2.127,<1`) → `arcjet.guard.claude_agent_sdk` — pin `arcjet` to git SHA `9ea0b06a87bcee77b8df0664338c712c4668b87b` until that extra is on PyPI. Official Python OpenAI Agents uses `arcjet[openai-agents]` (`openai-agents>=0.19.0,<1`) → `arcjet.guard.openai_agents` — pin `arcjet` to git SHA `cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d` until that extra is on PyPI. See [Framework helpers](#framework-helpers). Read the installed package's types and docstrings for the full API surface.
 
 ## Architecture: why things go where they do
 
@@ -275,7 +284,7 @@ For tests, `from arcjet.guard.testing import register_test_client` and use `with
 
 ## Framework helpers
 
-LangChain surfaces are on current `arcjet-py` **main** ([#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in PyPI 0.9.0 or the 0.10.0b1 pre-release. CrewAI (`arcjet.guard.crewai`) is until-published – not in PyPI 0.9.0, and there is no `arcjet[crewai]` extra. Teaching is pinned to arcjet-py merge `b1253640` ([#224](https://github.com/arcjet/arcjet-py/pull/224)). Python Strands Agents (`arcjet[strands-agents]`, `strands-agents>=1.11.0,<2`, `arcjet.guard.strands_agents`) is until-published – pin `arcjet` to git SHA `a6308061`. Read the installed package before using any of them.
+LangChain surfaces are on current `arcjet-py` **main** ([#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in PyPI 0.9.0 or the 0.10.0b1 pre-release. CrewAI (`arcjet.guard.crewai`) is until-published – not in PyPI 0.9.0, and there is no `arcjet[crewai]` extra. Teaching is pinned to arcjet-py merge `b1253640` ([#224](https://github.com/arcjet/arcjet-py/pull/224)). Python Strands Agents (`arcjet[strands-agents]`, `strands-agents>=1.11.0,<2`, `arcjet.guard.strands_agents`) is until-published – pin `arcjet` to git SHA `a6308061`. Python Claude Agent SDK (`arcjet[claude-agent-sdk]`, `arcjet.guard.claude_agent_sdk`) is until-published – not in PyPI 0.9.0. Teaching is pinned to arcjet-py `9ea0b06` (`9ea0b06a87bcee77b8df0664338c712c4668b87b`). Python OpenAI Agents (`arcjet[openai-agents]`, `arcjet.guard.openai_agents`) is until-published – pin `arcjet` to git SHA `cafe6a66` ([#226](https://github.com/arcjet/arcjet-py/pull/226)). Read the installed package before using any of them.
 
 Pick the helper that matches what you hold. Do not hand-wrap every tool with raw `guard()`.
 
@@ -288,16 +297,18 @@ Pick the helper that matches what you hold. Do not hand-wrap every tool with raw
 | Official CrewAI crew / LiteAgent / MCP or crew-injected tool | `register_arcjet_hooks` + `ToolPolicy` | no extra – install crewai yourself |
 | A CrewAI `BaseTool` you call yourself | `guard_tool` (`arcjet.guard.crewai`) | same – only path that raises Arcjet errors |
 | Official Python Strands Agents `@tool` / Agent | `guard_tool` + `guard_hooks` + `strands_agent_context` | `arcjet[strands-agents]` (`strands-agents>=1.11.0,<2`); pin `arcjet` to `a6308061` |
+| Official Python Claude Agent SDK `@tool` / unwrapped built-ins | `guard_tool` + `guard_hooks` + `claude_agent_context` | `arcjet[claude-agent-sdk]` (`claude-agent-sdk>=0.2.127,<1`); pin `arcjet` to `9ea0b06` |
+| Official Python OpenAI Agents `FunctionTool` | `guard_tool` + `openai_agents_context` | `arcjet[openai-agents]` (`openai-agents>=0.19.0,<1`); pin `arcjet` to `cafe6a66` |
 
-`guard_action` is core Guard – no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`. Importing `arcjet.guard.crewai` does not load LangChain. Importing `arcjet.guard.strands_agents` does not load LangChain, CrewAI, or JS `@arcjet/guard/strands-agents/v1`. There is no `guard_crew`. Python LangChain is not JS `createAgent` (docs https://docs.arcjet.com/guards/langchain-js/) and not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). CrewAI docs: https://docs.arcjet.com/guards/crewai/. Python Strands Agents docs: https://docs.arcjet.com/guards/strands-agents-py/.
+`guard_action` is core Guard – no LangChain extra. Importing `arcjet.guard.langchain` never loads LangGraph; that happens only when you reference `ArcjetMiddleware` or `ToolPolicy`. Without the agents extra those names raise, naming `arcjet[langchain-agents]`. Importing `arcjet.guard.crewai` does not load LangChain. Importing `arcjet.guard.strands_agents` does not load LangChain, CrewAI, or JS `@arcjet/guard/strands-agents/v1`. Importing `arcjet.guard.claude_agent_sdk` does not load LangChain, CrewAI, or the JS `@arcjet/guard/claude-agent-sdk/v0` adapter. Importing `arcjet.guard.openai_agents` does not load LangChain. There is no `guard_crew`. Python LangChain is not JS `createAgent` (docs https://docs.arcjet.com/guards/langchain-js/) and not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). CrewAI docs: https://docs.arcjet.com/guards/crewai/. Python Strands Agents docs: https://docs.arcjet.com/guards/strands-agents-py/. Python Claude Agent SDK docs: https://docs.arcjet.com/guards/claude-agent-sdk-py/. Python OpenAI Agents docs: https://docs.arcjet.com/guards/openai-agents-py/.
 
 ### Gotchas
 
-- **Fail closed.** `guard_action`, LangChain `guard_tool`, `ArcjetMiddleware`, `register_arcjet_hooks`, CrewAI `guard_tool`, and Python Strands Agents `guard_tool` / `guard_hooks` default to `on_guard_error="deny"` (same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196)). Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`). `guard_action`, LangChain `guard_tool`, and `ArcjetMiddleware` write `metadata.outcome`: default deny records `unavailable`; `"allow"` records `degraded` when the action ran without a full judgement. `register_arcjet_hooks` is not that path — a proceed still records `success`. See [Helper capture outcomes](#helper-capture-outcomes).
+- **Fail closed.** `guard_action`, LangChain `guard_tool`, `ArcjetMiddleware`, `register_arcjet_hooks`, CrewAI `guard_tool`, Python Strands Agents `guard_tool` / `guard_hooks`, Python Claude Agent SDK `guard_tool` / `guard_hooks`, and Python OpenAI Agents `guard_tool` default to `on_guard_error="deny"` (same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196)). Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`). `guard_action`, LangChain `guard_tool`, and `ArcjetMiddleware` write `metadata.outcome`: default deny records `unavailable`; `"allow"` records `degraded` when the action ran without a full judgement. `register_arcjet_hooks` is not that path — a proceed still records `success`. See [Helper capture outcomes](#helper-capture-outcomes).
 - **Configure the tool before `guard_tool()`.** Narrow `args_schema`, set `handle_tool_error` / `callbacks` / `response_format` on the tool you still hold, then wrap. Changes on the guarded handle do not reach the call.
-- **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` or `config={"configurable": {"arcjet_correlation_id": session.id}}`. Do not mint a new id per turn. LangChain's `run_id` is not used. The config key wins over an enclosing `arcjet_sequence`; `configurable` is checked before `metadata`. CrewAI correlation is the same caller-owned `correlation_id` / `arcjet_sequence` — crew, task, and agent names are metadata, never minted into an id. Python Strands Agents correlation is a caller-owned id via `strands_agent_context` — never mint, never `trace_id`.
-- **Capture handlers never block.** LangChain ignores what a callback returns. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`. CrewAI never registers `POST_TOOL_CALL`; the decision is captured in `PRE_TOOL_CALL`, which raises `HookAborted(reason=..., source="arcjet")`. Python Strands Agents deny is `BeforeToolCallEvent.cancel_tool` (`True` or `str`); `event.interrupt()` is HITL.
-- **`human_input` is not a policy gate.** CrewAI Agent/Task `human_input` / `request_human_input` is human-in-the-loop, not Guard. Same trap as JS `humanInTheLoopMiddleware` and LangGraph `interrupt()`. Python Strands Agents `event.interrupt()` is the same HITL trap.
+- **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` or `config={"configurable": {"arcjet_correlation_id": session.id}}`. Do not mint a new id per turn. LangChain's `run_id` is not used. The config key wins over an enclosing `arcjet_sequence`; `configurable` is checked before `metadata`. CrewAI correlation is the same caller-owned `correlation_id` / `arcjet_sequence` — crew, task, and agent names are metadata, never minted into an id. Python Strands Agents correlation is a caller-owned id via `strands_agent_context` — never mint, never `trace_id`. Python Claude Agent SDK correlation is a caller-owned UUID `session_id` via `claude_agent_context` — never mint. Python OpenAI Agents correlation is a caller-owned session / conversation id via `openai_agents_context` — never mint, never `trace_id`.
+- **Capture handlers never block.** LangChain ignores what a callback returns. Policy lives in `guard_action` / `guard_tool` / `ArcjetMiddleware`. CrewAI never registers `POST_TOOL_CALL`; the decision is captured in `PRE_TOOL_CALL`, which raises `HookAborted(reason=..., source="arcjet")`. Python Strands Agents deny is `BeforeToolCallEvent.cancel_tool` (`True` or `str`); `event.interrupt()` is HITL. Python Claude Agent SDK inbound is `UserPromptSubmit` on `guard_hooks`; unwrapped-tool deny is `PreToolUse`. `PostToolUse` is capture only. Authored `@tool` denial is JSON-in-content + `is_error: True` — do not set `structuredContent` (JS only). Python OpenAI Agents denial is `reject_content` only – a raise is a tripwire halt or is swallowed by `default_tool_error_function`.
+- **`human_input` is not a policy gate.** CrewAI Agent/Task `human_input` / `request_human_input` is human-in-the-loop, not Guard. Same trap as JS `humanInTheLoopMiddleware`, LangGraph `interrupt()`, Python Strands Agents `event.interrupt()`, Python Claude Agent SDK `can_use_tool`, and Python OpenAI Agents `needs_approval`.
 
 ### Any callable – `guard_action`
 
@@ -490,6 +501,175 @@ guarded = guard_tool(
 )
 result = guarded.run(order_id=order_id)
 ```
+
+### Claude Agent SDK – `guard_tool` / `guard_hooks`
+
+Official `claude-agent-sdk>=0.2.127,<1` only – not the JS `@anthropic-ai/claude-agent-sdk` adapter (`@arcjet/guard/claude-agent-sdk/v0`, docs `/guards/claude-agent-sdk/`), not Vercel AI, not community forks. Import from `arcjet.guard.claude_agent_sdk`. Users install `arcjet[claude-agent-sdk]` – the extra is safe (no chromadb). Until-published: PyPI `arcjet` 0.9.0 does not include this module. Pin `arcjet` to git SHA `9ea0b06a87bcee77b8df0664338c712c4668b87b`:
+
+```bash
+pip install "arcjet[claude-agent-sdk] @ git+https://github.com/arcjet/arcjet-py.git@9ea0b06a87bcee77b8df0664338c712c4668b87b"
+```
+
+Exports: `guard_tool`, `guard_hooks`, `claude_agent_context`. Authored `@tool` + `create_sdk_mcp_server` for tools you own; `guard_hooks` for inbound `UserPromptSubmit` and unwrapped built-ins / MCP `PreToolUse`. There is no inbound helper and no `guard_can_use_tool`.
+
+Three gotchas first:
+
+1. **Unwrapped tools deny on `PreToolUse` via `guard_hooks`.** Built-ins (Bash, Write, …) and MCP tools you did not pass through `guard_tool` have no authored handler. `PreToolUse` is the only deny for those (`permissionDecision: "deny"`). `PostToolUse` is capture only and cannot undo a tool that already ran. List every `guard_tool` wrapper in `exclude` or each authored tool is guarded twice (two round trips, two quota units). Entries match the reported name: pass `{"server": "support", "name": "lookup_order"}` for an authored MCP tool (it resolves to `mcp__support__lookup_order`) and a bare string for a built-in such as `"Bash"`. A bare authored name deliberately does not match every server's tool of that name.
+2. **Authored `@tool` denial is JSON-in-content + `is_error: True`.** `guard_tool` wraps the `@tool` definition so the handler never runs on `DENY` (or unevaluated Guard under the default `on_guard_error="deny"`). The model receives the `ArcjetDenialResult` as JSON text on `content` with `is_error: True`. Python does **not** forward `structuredContent` — that is the JS `@arcjet/guard/claude-agent-sdk/v0` adapter. Do **not** raise: a throw is a raw exception; omitting `is_error` looks like success. Same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196): only `"allow"` fails open; a `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
+3. **`can_use_tool` is not a policy gate.** `can_use_tool` is human-in-the-loop. `allowed_tools`, allow rules, and `bypassPermissions` / `acceptEdits` skip it. Same trap as CrewAI `human_input`, JS `canUseTool`, LangGraph `interrupt()`, and OpenAI Agents `needs_approval`. There is no inbound helper — screen prompt injection on `guard_hooks` `UserPromptSubmit` (`decision: "block"`). That is the only place a turn can be declined before the model reads the prompt.
+
+`claude_agent_context` reads a caller-owned UUID `session_id` (hook `session_id` first, then `options.session_id`). It never mints an id. The Claude SDK also requires `session_id` to be a UUID and allows a given id to be created only once — later turns use `resume`, not a second `session_id`. Do not invent a correlation id per turn.
+
+Use `action` + `rules` only. Do not hand-wrap every Claude Agent SDK tool with raw `guard()`. The example `fastapi-claude-agent-sdk-guard` stays with Runtime – do not invent a new example name. Docs: https://docs.arcjet.com/guards/claude-agent-sdk-py/. JS adapter stays at https://docs.arcjet.com/guards/claude-agent-sdk/.
+
+```python
+from claude_agent_sdk import ClaudeAgentOptions, create_sdk_mcp_server, query, tool
+from arcjet.guard import DetectPromptInjection, TokenBucket, launch_arcjet
+from arcjet.guard.claude_agent_sdk import guard_hooks, guard_tool
+
+aj = launch_arcjet(key=os.environ["ARCJET_KEY"])
+lookup_limit = TokenBucket(
+    label="order.looked-up",
+    bucket="lookups",
+    refill_rate=10,
+    interval_seconds=60,
+    max_tokens=10,
+)
+mcp_limit = TokenBucket(
+    label="mcp.invoked",
+    bucket="mcp-access",
+    refill_rate=20,
+    interval_seconds=60,
+    max_tokens=20,
+)
+inbound = DetectPromptInjection()
+# The authenticated caller, so a budget cannot be reset by varying the order id.
+user_id = authenticated_user_id
+# Caller-owned UUID for this conversation. `claude_agent_context` reads it
+# (hook session_id first, then options.session_id) and never mints.
+# Later turns: resume=session_id.
+session_id = conversation_id
+
+@tool("lookup_order", "Look up an order by number", {"order_id": str})
+async def lookup_order(args: dict) -> dict:
+    return {
+        "content": [{"type": "text", "text": f"{args['order_id']}: shipped"}],
+    }
+
+lookup_order = guard_tool(
+    guard=aj,
+    tool=lookup_order,
+    action="order.looked-up",
+    rules=[lookup_limit(key=user_id, requested=1)],
+    on_guard_error="deny",
+)
+# can_use_tool=... is HITL — not this policy gate
+
+async for message in query(
+    prompt=user_text,
+    options=ClaudeAgentOptions(
+        session_id=session_id,  # later turns: resume=session_id instead
+        mcp_servers={
+            "support": create_sdk_mcp_server(name="support", tools=[lookup_order]),
+        },
+        hooks=guard_hooks(
+            guard=aj,
+            session_id=session_id,
+            exclude=[{"server": "support", "name": "lookup_order"}],
+            inbound={
+                "action": "message.received",
+                "rules": lambda ctx: [inbound(ctx["prompt"])],
+            },
+            action="mcp.invoked",
+            rules=lambda ctx: [mcp_limit(key=user_id, requested=1)],
+            on_guard_error="deny",
+        ),
+    ),
+):
+    pass
+```
+
+Key rate limits on the authenticated caller, not a model-supplied order id. The original unwrapped `@tool` stays unguarded – hand `query` / `create_sdk_mcp_server` the copy `guard_tool` returns.
+
+`claude_agent_context(session_id=session_id)` reads that same caller-owned UUID (hook `session_id` first, then `options.session_id`). It never mints. Pass the id you already have into `guard_hooks` and `ClaudeAgentOptions` — do not derive a new one per turn.
+
+
+### OpenAI Agents – `guard_tool`
+
+Official `openai-agents>=0.19.0,<1` only – not the JS `@openai/agents` adapter (`/guards/openai-agents/`), not community forks. Import from `arcjet.guard.openai_agents`. Until-published: PyPI `arcjet` 0.9.0 does not include this module. Pin `arcjet` to git SHA `cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d` ([#226](https://github.com/arcjet/arcjet-py/pull/226)):
+
+```bash
+pip install "arcjet[openai-agents] @ git+https://github.com/arcjet/arcjet-py.git@cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d"
+```
+
+Exports: `guard_tool`, `openai_agents_context`. Authored `FunctionTool` / `@function_tool` only. Not hosted tools, MCP, Computer / Shell / ApplyPatch, handoffs, or `Agent.as_tool()`.
+
+Three gotchas first:
+
+1. **The gate is `FunctionTool.tool_input_guardrails` + `reject_content`.** `guard_tool` returns a copy whose input guardrails start with Arcjet, so `on_invoke_tool` never runs on `DENY` (or unevaluated Guard under the default `on_guard_error="deny"`). Denial is `ToolGuardrailFunctionOutput.reject_content` with JSON of `ArcjetDenialResult` (`{ arcjetDenied: true, … }`). Do **not** raise – `raise_exception()` is a tripwire halt, and a raise from `on_invoke_tool` is swallowed by `default_tool_error_function`. Same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196): only `"allow"` fails open; a `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`).
+2. **`needs_approval` is not a policy gate.** `needs_approval` is human-in-the-loop (`state.approve` / `state.reject`). Same trap as JS OpenAI Agents `needsApproval`, LangGraph `interrupt()`, and Genkit `interrupt()`. There is no inbound helper and no approval helper. `RunConfig.tool_execution.pre_approval_tool_input_guardrails=True` is an application opt-in only – this helper does not set it.
+3. **Screen inbound before `Runner.run`.** There is no inbound helper. SDK `input_guardrails` / `output_guardrails` / tool output guardrails are the SDK's own tripwires, not Arcjet. Call `aj.guard(...)` in the application and **act on the decision**. Core `guard()` fails open: `ALLOW` is not proof the rules ran. Gate on `decision.has_failed_open()` if this call site must fail closed; `guard_tool` already defaults to that.
+
+`openai_agents_context` reads a caller-owned id. Preference: fields on `runContext.context` / a bare app object (`correlation_id`, then `session_id`, then `conversation_id`, then `group_id`, snake or camelCase), then the same names on the envelope, then `correlation_id=` / `session_id=` kwargs, then an enclosing `arcjet_sequence`. It returns `OpenAIAgentsContext` – pass `.correlation_id` to `guard()`. It never mints an id. It never reads `trace_id`. It never constructs `OpenAIConversationsSession()`. Do not invent a correlation id per turn.
+
+Do not hand-wrap every OpenAI Agents tool with raw `guard()`. Use the extra. The example `fastapi-openai-agents-guard` stays with Runtime – do not invent a new example name. Docs: https://docs.arcjet.com/guards/openai-agents-py/. JS adapter stays at https://docs.arcjet.com/guards/openai-agents/.
+
+```python
+from agents import Agent, Runner, function_tool
+from arcjet.guard import DetectPromptInjection, TokenBucket, launch_arcjet
+from arcjet.guard.openai_agents import guard_tool, openai_agents_context
+
+aj = launch_arcjet(key=os.environ["ARCJET_KEY"])
+lookup_limit = TokenBucket(
+    label="order.looked-up",
+    bucket="lookups",
+    refill_rate=10,
+    interval_seconds=60,
+    max_tokens=10,
+)
+# The authenticated caller, so a budget cannot be reset by varying the order id.
+user_id = authenticated_user_id
+
+@function_tool  # needs_approval=... is HITL — not this policy gate
+def lookup_order(order_number: str) -> dict:
+    """Look up an order by number."""
+    return {"order_number": order_number, "status": "shipped"}
+
+lookup_order = guard_tool(
+    guard=aj,
+    tool=lookup_order,
+    action="order.looked-up",
+    rules=[lookup_limit(key=user_id, requested=1)],
+    on_guard_error="deny",
+)
+
+agent = Agent(
+    name="support-agent",
+    instructions="Help the user.",
+    tools=[lookup_order],
+)
+
+inbound = DetectPromptInjection()
+app_context = {"session_id": conversation_id}
+derived = openai_agents_context(app_context)
+decision = await aj.guard(
+    label="message.received",
+    rules=[inbound(user_text)],
+    correlation_id=derived.correlation_id,
+)
+if decision.conclusion == "DENY":
+    raise Exception("message blocked")
+# `guard()` fails open, so an ALLOW is not proof the rules ran. Gate
+# on has_failed_open() when this inbound site must fail closed. Omitting
+# that gate is legitimate if an outage must not stop the agent.
+if decision.has_failed_open():
+    raise Exception("inbound guard unavailable")
+
+await Runner.run(agent, user_text, context=app_context)
+```
+
+Use `action` + `rules` on `guard_tool`. Key rate limits on the authenticated caller, not a model-supplied order id. The original unwrapped tool stays unguarded – hand the agent the copy this returns.
+
 
 ### Strands Agents – `guard_tool` + `guard_hooks`
 
