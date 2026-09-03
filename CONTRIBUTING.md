@@ -12,7 +12,7 @@ that guides AI coding agents through a specific security task.
 arcjet/                                    # Shared skill (HTTP + Guard fundamentals)
 ├── SKILL.md
 └── references/
-integrate-arcjet-guard-<adapter>[-py]/     # Dedicated Python Guard adapter skills
+integrate-arcjet-guard-<adapter>[-py]/     # Dedicated Guard adapter skills (Python, plus JS Cloudflare Think)
 └── SKILL.md
 evals/
 └── skill-name/
@@ -23,7 +23,7 @@ evals/
     └── skill-creator/    # Anthropic's skill-creator (for building/evaluating)
 ```
 
-Python Guard adapter skills follow the JS `@arcjet/guard` `integrate-arcjet-guard-*` conventions (`name`, `description`, `license`, `compatibility`, `metadata.author` / `type` / `library`). Use a `-py` suffix when the JS SDK already ships the same adapter name. Shared fundamentals stay in `arcjet/references/guards_python.md` — do not copy adapter wiring back into that file.
+Dedicated Guard adapter skills follow the `integrate-arcjet-guard-*` conventions (`name`, `description`, `license`, `compatibility`, `metadata.author` / `type` / `library`). Use a `-py` suffix when the JS SDK already ships the same adapter name (Google ADK JS is `integrate-arcjet-guard-google-adk` in `@arcjet/guard`; Python is `integrate-arcjet-guard-google-adk-py`). Cloudflare Think is JS-only, so it is unsuffixed. Shared fundamentals stay in `arcjet/references/guards_*.md` — do not copy adapter wiring back into those files.
 
 ## skill-creator
 
