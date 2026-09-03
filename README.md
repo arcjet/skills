@@ -22,17 +22,19 @@ npx skills add arcjet/skills
 
 The Arcjet skill for AI coding agents. Adds protection across HTTP route handlers, AI agent tool calls, MCP servers, background jobs, and queue workers — rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking, content moderation, and abuse prevention — and verifies decisions via the Arcjet CLI, MCP server, and Console. Works in JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, `net/http`, and non-HTTP contexts.
 
-Dedicated Python Guard integration skills cover official LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents adapters. Shared Python Guard fundamentals stay in the `arcjet` skill.
+Dedicated Guard integration skills cover official Python LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, Strands Agents, and Google ADK adapters, plus JS Cloudflare Think. Shared fundamentals stay in the `arcjet` skill.
 
 | Skill | When to load |
 | --- | --- |
-| `arcjet` | HTTP routes, core Guard, and routing to a Python adapter |
+| `arcjet` | HTTP routes, core Guard, and routing to a dedicated adapter skill |
 | `integrate-arcjet-guard-langchain-py` | Python LangChain `BaseTool` / `create_agent` |
 | `integrate-arcjet-guard-crewai` | Official CrewAI |
 | `integrate-arcjet-guard-openai-agents-py` | Python OpenAI Agents |
 | `integrate-arcjet-guard-claude-agent-sdk-py` | Python Claude Agent SDK |
 | `integrate-arcjet-guard-claude-managed-agents-py` | Python Claude Managed Agents |
 | `integrate-arcjet-guard-strands-agents-py` | Python Strands Agents |
+| `integrate-arcjet-guard-google-adk-py` | Python Google ADK (`google-adk` 2.x) |
+| `integrate-arcjet-guard-cloudflare-think` | JS Cloudflare Think (`@cloudflare/think`) |
 
 ## Related
 
