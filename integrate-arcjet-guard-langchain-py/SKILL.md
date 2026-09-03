@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-langchain-py
 description: Integrate Arcjet Guard into Python LangChain — wrap a BaseTool you call with guard_tool, put ArcjetMiddleware + ToolPolicy on create_agent, or observe a chain with ArcjetCaptureHandler. Use when asked to add Arcjet to LangChain, create_agent, langchain-core tools, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python LangChain, not LangChain JS createAgent and not LangGraph JS.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10. A BaseTool you call needs arcjet[langchain] (langchain-core>=1.2.5,<2). create_agent needs arcjet[langchain-agents] (langchain>=1.3,<2, langgraph>=1.2,<2). Helpers are on arcjet-py main, not PyPI 0.9.0 or 0.10.0b1.
+compatibility: Requires Python >= 3.10. A BaseTool you call needs arcjet[langchain] (langchain-core>=1.2.5,<2). create_agent needs arcjet[langchain-agents] (langchain>=1.3,<2, langgraph>=1.2,<2). Helpers track arcjet-py main (no fixed SHA) — not in PyPI 0.9.0 or 0.10.0b1.
 metadata:
   author: arcjet
   type: core
@@ -99,15 +99,20 @@ Ask only what you cannot infer from the code; suggest defaults.
 
 ## Step 1: Install and find the guard client
 
-Helpers are on current `arcjet-py` **main**
+Helpers track current `arcjet-py` **main**
 ([#195](https://github.com/arcjet/arcjet-py/pull/195),
-[#196](https://github.com/arcjet/arcjet-py/pull/196)). They are **not** in
-PyPI 0.9.0 or the 0.10.0b1 pre-release. Install with the project's package
-manager — do not hand-edit `requirements.txt` with a guessed version.
+[#196](https://github.com/arcjet/arcjet-py/pull/196)). There is no
+until-published git SHA for this adapter — unlike CrewAI / OpenAI
+Agents / Claude / Strands, do not pin a commit. They are **not** in
+PyPI 0.9.0 or the 0.10.0b1 pre-release, so install from git `main`
+with the project's package manager. Do not hand-edit
+`requirements.txt` with a guessed version.
 
 ```bash
-pip install "arcjet[langchain]"          # guard_tool + capture handlers
-pip install "arcjet[langchain-agents]"   # ArcjetMiddleware + ToolPolicy
+# guard_tool + capture handlers
+pip install "arcjet[langchain] @ git+https://github.com/arcjet/arcjet-py.git"
+# ArcjetMiddleware + ToolPolicy
+pip install "arcjet[langchain-agents] @ git+https://github.com/arcjet/arcjet-py.git"
 ```
 
 If the agent has no guard client yet, launch one **once at module scope**.
