@@ -9,9 +9,11 @@ that guides AI coding agents through a specific security task.
 ## Structure
 
 ```
-skill-name/
-├── SKILL.md              # Skill instructions (required)
-└── references/           # Optional reference docs
+arcjet/                                    # Shared skill (HTTP + Guard fundamentals)
+├── SKILL.md
+└── references/
+integrate-arcjet-guard-<adapter>[-py]/     # Dedicated Python Guard adapter skills
+└── SKILL.md
 evals/
 └── skill-name/
     ├── evals.json        # Test cases
@@ -20,6 +22,8 @@ evals/
 └── skills/
     └── skill-creator/    # Anthropic's skill-creator (for building/evaluating)
 ```
+
+Python Guard adapter skills follow the JS `@arcjet/guard` `integrate-arcjet-guard-*` conventions (`name`, `description`, `license`, `compatibility`, `metadata.author` / `type` / `library`). Use a `-py` suffix when the JS SDK already ships the same adapter name. Shared fundamentals stay in `arcjet/references/guards_python.md` — do not copy adapter wiring back into that file.
 
 ## skill-creator
 
