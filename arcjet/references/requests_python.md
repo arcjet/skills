@@ -188,7 +188,28 @@ aj = arcjet(key=os.environ["ARCJET_KEY"], rules=[...], disable_automatic_ip_dete
 decision = await aj.protect(request, ip_src=get_client_ip_from_trusted_source(request))
 ```
 
-When automatic detection is disabled, omitting `ip_src` or passing `""` raises `ArcjetMisconfiguration`. Passing a non-empty `ip_src` while automatic detection is enabled also raises. The SDK trusts `ip_src` without validating it – do not pass a client-controlled header. This option cannot be combined with `proxies`.
+When automatic detection is disabled, omitting `ip_src` or passing `""` raises `ArcjetMisconfiguration`. Passing a non-empty `ip_src` while automatic detection is enabled also raises. On current `main`, malformed IPv4/IPv6 values are rejected. Syntax validation does not establish provenance – do not pass a client-controlled header. This option cannot be combined with `proxies`.
+
+### Client IP provenance and proxy configuration
+
+When the framework does not expose a usable public client IP, automatic
+detection may fall back to common forwarding headers so protection can still
+run. A directly connected client can spoof those headers unless trusted ingress
+overwrites or safely appends them. The SDK logs `client_ip_provenance` at debug
+level and produces one warning for the lifetime of each SDK client instance
+when the source is `unverified-header`.
+
+Configure every trusted proxy IP/CIDR in `proxies` and ensure the application is
+reachable only through that ingress. Malformed entries are rejected;
+`0.0.0.0/0` and `::/0` warn because they trust every peer.
+
+Before shipping, call `aj.client_ip_details(request)` on representative staging
+requests and inspect `ip`, `provenance`, `verified`, and `header`. This method
+does not log or consume the once-per-client warning. If and only if the client
+was constructed with `disable_automatic_ip_detection=True`, pass the same
+independently trusted `ip_src` explicitly to both `client_ip_details()` and
+every `protect()` call. Never make an `unverified-header` warning disappear by
+copying the same header into `ip_src`; that relabels untrusted input as manual.
 
 ### Metadata
 
