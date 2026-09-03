@@ -499,7 +499,7 @@ Official Python `strands` / `strands-agents>=1.11.0,<2` only – not JS `@arcjet
 pip install "arcjet[strands-agents] @ git+https://github.com/arcjet/arcjet-py.git@a630806169b92757192f3f5cce2e305827b26567"
 ```
 
-The extra pulls `strands-agents>=1.11.0,<2` (1.11.0 is the first 1.x with `BeforeToolCallEvent.cancel_tool`). It is safe (no chromadb). Exports: `guard_tool`, `guard_hooks`, `strands_agent_context`. Authored `@tool` plus `Agent(hooks=)` / `add_hook`. Example forthcoming: `fastapi-strands-agents-guard` only — do not invent a verify fixture.
+The extra pulls `strands-agents>=1.11.0,<2` (1.11.0 is the first 1.x with `BeforeToolCallEvent.cancel_tool`). It is safe (no chromadb). Exports: `guard_tool`, `guard_hooks`, `strands_agent_context`. Authored `@tool` plus `Agent(hooks=)` / `add_hook`. Example: [`examples/fastapi-strands-agents-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-strands-agents-guard) (pins `a6308061`; no verify fixture). Do not invent a second example name.
 
 Three gotchas first:
 
