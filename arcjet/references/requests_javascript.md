@@ -22,12 +22,12 @@ Pick the adapter for the project's framework, then install it with whichever pac
 
 **Runtime baseline:** **Node.js `>=22.21.0 <23 || >=24.5.0`**, **Bun ≥ 1.3.0**, **Deno** `stable` / `lts`. Node 20 is end-of-life and is no longer supported by the SDK. If the project is below any of these, the install will fail or runtime behavior will misbehave – bump the runtime first.
 
-> _Version info last verified against the published `@arcjet/*` **v1.10.0** on **August 11, 2026**. The 2000&nbsp;ms Decide timeout (every adapter, same as Guard) is on `main` ([arcjet-js#6236](https://github.com/arcjet/arcjet-js/pull/6236)). Numbers in the following table may drift – before relying on them, check the `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the published release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
+> _Version info last verified against the published `@arcjet/*` **v1.11.0** on **August 26, 2026**. The Decide timeout defaults to 2000 ms (every adapter, same as Guard). Prompt-injection `threshold` / `score` are **removed**. Numbers in the following table may drift – before relying on them, check the `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the published release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
 
 | Framework         | Package                                                   | Min framework version                                |
 | ----------------- | --------------------------------------------------------- | ---------------------------------------------------- |
 | Next.js           | `@arcjet/next`                                            | Next.js 15 or 16 (supported target; SDK peer range is broader) |
-| Express / Node.js | `@arcjet/node`                                            | Node `>=22.21.0 <23 \|\| >=24.5.0` (no framework peer) |
+| Express / Node.js | `@arcjet/node`                                            | Node `>=22.21.0 <23 \|\| >=24.5.0` (no framework peer). Install `express` yourself if the app uses it – `@arcjet/node` does not. |
 | Fastify           | `@arcjet/fastify`                                         | Fastify ≥ 5                                          |
 | NestJS            | `@arcjet/nest`                                            | `@nestjs/common` ^10 \|\| ^11                        |
 | SvelteKit         | `@arcjet/sveltekit`                                       | Svelte ^3.54 \|\| ^4 \|\| ^5                         |
@@ -66,7 +66,7 @@ export const aj = arcjet({
 });
 ```
 
-On `main`, JS adapters default the Decide API timeout to 2000 ms – same as Guard, same in production and development. An explicit `timeout` on `createRemoteClient()` still wins.
+JS adapters default the Decide API timeout to 2000 ms (1.11.0) – same as Guard, same in production and development. An explicit `timeout` on `createRemoteClient()` still wins.
 
 ### Use `withRule()` for per-route rules
 
@@ -229,7 +229,7 @@ Without the `Bindings` type, `c.env.incoming` won't typecheck.
 For rule selection and rate-limiting strategy comparisons, see [Choose protections](choosing_protections.md). Key framework-specific notes:
 
 - **`shield`** – always include, and pass `mode: "LIVE"` to enforce. Omitted `mode` is `DRY_RUN`.
-- **`detectBot`** – pass exactly one of `allow` or `deny`. Neither or both throws. Empty `allow: []` blocks every detected bot.
+- **`detectBot`** – pass exactly one of `allow` or `deny`. Neither or both throws. Empty `allow: []` blocks every detected bot, including `CURL`. Temporarily `allow: ["CURL"]` when you need curl to reach later rules (email, rate limit), then drop it.
 - **Rate limits** – use `characteristics: ["userId"]` to key by something other than IP.
 - **`validateEmail`** – for signup/login forms.
 - **`protectSignup`** – combined bot + email + rate limit, purpose-built for registration flows. One composite rule (unlike Python's tuple or Go's `[]Rule`).
@@ -338,9 +338,9 @@ As of `@arcjet/*` 1.6.0, the request-based SDK still carries a couple of depreca
 - **`experimental_detectPromptInjection`** – the legacy `experimental_` alias is deprecated. Import `detectPromptInjection` directly from `@arcjet/node` / `@arcjet/next` or the adapter in use.
 - **`ArcjetEdgeRuleReason`** – unused; ignore it in reason-handling switches.
 
-On `main` ([arcjet-js#6238](https://github.com/arcjet/arcjet-js/pull/6238)), `detectPromptInjection({ threshold })` and `PromptInjectionReason.score` are **removed**, not deprecated. Only `mode` remains. Do not pass `threshold` in new code, and drop it from existing configs when you see it – especially Astro, where leftover `threshold` throws (see [Astro](#astro)). Core adapters ignore leftover `threshold` (no throw, no effect on rule id). Don't read `score`; branch on `decision.reason.isPromptInjection()` / `injectionDetected`. Published `@arcjet/*` 1.10.0 still lists them as `@deprecated`.
+In `@arcjet/*` **1.11.0**, `detectPromptInjection({ threshold })` and `PromptInjectionReason.score` are **removed**, not deprecated. Only `mode` remains. Do not pass `threshold` in new code, and drop it from existing configs when you see it – especially Astro, where leftover `threshold` throws (see [Astro](#astro)). Don't read `score`; branch on `decision.reason.isPromptInjection()` / `injectionDetected`.
 
-> _Deprecations last verified against the `@arcjet/*` v1.10.0 release on **August 11, 2026**. `threshold` / `score` removal is on `main` ([arcjet-js#6238](https://github.com/arcjet/arcjet-js/pull/6238)). Before relying on these items, grep the installed package for `@deprecated` markers – see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
+> _Deprecations last verified against the `@arcjet/*` v1.11.0 release on **August 26, 2026**. Before relying on these items, grep the installed package for `@deprecated` markers – see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
 
 ## Key patterns
 

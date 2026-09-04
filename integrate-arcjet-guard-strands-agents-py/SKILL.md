@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-strands-agents-py
 description: Integrate Arcjet Guard into Python Strands Agents — wrap authored @tool with guard_tool, and put guard_hooks on Agent(hooks=) for unwrapped / MCP tools via BeforeToolCallEvent.cancel_tool. Use when asked to add Arcjet to strands / strands-agents, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python strands, not JS @strands-agents/sdk.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official strands-agents>=1.11.0,<2 via arcjet[strands-agents] (safe extra, no chromadb). 1.11.0 is the first 1.x with BeforeToolCallEvent.cancel_tool. Until-published — pin arcjet to git SHA a630806169b92757192f3f5cce2e305827b26567; not in PyPI 0.9.0.
+compatibility: Requires Python >= 3.10 and official strands-agents>=1.11.0,<2 via arcjet[strands-agents] (safe extra, no chromadb). 1.11.0 is the first 1.x with BeforeToolCallEvent.cancel_tool. Until-published — pin arcjet to git SHA 582372916d70311873ef24b7a72443c098b3aec9; not in PyPI 1.0.0.
 metadata:
   author: arcjet
   type: core
@@ -39,9 +39,9 @@ Three surfaces, one decision rule:
 - **Correlation** → `strands_agent_context` reads a caller-owned id from
   `invocation_state`. It never mints. It never reads `trace_id`.
 
-Docs: https://docs.arcjet.com/guards/strands-agents-py/. Example:
+Docs: https://docs.arcjet.com/guards/strands-agents/. Example:
 [`examples/fastapi-strands-agents-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-strands-agents-guard)
-(pins `a6308061`; no verify fixture). Do not invent a second example
+(pins `58237291`; no verify fixture). Do not invent a second example
 name.
 
 ## The gate is per-tool `BeforeToolCallEvent.cancel_tool`
@@ -104,14 +104,17 @@ Ask only what you cannot infer from the code; suggest defaults.
 7. **Key rate limits on the authenticated caller**, not a model-supplied
    order id.
 8. **Do not hand-wrap every Strands tool with raw `guard()`.**
+9. **`inputs=` is accepted.** A missing decision is not a denial —
+   verify in Console/CLI.
 
 ## Step 1: Install and find the guard client
 
-Until-published: PyPI `arcjet` 0.9.0 does not include this module. Pin
-`arcjet` to git SHA `a630806169b92757192f3f5cce2e305827b26567`:
+Until-published: PyPI `arcjet` 1.0.0 does not include this module. Pin
+`arcjet` to git SHA `582372916d70311873ef24b7a72443c098b3aec9` (current
+`main`, includes the extra):
 
 ```bash
-pip install "arcjet[strands-agents] @ git+https://github.com/arcjet/arcjet-py.git@a630806169b92757192f3f5cce2e305827b26567"
+pip install "arcjet[strands-agents] @ git+https://github.com/arcjet/arcjet-py.git@582372916d70311873ef24b7a72443c098b3aec9"
 ```
 
 If the agent has no guard client yet, launch one **once at module scope**:

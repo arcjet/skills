@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-openai-agents-py
 description: Integrate Arcjet Guard into Python OpenAI Agents — wrap FunctionTool / function_tool with guard_tool and read a caller-owned session or conversation id via openai_agents_context. Use when asked to add Arcjet to openai-agents, Runner.run, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python openai-agents, not the JS @openai/agents adapter.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official openai-agents>=0.19.0,<1 via arcjet[openai-agents]. This is text Agent + Runner.run + authored FunctionTool — not Realtime, Sandbox, hosted, MCP, Computer / Shell / ApplyPatch, handoffs, or Agent.as_tool(). Until-published — pin arcjet to git SHA cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d; not in PyPI 0.9.0.
+compatibility: Requires Python >= 3.10 and official openai-agents>=0.19.0,<1 via arcjet[openai-agents] on PyPI arcjet 1.0.0. This is text Agent + Runner.run + authored FunctionTool — not Realtime, Sandbox, hosted, MCP, Computer / Shell / ApplyPatch, handoffs, or Agent.as_tool().
 metadata:
   author: arcjet
   type: core
@@ -34,7 +34,7 @@ Two surfaces, one decision rule:
 - **Correlation** → `openai_agents_context` reads a caller-owned session
   / conversation id. It never mints. It never reads `trace_id`.
 
-Docs: https://docs.arcjet.com/guards/openai-agents-py/.
+Docs: https://docs.arcjet.com/guards/openai-agents/.
 
 ## The gate is `tool_input_guardrails` + `reject_content`
 
@@ -98,15 +98,15 @@ Ask only what you cannot infer from the code; suggest defaults.
    order id. Hand the agent the copy `guard_tool` returns — the original
    stays unguarded.
 7. **Do not hand-wrap every tool with raw `guard()`.**
+8. **`inputs=` is accepted.** A missing decision is not a denial —
+   verify in Console/CLI.
 
 ## Step 1: Install and find the guard client
 
-Until-published: PyPI `arcjet` 0.9.0 does not include this module. Pin
-`arcjet` to git SHA `cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d`
-([#226](https://github.com/arcjet/arcjet-py/pull/226)):
+This module ships in PyPI `arcjet` **1.0.0**:
 
 ```bash
-pip install "arcjet[openai-agents] @ git+https://github.com/arcjet/arcjet-py.git@cafe6a6671ab7fdde1b78b59971c3fe8ca863a4d"
+pip install "arcjet[openai-agents]"
 ```
 
 If the agent has no guard client yet, launch one **once at module scope**:

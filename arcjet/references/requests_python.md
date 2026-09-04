@@ -7,14 +7,14 @@ Request protection inspects HTTP requests – headers, IP, body – to enforce s
 **Version compatibility:**
 
 - **Python:** ≥ 3.10 (declared in `pyproject.toml`). Older versions will fail to install – warn the user and stop.
-- **FastAPI / Flask:** no formal peer dependency – the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes.
+- **FastAPI / Flask:** no formal peer dependency – the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes. FastAPI form fields need `python-multipart` or the app fails at startup.
 - **`libgcc`:** needed by the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI**. Nested metadata, Rampart, and `ip_details.threat` are in 0.10.0b1 / main. `protect_signup()` is on `main` only – not in those published wheels. `ip_src` already exists on 0.9.0. The 2000&nbsp;ms Decide timeout for every `protect()` rule is on `main` ([arcjet-py#204](https://github.com/arcjet/arcjet-py/pull/204)). HTTP rule factories require explicit `mode` on `main` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)); published wheels still default `mode` to LIVE. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v1.0.0** on **August 26, 2026**. Nested metadata, Rampart, `ip_details.threat`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, `set_rate_limit_headers`, local Protect priority, and the 2000 ms Decide timeout all ship in 1.0.0. `detect_prompt_injection(threshold=...)` is a `TypeError`. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
-Install with whichever package manager the project already uses (`pip install`, `uv add`, or `poetry add`) – don't hand-edit `requirements.txt` with a guessed version like `arcjet>=1.0.0` (that release doesn't exist; the current minor release line is `0.x`).
+Install with whichever package manager the project already uses (`pip install`, `uv add`, or `poetry add`) – don't hand-edit `requirements.txt` with a guessed version. Current PyPI line is `1.x`.
 
 ```bash
 pip install arcjet
@@ -32,7 +32,7 @@ Prefer a base client plus `with_rule(...)` over constructing a second `arcjet()`
 
 `with_rule()` accepts a single rule or a sequence. Stored order is declaration order. Local evaluation still re-sorts (Sensitive Info first).
 
-On `main` only ([arcjet-py#218](https://github.com/arcjet/arcjet-py/pull/218)). Published `arcjet` 0.9.0 / 0.10.0b1 do **not** have `with_rule()`.
+`with_rule()` ships in **1.0.0**.
 
 ```python
 import os
@@ -57,7 +57,7 @@ Each HTTP factory requires `mode=` – `shield()`, `detect_bot()`, `sliding_wind
 
 For projects with multiple route files, put these clients in a separate `lib/arcjet.py` and import them. For single-file apps, define at the top of the file. Use `arcjet()` for async (FastAPI) and `arcjet_sync()` for sync (Flask). Create clients at module scope only – never inside a handler.
 
-On `main`, `arcjet()` / `arcjet_sync()` default to a 2000 ms Decide timeout for every `protect()` rule – same in production and development. Pass `timeout_ms` to override.
+`arcjet()` / `arcjet_sync()` default to a 2000 ms Decide timeout for every `protect()` rule – same in production and development. Pass `timeout_ms` to override.
 
 If you only need one rule set across the whole app, a single client is fine.
 
@@ -69,15 +69,15 @@ Call `protect()` inside each route handler, once per request. Pass the framework
 
 For rule selection and rate-limiting strategy comparisons, see [Choose protections](choosing_protections.md). Key framework-specific notes:
 
-On `main` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)), `shield`, `detect_bot`, `token_bucket`, `fixed_window`, `sliding_window`, `validate_email`, `detect_prompt_injection(*, mode=)`, `detect_sensitive_info`, and `filter_request` require `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Omitting `mode` raises `TypeError` – they do not default to LIVE, and they do not silently default to DRY_RUN (the JS HTTP default). Nested mappings passed to `protect_signup` must include `mode` because they forward to those factories. Published `arcjet` 0.9.0 / 0.10.0b1 still default `mode` to LIVE. Guard `DetectPromptInjection` still defaults to LIVE.
+In **1.0.0**, `shield`, `detect_bot`, `token_bucket`, `fixed_window`, `sliding_window`, `validate_email`, `detect_prompt_injection(*, mode=)`, `detect_sensitive_info`, and `filter_request` require `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`. Omitting `mode` raises `TypeError` – they do not default to LIVE, and they do not silently default to DRY_RUN (the JS HTTP default). Nested mappings passed to `protect_signup` must include `mode` because they forward to those factories. Guard `DetectPromptInjection` still defaults to LIVE.
 
 - **`shield`** – always include. Requires `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`.
-- **`detect_bot`** – pass exactly one of `allow` or `deny`. Neither or both raises `ValueError` – the factory no longer treats an omitted list as empty. Empty `allow=[]` is valid and means "block every detected bot"; that is an allow-config, not the same as writing `detect_bot()` with no lists. The usual starting point is `allow=[BotCategory.SEARCH_ENGINE]`.
+- **`detect_bot`** – pass exactly one of `allow` or `deny`. Neither or both raises `ValueError` – the factory no longer treats an omitted list as empty. Empty `allow=[]` is valid and means "block every detected bot", including `CURL`. Temporarily `allow=["CURL"]` when you need curl to reach later rules, then drop it. The usual starting point is `allow=[BotCategory.SEARCH_ENGINE]`.
 - **Rate limits** – use `characteristics` to key by something other than IP.
 - **`validate_email`** – for signup/login forms. Same XOR contract as `detect_bot`: exactly one of `allow` or `deny`. Typical signup config is `deny=[EmailType.DISPOSABLE, EmailType.INVALID]`. Empty `allow=[]` allows no email types. `validate_email()` with no lists raises the same `ValueError`.
-- **`protect_signup`** – signup/login helper: sliding-window rate limit + bot detection + email validation. Returns a tuple – unpack with `*protect_signup(...)` into `arcjet(..., rules=...)` / `arcjet_sync(...)`. It is **not** a single composite rule like JS `protectSignup`. Keyword-only mappings `rate_limit`, `bots`, and `email` are forwarded to those factories. Nested `bots` / `email` still need exactly one of `allow` or `deny` (`allow=[]` is valid). On `main` only – not in published 0.9.0 / 0.10.0b1.
+- **`protect_signup`** – signup/login helper: sliding-window rate limit + bot detection + email validation. Returns a tuple – unpack with `*protect_signup(...)` into `arcjet(..., rules=...)` / `arcjet_sync(...)`. It is **not** a single composite rule like JS `protectSignup`. Keyword-only mappings `rate_limit`, `bots`, and `email` are forwarded to those factories. Nested `bots` / `email` still need exactly one of `allow` or `deny` (`allow=[]` is valid). Ships in **1.0.0**.
 - **`detect_sensitive_info`** – blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()` from `arcjet_sensitive_info_rampart`.
-- **`detect_prompt_injection`** – for AI endpoints receiving user prompts. On `main`, do not pass `threshold` – it is a `TypeError`. HTTP `detect_prompt_injection(*, mode=)` is required; omitting `mode` is also a `TypeError`. New configs are `detect_prompt_injection(mode=Mode.LIVE)`. Guard `DetectPromptInjection` still defaults to LIVE.
+- **`detect_prompt_injection`** – for AI endpoints receiving user prompts. Do not pass `threshold` – it is a `TypeError`. HTTP `detect_prompt_injection(*, mode=)` is required; omitting `mode` is also a `TypeError`. New configs are `detect_prompt_injection(mode=Mode.LIVE)`. Guard `DetectPromptInjection` still defaults to LIVE.
 - **`filter_request`** – block by IP metadata (VPN, Tor, country).
 
 For a signup/login form, unpack the helper into `rules` rather than listing the three factories as the only path:
@@ -92,7 +92,7 @@ aj_signup = arcjet(
         shield(mode=Mode.LIVE),
         *protect_signup(
             rate_limit={"mode": Mode.LIVE, "max": 5, "interval": 600},
-            bots={"mode": Mode.LIVE, "allow": []},
+            bots={"mode": Mode.LIVE, "allow": ["CURL"]},  # drop CURL after testing
             email={
                 "mode": Mode.LIVE,
                 "deny": [
@@ -108,7 +108,7 @@ aj_signup = arcjet(
 
 ### Local evaluation order
 
-On `main` ([arcjet-py#213](https://github.com/arcjet/arcjet-py/pull/213)), local Protect evaluation sorts by the JS priority table (same ranks as Go), not the order of `rules=[...]`. The first LIVE DENY short-circuits, so declaration order does not control which LIVE DENY is reported. Do not reorder the list to pick a winner.
+Local Protect evaluation sorts by the JS priority table (same ranks as Go), not the order of `rules=[...]`. The first LIVE DENY short-circuits, so declaration order does not control which LIVE DENY is reported. Do not reorder the list to pick a winner.
 
 | Rank | Local Protect rule |
 | ---- | ------------------ |
@@ -141,6 +141,8 @@ async def list_items(request: Request):
         raise HTTPException(status_code=403, detail="Forbidden")
     # proceed...
 ```
+
+A FastAPI form field needs `python-multipart` or the app fails at startup. `curl -I` is HEAD – a GET-only route answers 405, not the documented 403. Test with `curl` (GET) or the method the route actually accepts.
 
 ### Flask (sync)
 
@@ -227,7 +229,7 @@ Available from **`arcjet` 0.9.0**: the SDK honors standard `HTTP_PROXY`, `HTTPS_
 
 When the handler needs to treat a verified crawler, a missing `User-Agent`, or a spoofed bot differently from a plain `is_denied()`, import the helpers from `arcjet` – there is no Python `@arcjet/inspect` package. Parsing `reason_v2` by hand recreates the same checks and usually misses the `DRY_RUN` filter.
 
-`is_verified_bot` and `is_missing_user_agent` are on `main` ([arcjet-py#214](https://github.com/arcjet/arcjet-py/pull/214)). `is_spoofed_bot` already exists on 0.9.0 / 0.10.0b1; on `main` it also ignores `DRY_RUN` ([arcjet-py#216](https://github.com/arcjet/arcjet-py/pull/216)). The new helpers are not in those published wheels – read the installed package before importing.
+`is_verified_bot`, `is_missing_user_agent`, and `is_spoofed_bot` ship in **1.0.0**. All three ignore `DRY_RUN`. Read the installed package before importing.
 
 ```python
 from arcjet import is_missing_user_agent, is_spoofed_bot, is_verified_bot
@@ -253,7 +255,7 @@ All three ignore `DRY_RUN` results (same as JS `isActive`) so an observation-onl
 
 ### Rate-limit headers
 
-When a rate-limit rule is in play and the client needs to see remaining budget, call `set_rate_limit_headers` from `arcjet` instead of formatting IETF headers by hand. JS uses a separate `@arcjet/decorate` package; Python exports the same writer from `arcjet`. On `main` only ([arcjet-py#214](https://github.com/arcjet/arcjet-py/pull/214)).
+When a rate-limit rule is in play and the client needs to see remaining budget, call `set_rate_limit_headers` from `arcjet` instead of formatting IETF headers by hand. JS uses a separate `@arcjet/decorate` package; Python exports the same writer from `arcjet`. Ships in **1.0.0** ([arcjet-py#214](https://github.com/arcjet/arcjet-py/pull/214)).
 
 ```python
 from arcjet import set_rate_limit_headers
@@ -272,15 +274,15 @@ When several rate-limit results are present, the tightest remaining budget is ad
 
 ## Deprecations
 
-As of `arcjet` 0.9.0, the request-based SDK still carries a few deprecated bits. Don't use them in new code; migrate existing uses when convenient.
+As of `arcjet` 1.0.0, the request-based SDK still carries a few deprecated bits. Don't use them in new code; migrate existing uses when convenient.
 
 - **`decision.reason` / `result.reason` → use `decision.reason_v2` / `result.reason_v2`.** The legacy `reason` accessor returns a tagged-union helper (`reason.is_rate_limit()`) and is marked `@deprecated`. `reason_v2` returns a typed discriminated union – branch on `reason_v2.type` (`"RATE_LIMIT"`, `"BOT"`) and read typed fields directly (`reason_v2.remaining`, `reason_v2.spoofed`). A TODO in the SDK notes the name `reason_v2` is itself transitional and is planned to fold back into `reason` in a later major; until then `reason_v2` is the right call.
 - **`PromptInjectionReason.score`** – the `score` field on the reason returned for prompt-injection denials is no longer populated meaningfully and will be removed. Don't read it; rely on `reason_v2.type == "PROMPT_INJECTION"` instead.
 - **`arcjet._decision.Reason`** – internal type; use `arcjet._dataclasses.Reason` (re-exported as `arcjet.Reason`) if you need the type annotation. Most callers won't touch this directly.
 
-On `main` ([arcjet-py#217](https://github.com/arcjet/arcjet-py/pull/217)), `detect_prompt_injection(threshold=...)` is **removed**, not deprecated. Passing `threshold` raises `TypeError`. The server never honored it. New configs are `detect_prompt_injection(mode=Mode.LIVE)` – `mode` is required; omitting it is a `TypeError` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)). Drop leftover `threshold` from existing configs; unlike JS core, which ignores leftover `threshold`, Python throws. Published `arcjet` 0.9.0 / 0.10.0b1 still accept `threshold` (deprecated) and still default `mode` to `LIVE`.
+In **1.0.0**, `detect_prompt_injection(threshold=...)` is **removed**, not deprecated. Passing `threshold` raises `TypeError`. The server never honored it. New configs are `detect_prompt_injection(mode=Mode.LIVE)` – `mode` is required; omitting it is a `TypeError`. Drop leftover `threshold` from existing configs; unlike older JS cores that ignored leftover `threshold`, Python throws.
 
-> _Deprecations last verified against the published `arcjet` v0.9.0 on **June 30, 2026**. `threshold` removal is on `main` ([arcjet-py#217](https://github.com/arcjet/arcjet-py/pull/217)); required `mode` is on `main` ([arcjet-py#221](https://github.com/arcjet/arcjet-py/pull/221)). Before relying on these items, grep the installed package for new `@deprecated` markers – see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py), [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py), and [`src/arcjet/_rules.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_rules.py)._
+> _Deprecations last verified against the published `arcjet` v1.0.0 on **August 26, 2026**. Before relying on these items, grep the installed package for `@deprecated` markers – see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py), [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py), and [`src/arcjet/_rules.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_rules.py)._
 
 ## Key patterns
 

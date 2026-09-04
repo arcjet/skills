@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-claude-agent-sdk-py
 description: Integrate Arcjet Guard into the Python Claude Agent SDK — wrap authored @tool with guard_tool, and use guard_hooks for UserPromptSubmit inbound plus PreToolUse on unwrapped built-ins / MCP. Use when asked to add Arcjet to claude-agent-sdk, rate limit those tools, screen inbound prompts, or block prompt injection / PII. This is Python claude-agent-sdk, not the JS adapter and not Claude Managed Agents hosted sessions.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official claude-agent-sdk>=0.2.127,<1 via arcjet[claude-agent-sdk] (safe extra, no chromadb). Until-published — pin arcjet to git SHA 9ea0b06a87bcee77b8df0664338c712c4668b87b; not in PyPI 0.9.0.
+compatibility: Requires Python >= 3.10 and official claude-agent-sdk>=0.2.127,<1 via arcjet[claude-agent-sdk] (safe extra, no chromadb). Until-published — pin arcjet to git SHA 582372916d70311873ef24b7a72443c098b3aec9; not in PyPI 1.0.0.
 metadata:
   author: arcjet
   type: core
@@ -44,7 +44,7 @@ Three surfaces, one decision rule:
 - **Correlation** → `claude_agent_context` reads a caller-owned UUID
   `session_id`. It never mints.
 
-Docs: https://docs.arcjet.com/guards/claude-agent-sdk-py/.
+Docs: https://docs.arcjet.com/guards/claude-agent-sdk/.
 
 ## Unwrapped tools deny on `PreToolUse` via `guard_hooks`
 
@@ -113,14 +113,21 @@ Ask only what you cannot infer from the code; suggest defaults.
    order id. Hand `query` / `create_sdk_mcp_server` the copy
    `guard_tool` returns.
 8. **Do not hand-wrap every tool with raw `guard()`.**
+9. **Isolation needs both `setting_sources=[]` and
+   `strict_mcp_config=True`.** One without the other still exposes an
+   unguarded path.
+10. **Two distinct ids.** `ClaudeAgentOptions.session_id` is a unique
+    UUID per run (`resume` later). The Guard `session_id` is a
+    long-lived actor id. A missing decision is not a denial.
 
 ## Step 1: Install and find the guard client
 
-Until-published: PyPI `arcjet` 0.9.0 does not include this module. Pin
-`arcjet` to git SHA `9ea0b06a87bcee77b8df0664338c712c4668b87b`:
+Until-published: PyPI `arcjet` 1.0.0 does not include this module. Pin
+`arcjet` to git SHA `582372916d70311873ef24b7a72443c098b3aec9` (current
+`main`, includes the extra):
 
 ```bash
-pip install "arcjet[claude-agent-sdk] @ git+https://github.com/arcjet/arcjet-py.git@9ea0b06a87bcee77b8df0664338c712c4668b87b"
+pip install "arcjet[claude-agent-sdk] @ git+https://github.com/arcjet/arcjet-py.git@582372916d70311873ef24b7a72443c098b3aec9"
 ```
 
 If the agent has no guard client yet, launch one **once at module scope**:

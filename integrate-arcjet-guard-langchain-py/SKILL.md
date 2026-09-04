@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-langchain-py
 description: Integrate Arcjet Guard into Python LangChain — wrap a BaseTool you call with guard_tool, put ArcjetMiddleware + ToolPolicy on create_agent, or observe a chain with ArcjetCaptureHandler. Use when asked to add Arcjet to LangChain, create_agent, langchain-core tools, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python LangChain, not LangChain JS createAgent and not LangGraph JS.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10. A BaseTool you call needs arcjet[langchain] (langchain-core>=1.2.5,<2). create_agent needs arcjet[langchain-agents] (langchain>=1.3,<2, langgraph>=1.2,<2). Helpers track arcjet-py main (no fixed SHA) — not in PyPI 0.9.0 or 0.10.0b1.
+compatibility: Requires Python >= 3.10 and PyPI arcjet 1.0.0. A BaseTool you call needs arcjet[langchain] (langchain-core>=1.2.5,<2). create_agent needs arcjet[langchain-agents] (langchain>=1.3,<2, langgraph>=1.2,<2).
 metadata:
   author: arcjet
   type: core
@@ -29,11 +29,11 @@ Four surfaces, one decision rule:
 - **Observe a chain or agent** → `ArcjetCaptureHandler` /
   `ArcjetAsyncCaptureHandler`. These cannot deny.
 
-This is Python `create_agent` (docs
-https://docs.arcjet.com/guards/langchain/). It is not JS `createAgent` /
-`wrapToolCall` (`@arcjet/guard/langchain/v1`, docs
-https://docs.arcjet.com/guards/langchain-js/) and not LangGraph JS
-`StateGraph` / `ToolNode` (docs https://docs.arcjet.com/guards/langgraph/).
+This is Python `create_agent`. The merged page
+https://docs.arcjet.com/guards/langchain/ covers both languages — JS is
+`@arcjet/guard/langchain/v1` (`createAgent` / `wrapToolCall`), not this
+module. It is not LangGraph JS `StateGraph` / `ToolNode` (docs
+https://docs.arcjet.com/guards/langgraph/).
 Importing `arcjet.guard.langchain` does not load LangGraph. Referencing
 `ArcjetMiddleware` or `ToolPolicy` without `arcjet[langchain-agents]`
 raises and names that extra.
@@ -96,23 +96,23 @@ Ask only what you cannot infer from the code; suggest defaults.
 7. **`success` on helper capture is not "the action ran".**
    `guard_action` / `guard_tool` / `ArcjetMiddleware` write
    `metadata.outcome`. See the shared Python Guard reference.
+8. **`rules=` is a static sequence**, not a lambda – a callable raises
+   `TypeError`. Put per-argument checks in the tool body, or use
+   `inputs=` (this adapter accepts typed inputs; the resolver is
+   `(arguments, config)`).
+9. **A missing decision is not a denial.** Verify in Console/CLI.
 
 ## Step 1: Install and find the guard client
 
-Helpers track current `arcjet-py` **main**
-([#195](https://github.com/arcjet/arcjet-py/pull/195),
-[#196](https://github.com/arcjet/arcjet-py/pull/196)). There is no
-until-published git SHA for this adapter — unlike CrewAI / OpenAI
-Agents / Claude / Strands, do not pin a commit. They are **not** in
-PyPI 0.9.0 or the 0.10.0b1 pre-release, so install from git `main`
-with the project's package manager. Do not hand-edit
-`requirements.txt` with a guessed version.
+These helpers ship in PyPI `arcjet` **1.0.0**. Install with the
+project's package manager. Do not hand-edit `requirements.txt` with a
+guessed version.
 
 ```bash
 # guard_tool + capture handlers
-pip install "arcjet[langchain] @ git+https://github.com/arcjet/arcjet-py.git"
+pip install "arcjet[langchain]"
 # ArcjetMiddleware + ToolPolicy
-pip install "arcjet[langchain-agents] @ git+https://github.com/arcjet/arcjet-py.git"
+pip install "arcjet[langchain-agents]"
 ```
 
 If the agent has no guard client yet, launch one **once at module scope**.

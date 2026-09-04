@@ -7,6 +7,7 @@
 - [Architecture: why things go where they do](#architecture-why-things-go-where-they-do)
 - [Choose a rate limit strategy](#choose-a-rate-limit-strategy)
 - [Content scanning rules](#content-scanning-rules)
+- [Common mistakes](#common-mistakes)
 - [Decision handling](#decision-handling)
 - [Async vs sync](#async-vs-sync)
 - [Capture and flush](#capture-and-flush)
@@ -16,21 +17,19 @@
 
 ## What Guard is
 
-Guard protects code paths that don't have an HTTP request – tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Features called out as 0.9.0 in the following sections still apply. Capture, registration, Rampart, nested metadata, and threat/billing are in **`arcjet` 0.10.0b1 / main**. `ModerateContent` (and the 2000&nbsp;ms default request timeout for Guard; `protect()` matches on `main`) are on `main` only. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site. On `main`, prefer `guard_action` when it fits – see [Framework helpers](#framework-helpers). Official Python agent adapters (LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, Strands Agents) live in dedicated skills so this file stays shared fundamentals. Do not copy adapter wiring from those skills back into this reference.
+Guard protects code paths that don't have an HTTP request – tool calls, agent loops, queue consumers, background jobs. It's part of the `arcjet` package (≥ 0.7.0) but uses a different entry point (`arcjet.guard`) from the HTTP request protection (`arcjet`). Capture, registration, Rampart, nested metadata, threat/billing, `ModerateContent`, `guard_action`, and the 2000 ms default request timeout ship in **`arcjet` 1.0.0**. There's no request object to inspect, so you pass explicit context (labels, keys, text to scan) at each call site. Prefer `guard_action` when it fits – see [Framework helpers](#framework-helpers). Official Python agent adapters (LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, Strands Agents) live in dedicated skills so this file stays shared fundamentals. Do not copy adapter wiring from those skills back into this reference.
 
 **Version compatibility:** Python ≥ 3.10 (same as the request SDK – they're shipped together in the `arcjet` package). If the project's Python is older, warn the user and stop.
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v0.9.0** on **June 30, 2026**. GitHub has a **v0.10.0b1** pre-release (**August 12, 2026**) that is **not on PyPI** – `pip install arcjet` still resolves 0.9.0. APIs newer than 0.9.0 live in 0.10.0b1 / main. `ModerateContent` (graduated name) and the 2000&nbsp;ms default request timeout (Guard; `protect()` matches on `main`) are on `main`; 0.10.0b1 still exports `experimental_ModerateContent` (class exists but is not in `__all__`) and Guard still defaults to 1000&nbsp;ms. `guard_action` / `guard_tool` / `ArcjetMiddleware` / `ArcjetCaptureHandler` are on `main` only ([arcjet-py#195](https://github.com/arcjet/arcjet-py/pull/195), [#196](https://github.com/arcjet/arcjet-py/pull/196)) – not in 0.9.0 or 0.10.0b1._
->
-> Teaching pins for official Python agent adapters (not in PyPI 0.9.0) live in the dedicated skill for that adapter. See [Framework helpers](#framework-helpers).
+> _Published PyPI release last verified: `arcjet` **v1.0.0** on **August 26, 2026**. That wheel includes `guard_action`, LangChain (`arcjet[langchain]` / `arcjet[langchain-agents]`), CrewAI (`arcjet.guard.crewai`, no extra), OpenAI Agents (`arcjet[openai-agents]`), `ModerateContent`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, and typed `server_input` / `local_input`. Claude Agent SDK, Claude Managed Agents, and Strands Agents extras are on `main` only – pin those in the dedicated skill. `experimental_ModerateContent` remains a deprecated alias._
 >
 > _Read the installed package's types before using any of them. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
-Install with whichever package manager the project already uses (`pip install`, `uv add`, or `poetry add`) – don't hand-edit `requirements.txt` with a guessed version (`arcjet>=1.0.0` doesn't exist; the current minor release line is `0.x`):
+Install with whichever package manager the project already uses (`pip install`, `uv add`, or `poetry add`) – don't hand-edit `requirements.txt` with a guessed version. Current PyPI line is `1.x`:
 
 ```bash
 pip install arcjet
@@ -146,11 +145,26 @@ Use `DetectPromptInjection()` on any untrusted text before it reaches a model or
 
 ### Sensitive information detection
 
-Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (for example users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally – raw text never leaves the SDK. The default backend is WASM; see [On-device Rampart backend](#on-device-rampart-backend) for names and government / financial identifiers.
+Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (for example users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally – raw text never leaves the SDK.
+
+**Always pass `allow` or `deny`.** `LocalDetectSensitiveInfo()` with neither list fails local evaluation (`AJ1203`) and the decision still concludes `ALLOW`, so the check looks configured and blocks nothing. Only `has_failed_open()` reveals it. Guard has no `sensitiveInfo` / `detect_sensitive_info` export – those are HTTP `protect()` rules.
+
+The default WASM backend detects exactly four types: `EMAIL`, `PHONE_NUMBER`, `IP_ADDRESS`, `CREDIT_CARD_NUMBER`. Every other type needs `backend` **on the rule**. The rule does not inherit the client's `sensitive_info_backend`. Share one Rampart instance:
+
+```python
+from arcjet.guard import LocalDetectSensitiveInfo
+from arcjet_sensitive_info_rampart import rampart
+
+sensitive_info_backend = rampart()
+sensitive = LocalDetectSensitiveInfo(
+    deny=["EMAIL", "CREDIT_CARD_NUMBER", "BANK_ACCOUNT"],
+    backend=sensitive_info_backend,
+)
+```
 
 ### Content moderation
 
-`ModerateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is frozen to `detected` plus optional `billing` (`text_units`) – no per-category scores. Published **0.9.0** / **0.10.0b1** still export `experimental_ModerateContent` as the public name; current `main` graduates it to `ModerateContent` and keeps the old name as a deprecated alias (`DeprecationWarning`). Import whichever the installed types export. `decision.reason` is `"MODERATE_CONTENT"` on deny.
+`ModerateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is frozen to `detected` plus optional `billing` (`text_units`) – no per-category scores. Graduated in **1.0.0**; `experimental_ModerateContent` remains a deprecated alias. `decision.reason` is `"MODERATE_CONTENT"` on deny.
 
 ```python
 from arcjet.guard import ModerateContent
@@ -164,6 +178,17 @@ decision = await arcjet.guard(
 ```
 
 Treat evaluation errors as fail-open and inspect `decision.has_failed_open()` / `decision.error_results()`.
+
+### Common mistakes
+
+These produce code that runs without error and enforces nothing. Full list: https://docs.arcjet.com/llms.txt.
+
+- Always pass `allow` or `deny` on `LocalDetectSensitiveInfo`. Share `backend` with the client for non-default entity types.
+- Every Python adapter accepts typed `inputs` (`server_input` / `local_input`). Resolver arity varies: `guard_tool` gets the arguments mapping; CrewAI hooks get `(arguments, ctx)`; LangChain `guard_tool` gets `(arguments, config)`. LangChain `rules=` is a **static sequence**, not a lambda.
+- A missing decision is not a denial. Verify in Console/CLI.
+- Guarding one tool only helps if it is the only path. Claude Agent SDK needs `setting_sources=[]` **and** `strict_mcp_config=True`.
+- Claude Agent SDK `session_id` on options must be a unique UUID per run (`resume` later); the Guard `session_id` is a long-lived actor id.
+- Claude Managed Agents: `guard_events` has no `inbound=` – `action` and `rules` sit at the top level, it takes `send=`, and the returned callable replaces `send`. Correlate on a caller-owned id; the helper drops Anthropic `sesn_…` / `sevt_…`.
 
 ### On-device Rampart backend
 
@@ -218,7 +243,7 @@ On `arcjet` ≤ 0.8.0 the only signal is `decision.has_error()`, which is **depr
 
 ### Correlation IDs
 
-Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision. On `main`, keep a whole run on one Sequence with `arcjet_sequence`. Framework adapters each have their own caller-owned reader — load the dedicated skill for that adapter. Never mint a new id per turn.
+Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision. Keep a whole run on one Sequence with `arcjet_sequence`. Framework adapters each have their own caller-owned reader — load the dedicated skill for that adapter. Never mint a new id per turn.
 
 ### Outbound HTTP proxy
 
@@ -249,7 +274,7 @@ Call `await aj.flush()` (async) or `aj.flush()` (sync) on shutdown. Default dead
 
 ### Helper capture outcomes
 
-`guard_action`, LangChain `guard_tool`, and `ArcjetMiddleware` write `metadata.outcome` themselves. This is capture telemetry on those helpers ([arcjet-py#225](https://github.com/arcjet/arcjet-py/pull/225), `main` only) – not a Decision field, not a conclusion, and not a new `on_guard_error` value. The helper applies `outcome` last, so a caller metadata key of the same name cannot overwrite it. A raw `aj.capture()` does not write these values. CrewAI `register_arcjet_hooks` still records `success` on proceed — do not read that stream as this five-value table.
+`guard_action`, LangChain `guard_tool`, and `ArcjetMiddleware` write `metadata.outcome` themselves. This is capture telemetry on those helpers ([arcjet-py#225](https://github.com/arcjet/arcjet-py/pull/225), in 1.0.0) – not a Decision field, not a conclusion, and not a new `on_guard_error` value. The helper applies `outcome` last, so a caller metadata key of the same name cannot overwrite it. A raw `aj.capture()` does not write these values. CrewAI `register_arcjet_hooks` still records `success` on proceed — do not read that stream as this five-value table.
 
 `success` is not "the action ran." It means the action ran **and** policy judged all of it.
 
@@ -295,7 +320,7 @@ with raw `guard()`.
 | Official Python Strands Agents `@tool` / Agent | `arcjet.guard.strands_agents` | [integrate-arcjet-guard-strands-agents-py](../../integrate-arcjet-guard-strands-agents-py/SKILL.md) |
 
 Do not mix adapters. Importing one adapter module does not load another.
-Python LangChain is not JS `createAgent` (docs https://docs.arcjet.com/guards/langchain-js/) and not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). Python OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents are not their JS `@arcjet/guard/...` counterparts. There is no `guard_crew`. There is no `arcjet[crewai]` extra (CrewAI pulls `chromadb`, CVE-2026-45829). Teaching pins, extras, denial envelopes, and HITL traps live in the dedicated skill — do not restate them here.
+Python LangChain (docs https://docs.arcjet.com/guards/langchain/) is not JS `createAgent` — that ships on the same page via `@arcjet/guard/langchain/v1`. It is not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). Python OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents are not their JS `@arcjet/guard/...` counterparts. There is no `guard_crew`. There is no `arcjet[crewai]` extra (CrewAI pulls `chromadb`, CVE-2026-45829). Extras, denial envelopes, and HITL traps live in the dedicated skill — do not restate them here.
 
 ### Shared helper rules
 
