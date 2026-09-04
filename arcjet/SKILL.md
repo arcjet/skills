@@ -1,7 +1,7 @@
 ---
 name: arcjet
 license: Apache-2.0
-description: Add Arcjet security protection to HTTP routes, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection, sensitive information blocking (including Rampart NER), content moderation, capture/flush, remote Guard policies, typed inputs, and abuse prevention. Works in JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, net/http, Vercel AI SDK, Eve, Mastra, LangChain JS, LangGraph, OpenAI Agents JS, Genkit, Google ADK, JS Strands Agents, TanStack AI, Claude Agent SDK JS, Claude Managed Agents JS, and other non-HTTP contexts. Official Python LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents have dedicated integrate-arcjet-guard skills. Use when the user wants security, rate limiting, bot protection, or abuse prevention – "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," or "prevent abuse" – even without naming Arcjet.
+description: Add Arcjet security protection to HTTP routes, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection, sensitive information blocking (including Rampart NER), content moderation, capture/flush, remote Guard policies, typed inputs, and abuse prevention. Works in JavaScript/TypeScript, Python, and Go. HTTP frameworks share this skill. JS Guard adapters (Vercel AI SDK, Eve, Mastra, LangChain, LangGraph, OpenAI Agents, Genkit, Google ADK, Strands, TanStack AI, Claude Agent SDK, Claude Managed Agents) are per-adapter reference files loaded from Step 3 — do not keep the whole JS Guard reference in context. Official Python LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents have dedicated integrate-arcjet-guard skills. Use when the user wants security, rate limiting, bot protection, or abuse prevention – "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," or "prevent abuse" – even without naming Arcjet.
 metadata:
   author: arcjet
 ---
@@ -14,7 +14,7 @@ metadata:
 - [Choose protections](#choose-protections)
 - [Resources](#resources)
 
-Python Guard adapters for LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents are dedicated skills (see Step 3). Shared Python Guard fundamentals stay in [references/guards_python.md](references/guards_python.md).
+Python Guard adapters for LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents are dedicated skills (see Step 3). JS Guard adapters are per-file references under `references/guards_js_*.md`. Shared fundamentals stay in [references/guards_javascript.md](references/guards_javascript.md) and [references/guards_python.md](references/guards_python.md).
 
 ## Add Arcjet protection to your app
 
@@ -75,7 +75,7 @@ Determine which protection type applies:
 | **Go SDK** | `github.com/arcjet/arcjet-go` (with `NewClient`) | `github.com/arcjet/arcjet-go` (with `NewGuardClient`) |
 | **Entry point** | `protect(request)` / `Protect(ctx, r)` | `guard(label, rules)` / `Guard(ctx, request)` |
 
-A single project can use both – for example, request-based on API routes and Guard on agent tool calls. If the project already uses Vercel AI SDK, Vercel Eve, Mastra, LangChain, LangGraph, CrewAI, OpenAI Agents, Genkit, Google ADK, Python Strands Agents, JS Strands Agents, TanStack AI, the Claude Agent SDK, or Claude Managed Agents, prefer the versioned Guard wrappers over hand-wrapping every tool. In Python, load the dedicated skill for that adapter (table below) — not a raw `guard()` around every callable, and not the JS `@arcjet/guard/...` path. JS LangChain `createAgent` is `@arcjet/guard/langchain/v1`, not the LangGraph Graph API adapter. JS Google ADK is `@arcjet/guard/google-adk/v2` (docs `/guards/google-adk/`). JS Strands Agents is `@arcjet/guard/strands-agents/v1` (docs `/guards/strands-agents/`). TanStack AI is `@arcjet/guard/tanstack-ai/v0` (`guardMiddleware` + `tanstackAiContext` only), not Vercel AI SDK and not TanStack Start HTTP `protect()`. JS Claude Agent SDK is `@arcjet/guard/claude-agent-sdk/v0` (docs `/guards/claude-agent-sdk/`). JS OpenAI Agents is `@arcjet/guard/openai-agents/v0` (docs `/guards/openai-agents/`). JS Claude Managed Agents is `@arcjet/guard/claude-managed-agents/v0` (hosted `@anthropic-ai/sdk` sessions), not `@arcjet/guard/claude-agent-sdk/v0` (local `query()`).
+A single project can use both – for example, request-based on API routes and Guard on agent tool calls. If the project already uses a supported agent framework, prefer the official wrapper over hand-wrapping every tool. In Python, load the dedicated skill (table below) — not a raw `guard()` around every callable, and not the JS `@arcjet/guard/...` path. In JavaScript, load fundamentals plus **exactly one** adapter file from the JS table — not the sibling adapters.
 
 **Common misclassifications to watch for:**
 
@@ -89,9 +89,26 @@ Read the appropriate reference:
 - **Request-based JS/TS**: [references/requests_javascript.md](references/requests_javascript.md)
 - **Request-based Python**: [references/requests_python.md](references/requests_python.md)
 - **Request-based Go**: [references/requests_go.md](references/requests_go.md)
-- **Guard JS/TS**: [references/guards_javascript.md](references/guards_javascript.md)
+- **Guard JS/TS fundamentals**: [references/guards_javascript.md](references/guards_javascript.md) — then exactly one adapter file from the table below
 - **Guard Python**: [references/guards_python.md](references/guards_python.md)
 - **Guard Go**: [references/guards_go.md](references/guards_go.md)
+
+When the project already uses an official JS agent framework, load fundamentals plus that adapter file. Do not open sibling adapters.
+
+| JS framework | Import | Load |
+| --- | --- | --- |
+| Vercel AI SDK | `@arcjet/guard/vercel-ai/v7` | [references/guards_js_vercel_ai.md](references/guards_js_vercel_ai.md) |
+| Vercel Eve | `@arcjet/guard/vercel-eve/v0` | [references/guards_js_vercel_eve.md](references/guards_js_vercel_eve.md) |
+| Mastra | `@arcjet/guard/mastra/v1` | [references/guards_js_mastra.md](references/guards_js_mastra.md) |
+| LangChain `createAgent` | `@arcjet/guard/langchain/v1` | [references/guards_js_langchain.md](references/guards_js_langchain.md) |
+| LangGraph | `@arcjet/guard/langgraph/v1` | [references/guards_js_langgraph.md](references/guards_js_langgraph.md) |
+| OpenAI Agents | `@arcjet/guard/openai-agents/v0` | [references/guards_js_openai_agents.md](references/guards_js_openai_agents.md) |
+| Genkit | `@arcjet/guard/genkit/v1` | [references/guards_js_genkit.md](references/guards_js_genkit.md) |
+| Claude Agent SDK | `@arcjet/guard/claude-agent-sdk/v0` | [references/guards_js_claude_agent_sdk.md](references/guards_js_claude_agent_sdk.md) |
+| Claude Managed Agents | `@arcjet/guard/claude-managed-agents/v0` | [references/guards_js_claude_managed_agents.md](references/guards_js_claude_managed_agents.md) |
+| Strands Agents | `@arcjet/guard/strands-agents/v1` | [references/guards_js_strands_agents.md](references/guards_js_strands_agents.md) |
+| Google ADK | `@arcjet/guard/google-adk/v2` | [references/guards_js_google_adk.md](references/guards_js_google_adk.md) |
+| TanStack AI | `@arcjet/guard/tanstack-ai/v0` | [references/guards_js_tanstack_ai.md](references/guards_js_tanstack_ai.md) |
 
 When the project already uses an official Python agent framework, load the dedicated skill instead of the long adapter sections that used to live in the Python Guard reference:
 
@@ -127,25 +144,11 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - Rules at module scope. **One `guard()` per operation with a hardcoded slug label** (`tools.get-weather`). Interpolated labels break grep and Console grouping. Slugs: lowercase letters, digits, `-`, `.` only; start and end with a letter or digit; max 256 bytes.
 - `metadata` is nested JSON for audit only. No secrets or PII. `capture()` is visibility, never a decision – flush on shutdown. Python helper `success` is not "the action ran" – see the Python Guard reference.
 - Free `guard()` (JS/Python registration) fail-opens if nothing is registered. Go has no registration API. Prefer an explicit client.
-- Prefer official wrappers over hand-wrapping. Import the **versioned** JS path. Load the dedicated Python skill from Step 3. Unversioned `@arcjet/guard/<adapter>` aliases do not resolve.
+- Prefer official wrappers over hand-wrapping. Import the **versioned** JS path and load that adapter file from Step 3. Load the dedicated Python skill from Step 3. Unversioned `@arcjet/guard/<adapter>` aliases do not resolve.
 - **Branch on which rule denied**, not just `DENY`. Guard `decision.reason` is a flat string (`"PROMPT_INJECTION"`) and is `undefined` on ALLOW. A denial by one rule still spends the others' budget in the same `rules` array – split calls if a PII false positive must not drain a rate limit.
 - Every rate-limit rule needs a `key` and a `bucket`. Use a trusted user/session id when you have one; otherwise a stable identifier you control.
 
-**JS adapters in `@arcjet/guard` 1.11.0** (wrappers fail closed; core `guard()` fails open). Docs are the merged pages at https://docs.arcjet.com/guards/<adapter>/ – language-specific `*-js` / `*-py` URLs redirect there.
-
-| Adapter | Import | Gate |
-| --- | --- | --- |
-| Vercel AI SDK | `@arcjet/guard/vercel-ai/v7` | `guardTool` + inbound `guard()`. Only JS adapter that maps typed `inputs` / `actor` to a remote policy. |
-| Vercel Eve | `@arcjet/guard/vercel-eve/v0` | `guardInbound`, `guardTool`, **`guardApproval`** – a connection's tools have no local handler, so approval is the only enforcement that reaches them. Do not compose with Eve `always()` / `once()` / `never()`. |
-| Mastra | `@arcjet/guard/mastra/v1` | `guardProcessor` / `guardTool` / `guardHooks` |
-| LangChain `createAgent` | `@arcjet/guard/langchain/v1` | `guardTool` + `guardMiddleware`. Not LangGraph. Not Python. |
-| LangGraph | `@arcjet/guard/langgraph/v1` | `guardTool` + `guardToolNode` |
-| OpenAI Agents | `@arcjet/guard/openai-agents/v0` | `guardTool` on authored `tool()` |
-| Genkit | `@arcjet/guard/genkit/v1` | `guardTool` + `guardMiddleware` |
-| Claude Agent SDK | `@arcjet/guard/claude-agent-sdk/v0` | `guardTool` + `guardHooks` (`UserPromptSubmit` / `PreToolUse`) |
-| Strands Agents | `@arcjet/guard/strands-agents/v1` | `guardTool` + `guardHooks`. Not Python `strands`. |
-
-**Not in npm 1.11.0** – pin `@arcjet/guard` to the SHA in the JS Guard reference: Google ADK `@arcjet/guard/google-adk/v2` (`guardPlugin` only), TanStack AI `@arcjet/guard/tanstack-ai/v0` (`guardMiddleware` only – no `guardTool`), Claude Managed Agents `@arcjet/guard/claude-managed-agents/v0` (`guardEvents` + `guardCustomTool`).
+**JS adapters:** wrappers fail closed; core `guard()` fails open. Load the Step 3 file for the project's framework. Unpublished adapters (Google ADK, TanStack AI, Claude Managed Agents) pin a git SHA in that file — do not `npm install @arcjet/guard` and import them from 1.11.0.
 
 **Python:** `guard_action` / `guard_action_sync` is core. LangChain, CrewAI, and OpenAI Agents ship in PyPI `arcjet` **1.0.0**. Claude Agent SDK, Claude Managed Agents, and Strands Agents still need the git pin in their dedicated skill. There is no `arcjet[crewai]` extra.
 
@@ -193,7 +196,7 @@ If you can't run the app in the current environment, tell the user exactly what 
 - **Hand-edited dependency manifests**: run the project's package manager so the version is real (`@arcjet/*` 1.11.0, Python `arcjet` 1.0.0).
 - **Double-counting**: calling `protect()` or `guard()` multiple times for the same operation counts against rate limits multiple times.
 - **Client-IP warning bypass**: never "fix" an `unverified-header` warning by copying `X-Forwarded-For` into `ipSrc` / `ip_src` / `WithIPSrc`.
-- **JS denial envelopes:** one `ArcjetDenialResult` payload; delivery is per-framework. Read the JS Guard reference before inventing a status or throwing. `guardTool` and `guardAction` are different handlers.
+- **JS denial envelopes:** one `ArcjetDenialResult` payload; delivery is per-framework. Read the adapter file from Step 3 before inventing a status or throwing. `guardTool` and `guardAction` are different handlers.
 - **Never hardcode `ARCJET_KEY`** – always use environment variables.
 
 ## Choose protections
@@ -206,7 +209,7 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 
 - **Python SDK**: https://github.com/arcjet/arcjet-py – `arcjet` package (request protection) and `arcjet.guard` subpackage (non-HTTP guard).
 - **Python Guard integration skills**: [integrate-arcjet-guard-langchain-py](../integrate-arcjet-guard-langchain-py/SKILL.md), [integrate-arcjet-guard-crewai](../integrate-arcjet-guard-crewai/SKILL.md), [integrate-arcjet-guard-openai-agents-py](../integrate-arcjet-guard-openai-agents-py/SKILL.md), [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md), [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md), [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md).
-- **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`).
+- **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`). JS Guard adapter files: [references/guards_js_vercel_ai.md](references/guards_js_vercel_ai.md) and siblings listed in Step 3.
 - **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. `go get ...@latest` still resolves **v0.1.0**. `v1.0.0-rc.1` exists as a pre-release; APIs described in the Go references live on the default branch / that rc.
 - **Docs**: https://docs.arcjet.com – narrative guides, blueprints, and product reference.
 - **Console**: https://console.arcjet.com – sites, keys, and decision history.
