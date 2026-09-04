@@ -22,7 +22,7 @@ npx skills add arcjet/skills
 
 The Arcjet skill for AI coding agents. Adds protection across HTTP route handlers, AI agent tool calls, MCP servers, background jobs, and queue workers — rate limiting, bot detection, email validation, prompt injection detection, sensitive information blocking, content moderation, and abuse prevention — and verifies decisions via the Arcjet CLI, MCP server, and Console. Works in JavaScript/TypeScript, Python, and Go across Next.js, Express, Fastify, SvelteKit, Remix, Bun, Deno, NestJS, FastAPI, Flask, `net/http`, and non-HTTP contexts.
 
-Dedicated Python Guard integration skills cover official LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents adapters. Shared Python Guard fundamentals stay in the `arcjet` skill.
+Dedicated Python Guard integration skills cover official LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents adapters. JS Guard adapters are per-file references inside the `arcjet` skill (`references/guards_js_*.md`) — load fundamentals plus exactly one adapter. Shared fundamentals stay in the `arcjet` skill. HTTP frameworks are not separate skills.
 
 | Skill | When to load |
 | --- | --- |
