@@ -29,11 +29,11 @@ Four surfaces, one decision rule:
 - **Observe a chain or agent** → `ArcjetCaptureHandler` /
   `ArcjetAsyncCaptureHandler`. These cannot deny.
 
-This is Python `create_agent` (docs
-https://docs.arcjet.com/guards/langchain/). It is not JS `createAgent` /
-`wrapToolCall` (`@arcjet/guard/langchain/v1`, docs
-https://docs.arcjet.com/guards/langchain/) and not LangGraph JS
-`StateGraph` / `ToolNode` (docs https://docs.arcjet.com/guards/langgraph/).
+This is Python `create_agent`. The merged page
+https://docs.arcjet.com/guards/langchain/ covers both languages — JS is
+`@arcjet/guard/langchain/v1` (`createAgent` / `wrapToolCall`), not this
+module. It is not LangGraph JS `StateGraph` / `ToolNode` (docs
+https://docs.arcjet.com/guards/langgraph/).
 Importing `arcjet.guard.langchain` does not load LangGraph. Referencing
 `ArcjetMiddleware` or `ToolPolicy` without `arcjet[langchain-agents]`
 raises and names that extra.

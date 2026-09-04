@@ -931,7 +931,7 @@ for await (const event of runner.runAsync({
 }
 ```
 
-See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/claude-managed-agents/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, https://docs.arcjet.com/guards/langgraph/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/genkit/, https://docs.arcjet.com/guards/google-adk/, https://docs.arcjet.com/guards/tanstack-ai/, and https://docs.arcjet.com/guards/strands-agents/.
+See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/claude-managed-agents/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, https://docs.arcjet.com/guards/langgraph/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/genkit/, https://docs.arcjet.com/guards/google-adk/, https://docs.arcjet.com/guards/tanstack-ai/, and https://docs.arcjet.com/guards/strands-agents/.
 
 ### TanStack AI
 
@@ -1010,7 +1010,7 @@ const stream = chat({
 void stream;
 ```
 
-See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, https://docs.arcjet.com/guards/langgraph/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/genkit/, and https://docs.arcjet.com/guards/tanstack-ai/.
+See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, https://docs.arcjet.com/guards/langgraph/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/genkit/, and https://docs.arcjet.com/guards/tanstack-ai/.
 
 
 ### Strands Agents
@@ -1102,7 +1102,7 @@ const agent = new Agent({
 await agent.invoke(userText, { invocationState });
 ```
 
-See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, https://docs.arcjet.com/guards/langgraph/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/genkit/, and https://docs.arcjet.com/guards/strands-agents/.
+See https://docs.arcjet.com/guards/framework-integrations/, https://docs.arcjet.com/guards/claude-agent-sdk/, https://docs.arcjet.com/guards/vercel-eve/, https://docs.arcjet.com/guards/mastra/, https://docs.arcjet.com/guards/langgraph/, https://docs.arcjet.com/guards/langchain/, https://docs.arcjet.com/guards/genkit/, and https://docs.arcjet.com/guards/strands-agents/.
 
 
 ## Key patterns

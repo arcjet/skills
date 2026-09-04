@@ -320,7 +320,7 @@ with raw `guard()`.
 | Official Python Strands Agents `@tool` / Agent | `arcjet.guard.strands_agents` | [integrate-arcjet-guard-strands-agents-py](../../integrate-arcjet-guard-strands-agents-py/SKILL.md) |
 
 Do not mix adapters. Importing one adapter module does not load another.
-Python LangChain is not JS `createAgent` (docs https://docs.arcjet.com/guards/langchain/) and not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). Python OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents are not their JS `@arcjet/guard/...` counterparts. There is no `guard_crew`. There is no `arcjet[crewai]` extra (CrewAI pulls `chromadb`, CVE-2026-45829). Extras, denial envelopes, and HITL traps live in the dedicated skill — do not restate them here.
+Python LangChain (docs https://docs.arcjet.com/guards/langchain/) is not JS `createAgent` — that ships on the same page via `@arcjet/guard/langchain/v1`. It is not LangGraph JS (docs https://docs.arcjet.com/guards/langgraph/). Python OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents are not their JS `@arcjet/guard/...` counterparts. There is no `guard_crew`. There is no `arcjet[crewai]` extra (CrewAI pulls `chromadb`, CVE-2026-45829). Extras, denial envelopes, and HITL traps live in the dedicated skill — do not restate them here.
 
 ### Shared helper rules
 
