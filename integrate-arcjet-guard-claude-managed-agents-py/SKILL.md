@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-claude-managed-agents-py
 description: Integrate Arcjet Guard into Python Claude Managed Agents — screen user.message with guard_events before sessions.events.send, and gate custom tools on agent.custom_tool_use with guard_custom_tool. Use when asked to add Arcjet to hosted Claude Managed Agents, anthropic beta sessions, rate limit custom tools, or block prompt injection on hosted sessions. Not Claude Agent SDK local query() / PreToolUse.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official anthropic>=0.92.0,<2 via arcjet[claude-managed-agents] (safe extra, no chromadb). Peer is anthropic, not claude-agent-sdk. Until-published — pin arcjet to git SHA 40ea4896962a90a24cdbc4cfbfc80729c096da36; not in PyPI 0.9.0.
+compatibility: Requires Python >= 3.10 and official anthropic>=0.92.0,<2 via arcjet[claude-managed-agents] (safe extra, no chromadb). Peer is anthropic, not claude-agent-sdk. Until-published — pin arcjet to git SHA 582372916d70311873ef24b7a72443c098b3aec9; not in PyPI 1.0.0.
 metadata:
   author: arcjet
   type: core
@@ -52,10 +52,9 @@ Three surfaces, one decision rule:
   Anthropic `session.id` / `sevt_…`.
 
 Docs: https://docs.arcjet.com/guards/claude-managed-agents/ (shared
-JS+Python page). Do not use `/guards/claude-agent-sdk/` or
-`/guards/claude-agent-sdk-py/`. There is no separate
-`/guards/claude-managed-agents-py/` page. JS adapter pin stays
-`cb35c8f92c3a2fb63fbeb9b386d79b1878c19d92`.
+JS+Python page). Do not use `/guards/claude-agent-sdk/`. There is no separate
+`/guards/claude-managed-agents-py/` page. JS adapter is not in npm
+1.11.0 — pin `@arcjet/guard` to `cb35c8f92c3a2fb63fbeb9b386d79b1878c19d92`.
 
 ## The real gates are inbound `user.message` and custom tools
 
@@ -124,14 +123,19 @@ Ask only what you cannot infer from the code; suggest defaults.
 7. **`always_ask` + `user.tool_confirmation` is opt-in confirmation,
    not policy.**
 8. **Do not hand-wrap every session event with raw `guard()`.**
+9. **`guard_events` has no `inbound=`.** `action` and `rules` sit at
+   the top level; it takes `send=`; the returned callable replaces
+   `send` and raises on DENY. `guard_custom_tool` takes `run=`, not
+   `tool=<function>`. A missing decision is not a denial.
 
 ## Step 1: Install and find the guard client
 
-Until-published: PyPI `arcjet` 0.9.0 does not include this module. Pin
-`arcjet` to git SHA `40ea4896962a90a24cdbc4cfbfc80729c096da36`:
+Until-published: PyPI `arcjet` 1.0.0 does not include this module. Pin
+`arcjet` to git SHA `582372916d70311873ef24b7a72443c098b3aec9` (current
+`main`, includes the extra):
 
 ```bash
-pip install "arcjet[claude-managed-agents] @ git+https://github.com/arcjet/arcjet-py.git@40ea4896962a90a24cdbc4cfbfc80729c096da36"
+pip install "arcjet[claude-managed-agents] @ git+https://github.com/arcjet/arcjet-py.git@582372916d70311873ef24b7a72443c098b3aec9"
 ```
 
 If the agent has no guard client yet, launch one **once at module scope**:
@@ -145,7 +149,7 @@ aj = launch_arcjet(key=os.environ["ARCJET_KEY"])
 
 Worked example:
 [`examples/fastapi-claude-managed-agents-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-claude-managed-agents-guard)
-(pins the same `40ea4896`).
+(pins `58237291`).
 
 ## Step 2: Screen inbound before `sessions.events.send`
 

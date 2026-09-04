@@ -6,7 +6,7 @@ Guard protects code paths that do not have an HTTP request – agent tool calls,
 
 ## Installation
 
-The published tag is **`github.com/arcjet/arcjet-go` v0.1.0** (June 30, 2026). The module is pre-release and unstable. `go get ...@latest` still resolves that tag. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, `GuardModerateContent`, and required Guard `Mode` are on the module default branch – read the installed package docs after `go get`. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The published latest tag is **`github.com/arcjet/arcjet-go` v0.1.0** (June 30, 2026). A **v1.0.0-rc.1** pre-release exists (August 27, 2026); `go get ...@latest` still resolves v0.1.0. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, `GuardModerateContent`, and required Guard `Mode` are on the module default branch / that rc – read the installed package docs after `go get`. The module declares **Go 1.25** in `go.mod`; if the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Install with Go tooling:
 

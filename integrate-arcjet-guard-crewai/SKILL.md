@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-crewai
 description: Integrate Arcjet Guard into official CrewAI — register process-wide PRE_TOOL_CALL with register_arcjet_hooks, or wrap a standalone BaseTool you call yourself with guard_tool. Use when asked to add Arcjet to CrewAI, LiteAgent, crew-injected tools, rate limit those tools, screen inbound messages before kickoff, or block prompt injection / PII. Official crewai only; not an npm CrewAI port and not LangChain Crew wrappers.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10, official crewai>=1.15.3,<2 installed by the user, and a blocking Guard client (launch_arcjet_sync). There is no arcjet[crewai] extra. Until-published — pin arcjet to git SHA b1253640ce676b948594beed5fe62450d0e1c77d; not in PyPI 0.9.0.
+compatibility: Requires Python >= 3.10, official crewai>=1.15.3,<2 installed by the user, PyPI arcjet 1.0.0, and a blocking Guard client (launch_arcjet_sync). There is no arcjet[crewai] extra.
 metadata:
   author: arcjet
   type: core
@@ -89,9 +89,7 @@ Ask only what you cannot infer from the code; suggest defaults.
 ## The things readers get wrong
 
 1. **There is no `arcjet[crewai]` extra.** Install `crewai>=1.15.3,<2`
-   yourself. Until-published, pin `arcjet` to
-   `b1253640ce676b948594beed5fe62450d0e1c77d`
-   ([#224](https://github.com/arcjet/arcjet-py/pull/224)).
+   yourself. `arcjet.guard.crewai` ships in PyPI `arcjet` 1.0.0.
 2. **There is no `guard_crew`.** Use `register_arcjet_hooks`.
 3. **The hook path is sync only.** Pass `launch_arcjet_sync`.
 4. **Raise `HookAborted` from the hook, not Arcjet errors.** CrewAI
@@ -102,11 +100,13 @@ Ask only what you cannot infer from the code; suggest defaults.
 7. **Key rate limits on the authenticated caller**, not a model-supplied
    order id. `sanitize_tool_name` matches `Send Email` and `send_email`.
 8. **Do not hand-wrap every CrewAI tool with raw `guard()`.**
+9. **`inputs=` is accepted.** The hook resolver is `(arguments, ctx)`.
+   A missing decision is not a denial — verify in Console/CLI.
 
 ## Step 1: Install and find the guard client
 
 ```bash
-pip install "arcjet @ git+https://github.com/arcjet/arcjet-py.git@b1253640ce676b948594beed5fe62450d0e1c77d"
+pip install arcjet
 pip install "crewai>=1.15.3,<2"
 ```
 

@@ -26,7 +26,7 @@ For request-based protection, rate limits default to keying by IP. Use `characte
 
 ## Prompt injection attacks
 
-Jailbreaks, role-play escapes, and instruction overrides allow attackers to manipulate AI behavior. Arcjet inspects incoming messages for injection patterns before they reach the model. On `main`, the rule is a binary detect – there is no `threshold` or `score`.
+Jailbreaks, role-play escapes, and instruction overrides allow attackers to manipulate AI behavior. Arcjet inspects incoming messages for injection patterns before they reach the model. The rule is a binary detect – there is no `threshold` or `score` (removed in JS 1.11.0 / Python 1.0.0).
 
 **Rules:** `detectPromptInjection` (request-based and Guard). Use on any untrusted text before it reaches a model or tool argument – and on tool-call *results* when the tool fetches content from untrusted sources.
 
@@ -34,13 +34,13 @@ Jailbreaks, role-play escapes, and instruction overrides allow attackers to mani
 
 Some AI workflows need to block unsafe, abusive, or policy-violating text even when it is not prompt injection or PII.
 
-**Rules:** Guard content moderation only (not available on `protect()`). JS: `moderateContent` (graduated; published `@arcjet/guard` 1.10.0 still exports `experimental_moderateContent` – read the installed types). Python: `ModerateContent` (graduated; published `arcjet` 0.9.0 / 0.10.0b1 still export `experimental_ModerateContent` – read the installed types). Go: `GuardModerateContent` (`ExperimentalGuardModerateContent` remains a deprecated alias). The result is a binary `detected` / `Detected` plus optional `billing` (`text_units`) – no per-category scores. Use `hasFailedOpen()` / `has_failed_open()` / `HasFailedOpen()` as the fail-closed gate when evaluation is incomplete.
+**Rules:** Guard content moderation only (not available on `protect()`). JS: `moderateContent` (graduated in 1.11.0; `experimental_moderateContent` is a deprecated alias). Python: `ModerateContent` (graduated in 1.0.0; `experimental_ModerateContent` is a deprecated alias). Go: `GuardModerateContent` (`ExperimentalGuardModerateContent` remains a deprecated alias). The result is a binary `detected` / `Detected` plus optional `billing` (`text_units`) – no per-category scores. Use `hasFailedOpen()` / `has_failed_open()` / `HasFailedOpen()` as the fail-closed gate when evaluation is incomplete.
 
 ## Data loss prevention
 
 Sensitive data leaks into AI model context, logs, third-party tool calls, or model memory through unguarded inputs and outputs. Detection always runs locally – raw text never leaves the SDK.
 
-The **default backend** is a bundled WebAssembly engine that detects four structured types: card numbers, email addresses, phone numbers, and IP addresses. For names, addresses, and government / financial identifiers, pass the optional on-device **Rampart NER** backend: `@arcjet/sensitive-info-rampart` (`rampart()`), Python `arcjet[sensitive-info-rampart]` (`from arcjet_sensitive_info_rampart import rampart`), or Go `github.com/arcjet/arcjet-go/sensitiveinfo/rampart` (`rampart.New(...)`). Rampart needs a server runtime with filesystem / native-addon access (not edge). Listing a Rampart-only entity without a Rampart backend never matches (JS) or is a configuration error (Python / Go).
+The **default backend** is a bundled WebAssembly engine that detects four structured types: card numbers, email addresses, phone numbers, and IP addresses. For names, addresses, and government / financial identifiers, pass the optional on-device **Rampart NER** backend: `@arcjet/sensitive-info-rampart` (`rampart()`), Python `arcjet[sensitive-info-rampart]` (`from arcjet_sensitive_info_rampart import rampart`), or Go `github.com/arcjet/arcjet-go/sensitiveinfo/rampart` (`rampart.New(...)`). Rampart needs a server runtime with filesystem / native-addon access (not edge). Listing a Rampart-only entity without a Rampart backend never matches (JS) or is a configuration error (Python / Go). The rule does not inherit the client's backend – pass `backend` on the rule. Python `LocalDetectSensitiveInfo()` with neither `allow` nor `deny` fail-opens as ALLOW (`AJ1203`); always pass a list.
 
 **Rules:** `sensitiveInfo` / `localDetectSensitiveInfo` / `LocalDetectSensitiveInfo` / `SensitiveInfo` / `GuardSensitiveInfo` (request-based and guard). Use to block PII from entering the system (users sending credit card numbers) or leaving it (tool outputs leaking email addresses).
 
@@ -62,7 +62,7 @@ SQLi, XSS, and other injection attacks targeting web endpoints.
 
 Credential stuffing, spam registrations, and disposable email abuse on signup/login forms.
 
-**Rules:** `validateEmail` / `validate_email` plus the signup helper (request-based only). Rejects disposable, no-MX, and invalid addresses. JS `protectSignup` is one composite rule (bot detection + email validation + rate limiting). Python `protect_signup()` returns those three factories as a tuple – unpack with `*protect_signup(...)` into `arcjet(..., rules=...)`. Go `ProtectSignup` returns `[]Rule` – assign it to `Config.Rules` or `append` other rules. Same combo, different shape. The Python helper is on `main` only (not in published 0.9.0 / 0.10.0b1).
+**Rules:** `validateEmail` / `validate_email` plus the signup helper (request-based only). Rejects disposable, no-MX, and invalid addresses. JS `protectSignup` is one composite rule (bot detection + email validation + rate limiting). Python `protect_signup()` returns those three factories as a tuple – unpack with `*protect_signup(...)` into `arcjet(..., rules=...)`. Go `ProtectSignup` returns `[]Rule` – assign it to `Config.Rules` or `append` other rules. Same combo, different shape. The Python helper ships in **1.0.0**. Empty bot `allow=[]` denies `CURL` before the email rule can run – temporarily allow `CURL` when testing with curl.
 
 ## IP-based filtering
 
