@@ -282,11 +282,11 @@ For tests, `registerTestClient()` from `@arcjet/guard/testing` records calls and
 
 Import the **versioned** path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/mastra`, …) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`). Core `guard()` fails open.
 
-Load **fundamentals here, then exactly one adapter file**. Do not open sibling adapters.
+Load **fundamentals here, then exactly one adapter file**. Do not open sibling adapters. This table is the source of truth — `SKILL.md` links here instead of copying it.
 
 | Adapter | Import | Load |
 | --- | --- | --- |
-| Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | [guards_js_vercel_ai.md](guards_js_vercel_ai.md) |
+| Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | [guards_js_vercel_ai.md](guards_js_vercel_ai.md) — only JS adapter that maps typed `inputs` / `actor` to a remote policy |
 | Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | [guards_js_vercel_eve.md](guards_js_vercel_eve.md) |
 | Mastra v1 | `@arcjet/guard/mastra/v1` | [guards_js_mastra.md](guards_js_mastra.md) |
 | LangChain `createAgent` v1 | `@arcjet/guard/langchain/v1` | [guards_js_langchain.md](guards_js_langchain.md) |

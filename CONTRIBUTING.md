@@ -29,7 +29,7 @@ evals/
 
 Python Guard adapter skills follow the JS `@arcjet/guard` `integrate-arcjet-guard-*` conventions (`name`, `description`, `license`, `compatibility`, `metadata.author` / `type` / `library`). Use a `-py` suffix when the JS SDK already ships the same adapter name. Shared fundamentals stay in `arcjet/references/guards_python.md` — do not copy adapter wiring back into that file.
 
-JS Guard adapters stay as `references/guards_js_*.md` behind the shared `arcjet` skill. Do not add a separately triggered skill per JS adapter (the npm package already ships `integrate-arcjet-guard-*` under `node_modules/@arcjet/guard/skills/`). Do not put adapter wiring back into `guards_javascript.md`. HTTP frameworks stay in the request references — do not split Next.js / Express / FastAPI into their own skills.
+JS Guard adapters stay as `references/guards_js_*.md` behind the shared `arcjet` skill. The adapter routing table lives only in `guards_javascript.md` — `SKILL.md` links there instead of copying it. Do not add a separately triggered skill per JS adapter (the npm package already ships `integrate-arcjet-guard-*` under `node_modules/@arcjet/guard/skills/`). Do not put adapter wiring back into `guards_javascript.md`. HTTP frameworks stay in the request references — do not split Next.js / Express / FastAPI into their own skills.
 
 ## skill-creator
 

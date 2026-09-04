@@ -89,26 +89,11 @@ Read the appropriate reference:
 - **Request-based JS/TS**: [references/requests_javascript.md](references/requests_javascript.md)
 - **Request-based Python**: [references/requests_python.md](references/requests_python.md)
 - **Request-based Go**: [references/requests_go.md](references/requests_go.md)
-- **Guard JS/TS fundamentals**: [references/guards_javascript.md](references/guards_javascript.md) — then exactly one adapter file from the table below
+- **Guard JS/TS fundamentals**: [references/guards_javascript.md](references/guards_javascript.md) — then exactly one adapter file from the table in that file (source of truth; do not copy it here)
 - **Guard Python**: [references/guards_python.md](references/guards_python.md)
 - **Guard Go**: [references/guards_go.md](references/guards_go.md)
 
-When the project already uses an official JS agent framework, load fundamentals plus that adapter file. Do not open sibling adapters.
-
-| JS framework | Import | Load |
-| --- | --- | --- |
-| Vercel AI SDK | `@arcjet/guard/vercel-ai/v7` | [references/guards_js_vercel_ai.md](references/guards_js_vercel_ai.md) |
-| Vercel Eve | `@arcjet/guard/vercel-eve/v0` | [references/guards_js_vercel_eve.md](references/guards_js_vercel_eve.md) |
-| Mastra | `@arcjet/guard/mastra/v1` | [references/guards_js_mastra.md](references/guards_js_mastra.md) |
-| LangChain `createAgent` | `@arcjet/guard/langchain/v1` | [references/guards_js_langchain.md](references/guards_js_langchain.md) |
-| LangGraph | `@arcjet/guard/langgraph/v1` | [references/guards_js_langgraph.md](references/guards_js_langgraph.md) |
-| OpenAI Agents | `@arcjet/guard/openai-agents/v0` | [references/guards_js_openai_agents.md](references/guards_js_openai_agents.md) |
-| Genkit | `@arcjet/guard/genkit/v1` | [references/guards_js_genkit.md](references/guards_js_genkit.md) |
-| Claude Agent SDK | `@arcjet/guard/claude-agent-sdk/v0` | [references/guards_js_claude_agent_sdk.md](references/guards_js_claude_agent_sdk.md) |
-| Claude Managed Agents | `@arcjet/guard/claude-managed-agents/v0` | [references/guards_js_claude_managed_agents.md](references/guards_js_claude_managed_agents.md) |
-| Strands Agents | `@arcjet/guard/strands-agents/v1` | [references/guards_js_strands_agents.md](references/guards_js_strands_agents.md) |
-| Google ADK | `@arcjet/guard/google-adk/v2` | [references/guards_js_google_adk.md](references/guards_js_google_adk.md) |
-| TanStack AI | `@arcjet/guard/tanstack-ai/v0` | [references/guards_js_tanstack_ai.md](references/guards_js_tanstack_ai.md) |
+When the project already uses an official JS agent framework, open the fundamentals file and load **exactly one** adapter from its table. Do not open sibling adapters.
 
 When the project already uses an official Python agent framework, load the dedicated skill instead of the long adapter sections that used to live in the Python Guard reference:
 

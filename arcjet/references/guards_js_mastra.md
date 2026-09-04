@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/mastra/
 
-Exports: `guardTool`, `guardProcessor`, `guardHooks`, `mastraAgentContext`. There is no unversioned `@arcjet/guard/mastra` alias. This is `@mastra/core` >= 1 `<2` `createTool({ execute })` + `Agent`. Ships in `@arcjet/guard` 1.11.0. There is no `guardInbound` and no `guardApproval`.
+Exports: `guardTool`, `guardProcessor`, `guardHooks`, `mastraAgentContext` (all in `@arcjet/guard` 1.11.0). There is no unversioned `@arcjet/guard/mastra` alias. This is `@mastra/core` >= 1 `<2` `createTool({ execute })` + `Agent`. There is no `guardInbound` and no `guardApproval`.
 
 Three gotchas first:
 
@@ -15,7 +15,7 @@ Three gotchas first:
 - **`guardTool`** wraps `createTool({ execute })` so `execute` never runs on `DENY`. Return `{ arcjetDenied: true, … }` as the tool result. Do not throw. Prefer omitting `outputSchema` on guarded tools, or verify it accepts `ArcjetDenialResult`. If `onDeny` throws, the tool still does not run and the model still receives the default denial object.
 - **`guardProcessor`** for inbound / outbound text. On DENY, `processInput` / `processInputStep` call `abort()`; if `abort()` were to return, the processor still throws so the turn cannot fail open. Inbound `"allow"` is a legitimate `onGuardError` choice because failing closed stops the agent answering.
 - **`guardHooks`** — `beforeToolCall` returns `{ proceed: false, output }` on DENY so unwrapped MCP / workspace tools never execute. `afterToolCall` is observe-only. Pass `hooks` to the `Agent` constructor (or to `generate` / `stream`).
-- **`mastraAgentContext`** reads `MASTRA_THREAD_ID_KEY`, then resource, then run. It never mints. It never calls `createAgentContext` (that splits the Sequence). Set those reserved keys on `RequestContext` before `generate` / `stream`.
+- **`mastraAgentContext`** is exported from `@arcjet/guard/mastra/v1` in 1.11.0. It reads `MASTRA_THREAD_ID_KEY`, then resource, then run. It never mints. It never calls `createAgentContext` (that splits the Sequence). Wrappers read `RequestContext` themselves; use this helper when calling core `guard()`. Set the reserved keys on `RequestContext` before `generate` / `stream`.
 - Fail closed by default (`onGuardError: "deny"`). Optional peer `@mastra/core` `>=1 <2`. Node.js 22+.
 
 ```typescript
@@ -27,7 +27,12 @@ import {
   RequestContext,
 } from "@mastra/core/request-context";
 import { launchArcjet, detectPromptInjection, tokenBucket } from "@arcjet/guard";
-import { guardHooks, guardProcessor, guardTool } from "@arcjet/guard/mastra/v1";
+import {
+  guardHooks,
+  guardProcessor,
+  guardTool,
+  mastraAgentContext,
+} from "@arcjet/guard/mastra/v1";
 import { z } from "zod";
 
 const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });
@@ -86,6 +91,9 @@ const agent = new Agent({
 const requestContext = new RequestContext();
 requestContext.set(MASTRA_THREAD_ID_KEY, conversationId);
 requestContext.set(MASTRA_RESOURCE_ID_KEY, userId);
+const ctx = mastraAgentContext(requestContext);
+// Wrappers read RequestContext. Spread `ctx` onto core `guard()` / `capture()`
+// so those calls join the same Sequence.
 
 await agent.generate(userText, { requestContext });
 ```
