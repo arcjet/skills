@@ -33,7 +33,7 @@ Dedicated Python Guard integration skills cover official LangChain, CrewAI, Open
 | `integrate-arcjet-guard-claude-agent-sdk-py` | Python Claude Agent SDK |
 | `integrate-arcjet-guard-claude-managed-agents-py` | Python Claude Managed Agents |
 | `integrate-arcjet-guard-strands-agents-py` | Python Strands Agents |
-| `integrate-arcjet-guard-agent-framework-go` | Go Microsoft Agent Framework |
+| `integrate-arcjet-guard-agent-framework-go` | Microsoft Agent Framework for Go |
 
 ## Related
 

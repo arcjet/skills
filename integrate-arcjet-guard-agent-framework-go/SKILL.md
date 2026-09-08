@@ -37,9 +37,8 @@ implementations have no Arcjet adapter. Do not import `@arcjet/guard` or
 The framework replaces a tool error with `Error: Function failed.` and
 allows three consecutive rounds of failing tool calls before the fourth ends
 the run. `GuardTool` therefore returns `arcjet.GuardDenialResult` as a
-successful result. Do not "fix" this
-by returning an error, and do not set `IncludeDetailedErrors` to make errors
-carry the denial.
+successful result. Do not "fix" this by returning an error, and do not set
+`IncludeDetailedErrors` to make errors carry the denial.
 
 ## Fail closed by default
 
