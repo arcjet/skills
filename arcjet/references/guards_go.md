@@ -105,6 +105,22 @@ An empty `Bucket` defaults to `default-token-bucket`, `default-fixed-window`, or
 
 Go has no registration / free `guard()` API. Pass the client.
 
+## Fail-closed helpers: `GuardAction`
+
+For a sensitive tool call or action, wrap it in `arcjet.GuardAction` instead of hand-writing the `HasFailedOpen()` gate. It calls Guard (always, even with no rules), denies with `*arcjet.GuardDeniedError`, fails closed with `*arcjet.GuardUnavailableError` when policy could not be evaluated, runs the function otherwise, and records one capture event whose metadata `outcome` is `success`, `degraded`, `denied`, `error`, or `unavailable`.
+
+```go
+out, err := arcjet.GuardAction(ctx, guard, arcjet.GuardActionPolicy{
+	Action: "refund.issued",
+	Actor:  userID,
+	Rules:  []arcjet.GuardRuleInput{refundLimit.Key(userID, 1)},
+}, func(ctx context.Context) (Receipt, error) { return refundPayment(ctx, id) })
+```
+
+Distinguish the two errors with `errors.As`. `OnGuardError: arcjet.OnGuardErrorAllow` opts a call site back into fail-open; a `DENY` still blocks. Use `arcjet.NewGuardDenialResult(decision)` and `arcjet.NewGuardUnavailableResult()` when the caller is a model and needs a JSON result rather than a Go error. Not yet available in a published `arcjet-go` tag — `GuardAction` lives on an unmerged branch; the latest tag (v1.0.0-rc.2) does not include it.
+
+For Microsoft Agent Framework for Go, load [integrate-arcjet-guard-agent-framework-go](../../integrate-arcjet-guard-agent-framework-go/SKILL.md) instead of wrapping tools by hand.
+
 ## Capture and flush
 
 `Capture` records that an action happened. It is not a security decision – it never denies, never returns an error, and never sets `HasFailedOpen()`.
@@ -143,7 +159,7 @@ for _, w := range decision.Warnings {
 
 ## Correlation IDs
 
-Set `GuardRequest.CorrelationId` to correlate this guard call with HTTP requests, workflow runs, or agent traces. It is a dedicated field, not metadata, and does not affect the decision.
+Set `GuardRequest.CorrelationId` to correlate this guard call with HTTP requests, workflow runs, or agent traces. It is a dedicated field, not metadata, and does not affect the decision. The agent helpers read `arcjet.ContextWithCorrelationId(ctx, id)`; `Guard` and `Capture` do not, so pass `CorrelationId` to them explicitly.
 
 ## Metadata
 

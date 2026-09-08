@@ -1,0 +1,43 @@
+{
+  "skill_name": "integrate-arcjet-guard-agent-framework-go",
+  "evals": [
+    {
+      "id": 1,
+      "name": "maf-orders-agent-refund",
+      "prompt": "Our Go agent can issue refunds. Add Arcjet so refunds are rate limited per user and never run if the security check can't be made.",
+      "expected_output": "Installs github.com/arcjet/arcjet-go and github.com/arcjet/arcjet-go/agentframework, creates one GuardClient at package scope reading ARCJET_KEY, defines a GuardTokenBucket with a hardcoded Bucket, wraps issue_refund with GuardTool or a GuardTools policy using Action \"refund.issued\" (hardcoded), an Actor from application state, and Rules via Args, leaves OnGuardError at its fail-closed default, puts a correlation ID on the context before Run, and does not return the denial as an error.",
+      "files": [
+        "files/maf-orders-agent/go.mod",
+        "files/maf-orders-agent/main.go"
+      ],
+      "assertions": [
+        "Adds github.com/arcjet/arcjet-go/agentframework with go get, not a hand-edited version",
+        "Creates one arcjet.NewGuardClient at package scope; reads ARCJET_KEY from the environment, not hardcoded",
+        "Wraps issue_refund with agentframework.GuardTool / MustGuardTool or GuardTools with a policy that switches on t.Name()",
+        "Uses a hardcoded Action such as \"refund.issued\", not fmt.Sprintf",
+        "Uses arcjet.GuardTokenBucket keyed on a user or tenant ID, not on the order number the model supplies",
+        "Does not set OnGuardError to OnGuardErrorAllow on the refund tool",
+        "Does not convert the denial into a returned error and does not set IncludeDetailedErrors to carry it",
+        "Puts a correlation ID on the context with arcjet.ContextWithCorrelationId using an ID the app already has; does not generate one",
+        "Does not wrap lookup_order and issue_refund twice (GuardTool plus middleware) without relying on the documented marker behaviour"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "maf-orders-agent-inbound",
+      "prompt": "Block prompt injection in the messages users send to our Go agent, and make sure every tool the agent can call is covered.",
+      "expected_output": "Adds agentframework.GuardMiddleware to agent.Config.Middlewares with an InboundPolicy using GuardPromptInjection on the user text and a Tools policy function covering the agent's tools by name, screening before the provider runs, and explains that hosted tools cannot be guarded if any are present.",
+      "files": [
+        "files/maf-orders-agent/go.mod",
+        "files/maf-orders-agent/main.go"
+      ],
+      "assertions": [
+        "Adds agentframework.GuardMiddleware to agent.Config.Middlewares",
+        "InboundPolicy has a hardcoded Action and a Rules function returning promptScan.Text(text)",
+        "MiddlewareConfig.Tools returns a ToolPolicy for each named tool with hardcoded Actions",
+        "Does not screen inbound text inside a tool; screening happens in the middleware before the provider runs",
+        "Does not describe toolapproval or ApprovalRequiredFunc as a security gate"
+      ]
+    }
+  ]
+}
