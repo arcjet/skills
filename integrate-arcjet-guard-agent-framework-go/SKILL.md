@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-agent-framework-go
 description: Integrate Arcjet Guard into Microsoft Agent Framework for Go (github.com/microsoft/agent-framework-go). Wrap a functool or MCP tool with GuardTool, guard every tool an agent can see and screen inbound text with GuardMiddleware, or guard any Go function with arcjet.GuardAction. Use when asked to add Arcjet to a Go agent built on Microsoft Agent Framework, rate limit its tools, block prompt injection, or fail closed on tool calls. This is the Go framework, not the .NET or Python Microsoft Agent Framework.
 license: Apache-2.0
-compatibility: Requires Go >= 1.26 and github.com/microsoft/agent-framework-go v0.1.0. `github.com/arcjet/arcjet-go/agentframework` and `arcjet.GuardAction` are not yet published — they live on an unmerged branch of arcjet-go, and the latest published tag (v1.0.0-rc.2) does not include them. There is no SHA to pin yet.
+compatibility: Requires Go >= 1.26 and github.com/arcjet/arcjet-go/agentframework v0.1.0 or later, which requires github.com/arcjet/arcjet-go v1.0.0 or later and github.com/microsoft/agent-framework-go v0.1.0 or later.
 metadata:
   author: arcjet
   type: core
@@ -100,15 +100,6 @@ Ask only what you cannot infer from the code; suggest defaults.
 go get github.com/arcjet/arcjet-go@latest
 go get github.com/arcjet/arcjet-go/agentframework@latest
 ```
-
-`github.com/arcjet/arcjet-go/agentframework` has no tagged release yet (see
-`compatibility` above), so the second command fails today with
-`no matching versions for query "latest"`. It will work once the module
-publishes. Until then, tell the user this integration is not yet available
-in a released version of `arcjet-go` and point them at
-[examples/agentframework](https://github.com/arcjet/arcjet-go/tree/main/examples/agentframework)
-as the reference for when it ships — do not fabricate a `replace` directive
-against an unmerged branch.
 
 The module requires Go 1.26. If the project is on an older Go, tell the user
 and stop. Create one `arcjet.NewGuardClient` at package scope; it reads

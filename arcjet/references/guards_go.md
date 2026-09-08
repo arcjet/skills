@@ -117,7 +117,7 @@ out, err := arcjet.GuardAction(ctx, guard, arcjet.GuardActionPolicy{
 }, func(ctx context.Context) (Receipt, error) { return refundPayment(ctx, id) })
 ```
 
-Distinguish the two errors with `errors.As`. `OnGuardError: arcjet.OnGuardErrorAllow` opts a call site back into fail-open; a `DENY` still blocks. Use `arcjet.NewGuardDenialResult(decision)` and `arcjet.NewGuardUnavailableResult()` when the caller is a model and needs a JSON result rather than a Go error. Not yet available in a published `arcjet-go` tag — `GuardAction` lives on an unmerged branch; the latest tag (v1.0.0-rc.2) does not include it.
+Distinguish the two errors with `errors.As`. `OnGuardError: arcjet.OnGuardErrorAllow` opts a call site back into fail-open; a `DENY` still blocks. Use `arcjet.NewGuardDenialResult(decision)` and `arcjet.NewGuardUnavailableResult()` when the caller is a model and needs a JSON result rather than a Go error. Available from `arcjet-go` v1.0.0.
 
 For Microsoft Agent Framework for Go, load [integrate-arcjet-guard-agent-framework-go](../../integrate-arcjet-guard-agent-framework-go/SKILL.md) instead of wrapping tools by hand.
 
