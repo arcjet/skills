@@ -82,8 +82,10 @@ Ask only what you cannot infer from the code; suggest defaults.
 2. **`Action`, not `Label`.** Wrappers take `Action`; the raw
    `GuardRequest` takes `Label`. Same slug.
 3. **Denial is a result.** See above.
-4. **Correlation is caller-owned.** The middleware falls back to the
-   session's service ID; nothing generates an ID.
+4. **Correlation is caller-owned.** Put it on the context, or store it on
+   the session under `agentframework.CorrelationIdStateKey`. Never
+   `agent.Session.ServiceID`: providers rewrite it mid-run. Nothing
+   generates an ID.
 5. **`Args` decodes the tool's typed input.** For a struct input the
    arguments object is the value; for a scalar the framework wraps it.
 6. **Wrap once.** `GuardTools` and `GuardMiddleware` skip a tool already
