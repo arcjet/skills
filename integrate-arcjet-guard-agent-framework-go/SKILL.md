@@ -56,6 +56,21 @@ more than enforcement, such as a read-only lookup. A `DENY` always blocks.
 that feeds an Arcjet decision into an auto-approval rule. Hosted tools
 (`hostedtool.*`) run at the provider and cannot be guarded.
 
+## Workflows need no separate helper
+
+`workflow/` is not a third surface. An agent hosted with `agentworkflow` runs
+through `agent.Agent.Run`, so `GuardMiddleware` and `GuardTool` apply inside a
+workflow unchanged. A bare executor is ordinary Go code: call
+`arcjet.GuardAction` in its handler, and decide there what a denial does to the
+run, because nothing downstream will decide it for you.
+
+Correlation does not survive the default execution environment. `inproc.Default`
+is `inproc.OffThread`, whose run loop builds its own context, so an ID placed
+with `arcjet.ContextWithCorrelationID` before `Run` never reaches an executor
+and correlates nothing. Only `inproc.Lockstep` passes the caller's context
+through. Set `GuardActionPolicy.CorrelationID` explicitly inside the executor
+instead; it wins over the context in any case.
+
 ## Questions to ask the human first
 
 Ask only what you cannot infer from the code; suggest defaults.
