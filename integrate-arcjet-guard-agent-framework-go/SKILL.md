@@ -69,7 +69,7 @@ Ask only what you cannot infer from the code; suggest defaults.
    ID from the authenticated request, never PII.
 4. What is the **correlation ID**: the conversation or request ID the
    application already has. Put it on the context with
-   `arcjet.ContextWithCorrelationId` before `Run`. Never mint one.
+   `arcjet.ContextWithCorrelationID` before `Run`. Never mint one.
 5. Should **inbound text** be screened? If yes, `GuardMiddleware` with an
    `InboundPolicy`. Failing closed there stops the agent for the duration
    of an outage, so `OnGuardErrorAllow` is a legitimate choice at that one
@@ -83,7 +83,7 @@ Ask only what you cannot infer from the code; suggest defaults.
    `GuardRequest` takes `Label`. Same slug.
 3. **Denial is a result.** See above.
 4. **Correlation is caller-owned.** Put it on the context, or store it on
-   the session under `agentframework.CorrelationIdStateKey`. Never
+   the session under `agentframework.CorrelationIDStateKey`. Never
    `agent.Session.ServiceID`: providers rewrite it mid-run. Nothing
    generates an ID.
 5. **`Args` decodes the tool's typed input.** For a struct input the
@@ -153,7 +153,7 @@ The middleware reaches tools from `agent.Config.Tools` and from a per-run
 ## Step 4: Correlate
 
 ```go
-ctx = arcjet.ContextWithCorrelationId(ctx, conversationID)
+ctx = arcjet.ContextWithCorrelationID(ctx, conversationID)
 resp, err := a.RunText(ctx, prompt).Collect()
 ```
 

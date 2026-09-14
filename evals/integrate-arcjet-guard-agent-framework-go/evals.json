@@ -18,7 +18,7 @@
         "Uses arcjet.GuardTokenBucket keyed on a user or tenant ID, not on the order number the model supplies",
         "Does not set OnGuardError to OnGuardErrorAllow on the refund tool",
         "Does not convert the denial into a returned error and does not set IncludeDetailedErrors to carry it",
-        "Puts a correlation ID on the context with arcjet.ContextWithCorrelationId using an ID the app already has; does not generate one",
+        "Puts a correlation ID on the context with arcjet.ContextWithCorrelationID using an ID the app already has; does not generate one",
         "Does not wrap lookup_order and issue_refund twice (GuardTool plus middleware) without relying on the documented marker behaviour"
       ]
     },

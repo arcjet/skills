@@ -128,8 +128,8 @@ For Microsoft Agent Framework for Go, load [integrate-arcjet-guard-agent-framewo
 ```go
 guard.Capture(arcjet.CaptureEvent{
 	Action:        "refund.issued",
-	CorrelationId: runID,
-	DecisionId:    decision.ID,
+	CorrelationID: runID,
+	DecisionID:    decision.ID,
 	Metadata: arcjet.Metadata{
 		"invoice":  map[string]any{"id": "inv_123", "amount": 4200},
 		"refunded": true,
@@ -159,7 +159,7 @@ for _, w := range decision.Warnings {
 
 ## Correlation IDs
 
-Set `GuardRequest.CorrelationId` to correlate this guard call with HTTP requests, workflow runs, or agent traces. It is a dedicated field, not metadata, and does not affect the decision. The agent helpers read `arcjet.ContextWithCorrelationId(ctx, id)`; `Guard` and `Capture` do not, so pass `CorrelationId` to them explicitly.
+Set `GuardRequest.CorrelationID` to correlate this guard call with HTTP requests, workflow runs, or agent traces. It is a dedicated field, not metadata, and does not affect the decision. The agent helpers read `arcjet.ContextWithCorrelationID(ctx, id)`; `Guard` and `Capture` do not, so pass `CorrelationID` to them explicitly.
 
 ## Metadata
 

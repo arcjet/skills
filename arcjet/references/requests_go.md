@@ -90,7 +90,7 @@ For user-based characteristics, use identity established by trusted authenticati
 
 ## Correlation IDs
 
-Pass `arcjet.WithCorrelationId(id)` to `Protect` to correlate this decision with guard calls, workflow runs, or agent traces. It is a dedicated field, not `WithExtra` or `Metadata`, and does not affect the decision.
+Pass `arcjet.WithCorrelationID(id)` to `Protect` to correlate this decision with guard calls, workflow runs, or agent traces. It is a dedicated field, not `WithExtra` or `Metadata`, and does not affect the decision.
 
 ## Explicit client IP
 
