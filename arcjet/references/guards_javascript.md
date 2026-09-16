@@ -26,7 +26,7 @@ Install with whichever package manager the project already uses (`npm install`, 
 npm install @arcjet/guard
 ```
 
-Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called out as 1.6.0 still apply. Capture, registration, Rampart, nested metadata, and threat/billing require **`@arcjet/guard` 1.10.0**. Framework adapters listed as shipped below require **1.11.0**. Runtime minimums match the Arcjet JS SDK line:
+Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called out as 1.6.0 still apply. Capture, registration, Rampart, nested metadata, and threat/billing require **`@arcjet/guard` 1.10.0**. Adapters that shipped in 1.11.0 still need **1.11.0+**. Google ADK, TanStack AI, and Claude Managed Agents require **1.12.0**. Runtime minimums match the Arcjet JS SDK line:
 
 | Runtime            | Minimum version          |
 | ------------------ | ------------------------ |
@@ -39,13 +39,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.11.0** on **August 26, 2026**. That release ships `moderateContent`, shared `ArcjetDenialResult` envelopes, Eve request/response `guardApproval`, and these adapters: `vercel-ai/v7`, `vercel-eve/v0`, `mastra/v1`, `langgraph/v1`, `langchain/v1`, `claude-agent-sdk/v0`, `openai-agents/v0`, `genkit/v1`, `strands-agents/v1`. Prompt-injection `threshold` / `score` are **removed**. Decide timeout defaults to 2000 ms. Read the installed package's types. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
->
-> Not in npm 1.11.0 (`ERR_PACKAGE_PATH_NOT_EXPORTED` if you import them from that release):
->
-> - Google ADK: pin `@arcjet/guard` to `41ef36816e7174f1b0288d28217e63fa14114307`
-> - TanStack AI: pin `@arcjet/guard` to `d730d57a124f03843f085d41f64b0355a09d1eab` ([#6260](https://github.com/arcjet/arcjet-js/pull/6260))
-> - Claude Managed Agents: pin `@arcjet/guard` to `cb35c8f92c3a2fb63fbeb9b386d79b1878c19d92`
+> _Runtime support last verified against the published `@arcjet/guard` **v1.12.0** on **September 16, 2026**. That release adds `google-adk/v2`, `tanstack-ai/v0`, and `claude-managed-agents/v0` to the 1.11.0 adapter set (`vercel-ai/v7`, `vercel-eve/v0`, `mastra/v1`, `langgraph/v1`, `langchain/v1`, `claude-agent-sdk/v0`, `openai-agents/v0`, `genkit/v1`, `strands-agents/v1`). Prompt-injection `threshold` / `score` are **removed**. Decide timeout defaults to 2000 ms. Read the installed package's types. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
 
 ## Architecture: why things go where they do
 
@@ -179,7 +173,7 @@ JavaScript `localDetectSensitiveInfo()` works with no arguments, but always pass
 These produce code that runs without error and enforces nothing. Full list: https://docs.arcjet.com/llms.txt.
 
 - Pass `allow` or `deny` on every local sensitive-info rule. Share `backend` with the client for non-default entity types.
-- Typed `inputs` / `actor` reach a remote policy **only** from `@arcjet/guard/vercel-ai/v7`. Every other JS adapter takes `action` + SDK `rules`. Details in the adapter file.
+- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them (`policyInput.server` / `policyInput.local`). Core `guard()` accepts them. On npm 1.12.0 only `vercel-ai/v7` wrappers are typed for `actor` / `inputs`; later releases add the rest. Check installed types — do not pass fields a helper does not declare.
 - On Genkit, OpenAI Agents, and Strands Agents, `guardTool` cannot infer `TInput` – annotate `rules: (input: { … }) => …`.
 - A missing decision is not a denial. Verify in Console/CLI.
 - Adapter-specific isolation / session / correlation traps live in that adapter file. Do not copy them from a sibling.
@@ -286,7 +280,7 @@ Load **fundamentals here, then exactly one adapter file**. Do not open sibling a
 
 | Adapter | Import | Load |
 | --- | --- | --- |
-| Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | [guards_js_vercel_ai.md](guards_js_vercel_ai.md) — only JS adapter that maps typed `inputs` / `actor` to a remote policy |
+| Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | [guards_js_vercel_ai.md](guards_js_vercel_ai.md) — on npm 1.12.0 this is the JS wrapper typed for `actor` / `inputs` |
 | Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | [guards_js_vercel_eve.md](guards_js_vercel_eve.md) |
 | Mastra v1 | `@arcjet/guard/mastra/v1` | [guards_js_mastra.md](guards_js_mastra.md) |
 | LangChain `createAgent` v1 | `@arcjet/guard/langchain/v1` | [guards_js_langchain.md](guards_js_langchain.md) |
@@ -295,9 +289,9 @@ Load **fundamentals here, then exactly one adapter file**. Do not open sibling a
 | Genkit v1 | `@arcjet/guard/genkit/v1` | [guards_js_genkit.md](guards_js_genkit.md) |
 | Claude Agent SDK v0 | `@arcjet/guard/claude-agent-sdk/v0` | [guards_js_claude_agent_sdk.md](guards_js_claude_agent_sdk.md) |
 | Strands Agents v1 | `@arcjet/guard/strands-agents/v1` | [guards_js_strands_agents.md](guards_js_strands_agents.md) |
-| Google ADK v2 | `@arcjet/guard/google-adk/v2` | [guards_js_google_adk.md](guards_js_google_adk.md) — not in npm 1.11.0; pin SHA in that file |
-| TanStack AI v0 | `@arcjet/guard/tanstack-ai/v0` | [guards_js_tanstack_ai.md](guards_js_tanstack_ai.md) — not in npm 1.11.0; pin SHA in that file |
-| Claude Managed Agents v0 | `@arcjet/guard/claude-managed-agents/v0` | [guards_js_claude_managed_agents.md](guards_js_claude_managed_agents.md) — not in npm 1.11.0; pin SHA in that file |
+| Google ADK v2 | `@arcjet/guard/google-adk/v2` | [guards_js_google_adk.md](guards_js_google_adk.md) — ships in npm 1.12.0 |
+| TanStack AI v0 | `@arcjet/guard/tanstack-ai/v0` | [guards_js_tanstack_ai.md](guards_js_tanstack_ai.md) — ships in npm 1.12.0 |
+| Claude Managed Agents v0 | `@arcjet/guard/claude-managed-agents/v0` | [guards_js_claude_managed_agents.md](guards_js_claude_managed_agents.md) — ships in npm 1.12.0 |
 
 Docs are the merged pages at https://docs.arcjet.com/guards/<adapter>/. Language-specific `*-js` / `*-py` URLs redirect there. The JS SDK also ships `integrate-arcjet-guard-*` skills under `node_modules/@arcjet/guard/skills/` — this repo does not duplicate those as separately triggered skills.
 

@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-openai-agents-py
 description: Integrate Arcjet Guard into Python OpenAI Agents — wrap FunctionTool / function_tool with guard_tool and read a caller-owned session or conversation id via openai_agents_context. Use when asked to add Arcjet to openai-agents, Runner.run, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python openai-agents, not the JS @openai/agents adapter.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official openai-agents>=0.19.0,<1 via arcjet[openai-agents] on PyPI arcjet 1.0.0. This is text Agent + Runner.run + authored FunctionTool — not Realtime, Sandbox, hosted, MCP, Computer / Shell / ApplyPatch, handoffs, or Agent.as_tool().
+compatibility: Requires Python >= 3.10 and official openai-agents>=0.19.0,<1 via arcjet[openai-agents] on PyPI arcjet 1.0.0+. This is text Agent + Runner.run + authored FunctionTool — not Realtime, Sandbox, hosted, MCP, Computer / Shell / ApplyPatch, handoffs, or Agent.as_tool().
 metadata:
   author: arcjet
   type: core

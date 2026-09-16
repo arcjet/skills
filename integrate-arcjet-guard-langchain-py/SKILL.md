@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-langchain-py
 description: Integrate Arcjet Guard into Python LangChain — wrap a BaseTool you call with guard_tool, put ArcjetMiddleware + ToolPolicy on create_agent, or observe a chain with ArcjetCaptureHandler. Use when asked to add Arcjet to LangChain, create_agent, langchain-core tools, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python LangChain, not LangChain JS createAgent and not LangGraph JS.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and PyPI arcjet 1.0.0. A BaseTool you call needs arcjet[langchain] (langchain-core>=1.2.5,<2). create_agent needs arcjet[langchain-agents] (langchain>=1.3,<2, langgraph>=1.2,<2).
+compatibility: Requires Python >= 3.10 and PyPI arcjet 1.0.0+. A BaseTool you call needs arcjet[langchain] (langchain-core>=1.2.5,<2). create_agent needs arcjet[langchain-agents] (langchain>=1.3,<2, langgraph>=1.2,<2).
 metadata:
   author: arcjet
   type: core
@@ -104,7 +104,7 @@ Ask only what you cannot infer from the code; suggest defaults.
 
 ## Step 1: Install and find the guard client
 
-These helpers ship in PyPI `arcjet` **1.0.0**. Install with the
+These helpers ship in PyPI `arcjet` **1.0.0+**. Install with the
 project's package manager. Do not hand-edit `requirements.txt` with a
 guessed version.
 

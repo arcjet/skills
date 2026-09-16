@@ -61,7 +61,7 @@ See [references/cli.md](references/cli.md) for install options beyond `npx`, age
 
 #### Install the SDK with the project's package manager
 
-Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.11.0`; Python `arcjet` is `1.0.0`; Go must use the module tag, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
+Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.12.0`; Python `arcjet` is `1.1.0`; Go must use the module tag `@v1.0.0-rc.2`, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
 
 ### Step 3: Detect protection type and read the reference
 
@@ -133,16 +133,16 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - **Branch on which rule denied**, not just `DENY`. Guard `decision.reason` is a flat string (`"PROMPT_INJECTION"`) and is `undefined` on ALLOW. A denial by one rule still spends the others' budget in the same `rules` array – split calls if a PII false positive must not drain a rate limit.
 - Every rate-limit rule needs a `key` and a `bucket`. Use a trusted user/session id when you have one; otherwise a stable identifier you control.
 
-**JS adapters:** wrappers fail closed; core `guard()` fails open. Load the Step 3 file for the project's framework. Unpublished adapters (Google ADK, TanStack AI, Claude Managed Agents) pin a git SHA in that file — do not `npm install @arcjet/guard` and import them from 1.11.0.
+**JS adapters:** wrappers fail closed; core `guard()` fails open. Load the Step 3 file for the project's framework. Google ADK, TanStack AI, and Claude Managed Agents ship in `@arcjet/guard` **1.12.0** — `npm install @arcjet/guard` is enough.
 
-**Python:** `guard_action` / `guard_action_sync` is core. LangChain, CrewAI, and OpenAI Agents ship in PyPI `arcjet` **1.0.0**. Claude Agent SDK, Claude Managed Agents, and Strands Agents still need the git pin in their dedicated skill. There is no `arcjet[crewai]` extra.
+**Python:** `guard_action` / `guard_action_sync` is core. LangChain, CrewAI, and OpenAI Agents ship in PyPI `arcjet` **1.0.0+**. Claude Agent SDK, Claude Managed Agents, and Strands Agents need **1.1.0** (`arcjet[claude-agent-sdk]`, `arcjet[claude-managed-agents]`, `arcjet[strands-agents]`). There is no `arcjet[crewai]` extra.
 
 **Traps that run without error and enforce nothing** (full write-up in the Guard references and https://docs.arcjet.com/llms.txt):
 
 - Guard has no `sensitiveInfo` rule – that is HTTP `protect()` only. Use `localDetectSensitiveInfo` / `LocalDetectSensitiveInfo`.
 - Python `LocalDetectSensitiveInfo()` with neither `allow` nor `deny` fail-opens as ALLOW (`AJ1203`). Always pass a list. JS works with no args; still pass a list.
 - The sensitive-info rule does **not** inherit the client's backend. Entity types beyond `EMAIL` / `PHONE_NUMBER` / `IP_ADDRESS` / `CREDIT_CARD_NUMBER` need `backend` on the rule. Share one Rampart instance with the client.
-- Typed `inputs` reach a remote policy from every Python adapter, but in JS only from `@arcjet/guard/vercel-ai/v7`. Elsewhere use SDK `rules` or the published policy will not fire. JS builders: `policyInput.server` / `policyInput.local`. Python: `server_input` / `local_input`.
+- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. Python 1.1.0 adapters all take `actor` / `inputs` (`server_input` / `local_input`). JS: core `guard()` plus any wrapper whose types list `actor` / `inputs` (`policyInput.server` / `policyInput.local`). On npm 1.12.0 that is `vercel-ai/v7`; later releases add the rest. Check installed types — do not pass fields a helper does not declare.
 - A missing decision is not a denial. If the model asks a question or masks values itself, Guard never runs. Verify in Console/CLI.
 - Guarding one tool only helps if it is the only path. Claude Agent SDK needs `settingSources: []` / `setting_sources=[]` **and** `strictMcpConfig: true` / `strict_mcp_config=True`.
 - HITL (`needsApproval`, `human_input`, `can_use_tool`, `event.interrupt()`, `always_ask`) is not a policy gate.
@@ -178,7 +178,7 @@ If you can't run the app in the current environment, tell the user exactly what 
 - **Wrong placement**: `protect()` must not be called in Express middleware or Next.js middleware. Call it inside each route handler.
 - **Wrong layer for `guard()`**: don't put `guard()` in a generic dispatcher. Use the official wrapper from the table above, or put `guard()` inside the specific tool. Load the dedicated Python skill instead of hand-wrapping.
 - **Python adapter denials and HITL:** load the dedicated skill. Capture handlers never block. HITL is not a policy gate. Helper `metadata.outcome` details live in the Python Guard reference.
-- **Hand-edited dependency manifests**: run the project's package manager so the version is real (`@arcjet/*` 1.11.0, Python `arcjet` 1.0.0).
+- **Hand-edited dependency manifests**: run the project's package manager so the version is real (`@arcjet/*` 1.12.0, Python `arcjet` 1.1.0).
 - **Double-counting**: calling `protect()` or `guard()` multiple times for the same operation counts against rate limits multiple times.
 - **Client-IP warning bypass**: never "fix" an `unverified-header` warning by copying `X-Forwarded-For` into `ipSrc` / `ip_src` / `WithIPSrc`.
 - **JS denial envelopes:** one `ArcjetDenialResult` payload; delivery is per-framework. Read the adapter file from Step 3 before inventing a status or throwing. `guardTool` and `guardAction` are different handlers.
@@ -195,6 +195,7 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 - **Python SDK**: https://github.com/arcjet/arcjet-py – `arcjet` package (request protection) and `arcjet.guard` subpackage (non-HTTP guard).
 - **Python Guard integration skills**: [integrate-arcjet-guard-langchain-py](../integrate-arcjet-guard-langchain-py/SKILL.md), [integrate-arcjet-guard-crewai](../integrate-arcjet-guard-crewai/SKILL.md), [integrate-arcjet-guard-openai-agents-py](../integrate-arcjet-guard-openai-agents-py/SKILL.md), [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md), [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md), [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md).
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`). JS Guard adapter files: [references/guards_js_vercel_ai.md](references/guards_js_vercel_ai.md) and siblings listed in Step 3.
-- **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. `go get ...@latest` still resolves **v0.1.0**. `v1.0.0-rc.1` exists as a pre-release; APIs described in the Go references live on the default branch / that rc.
+- **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. Pin `go get github.com/arcjet/arcjet-go@v1.0.0-rc.2` (Go 1.25+). `go get ...@latest` may still resolve **v0.1.0**.
+- **Guard policies**: author and publish via MCP (`list-guard-policies` / `describe-guard-policy` / `validate-guard-policy` / `put-guard-policy`). The CLI has no policy commands. Application policies select by `label` / `action`. Coding-agent policies attach by **Execute on** (Tool call or Prompt); publishing turns them on — the hook URL must not name a policy.
 - **Docs**: https://docs.arcjet.com – narrative guides, blueprints, and product reference.
 - **Console**: https://console.arcjet.com – sites, keys, and decision history.

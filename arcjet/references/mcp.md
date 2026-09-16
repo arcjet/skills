@@ -72,7 +72,7 @@ OAuth-based. On first connection, you'll be redirected to sign in with your Arcj
 
 ## Available tools
 
-Once connected, the MCP server exposes tools for managing teams, sites, keys, requests, decisions, traffic analysis, anomaly detection, IP investigation, security briefings, and remote rules. The agent can discover available tools through the MCP protocol directly.
+Once connected, the MCP server exposes tools for managing teams, sites, keys, requests, decisions, traffic analysis, anomaly detection, IP investigation, security briefings, remote rules, and Guard policies. The agent can discover available tools through the MCP protocol directly. Guard policy authoring is MCP-only — the CLI has no policy commands.
 
 ## Common workflows
 
@@ -83,6 +83,8 @@ Once connected, the MCP server exposes tools for managing teams, sites, keys, re
 **Daily security briefing:** `get-security-briefing`
 
 **Add protection without redeploying:** `create-rule` (bot/filter in DRY_RUN) → `get-dry-run-impact` → `promote-rule`
+
+**Author a Guard policy:** `list-guard-policies` → `describe-guard-policy` → `validate-guard-policy` → `put-guard-policy`. Application policies select by `label` / wrapper `action`. Coding-agent policies attach by **Execute on** (Tool call or Prompt), not by label; publishing turns them on.
 
 ## Security notes
 

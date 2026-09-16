@@ -10,7 +10,7 @@ Request protection inspects HTTP requests – headers, IP, body – to enforce s
 - **FastAPI / Flask:** no formal peer dependency – the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes. FastAPI form fields need `python-multipart` or the app fails at startup.
 - **`libgcc`:** needed by the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v1.0.0** on **August 26, 2026**. Nested metadata, Rampart, `ip_details.threat`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, `set_rate_limit_headers`, local Protect priority, and the 2000 ms Decide timeout all ship in 1.0.0. `detect_prompt_injection(threshold=...)` is a `TypeError`. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v1.1.0** on **September 16, 2026**. Nested metadata, Rampart, `ip_details.threat`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, `set_rate_limit_headers`, local Protect priority, and the 2000 ms Decide timeout all ship in 1.0.0+. `detect_prompt_injection(threshold=...)` is a `TypeError`. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -282,7 +282,7 @@ As of `arcjet` 1.0.0, the request-based SDK still carries a few deprecated bits.
 
 In **1.0.0**, `detect_prompt_injection(threshold=...)` is **removed**, not deprecated. Passing `threshold` raises `TypeError`. The server never honored it. New configs are `detect_prompt_injection(mode=Mode.LIVE)` – `mode` is required; omitting it is a `TypeError`. Drop leftover `threshold` from existing configs; unlike older JS cores that ignored leftover `threshold`, Python throws.
 
-> _Deprecations last verified against the published `arcjet` v1.0.0 on **August 26, 2026**. Before relying on these items, grep the installed package for `@deprecated` markers – see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py), [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py), and [`src/arcjet/_rules.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_rules.py)._
+> _Deprecations last verified against the published `arcjet` v1.1.0 on **September 16, 2026**. Before relying on these items, grep the installed package for `@deprecated` markers – see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py), [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py), and [`src/arcjet/_rules.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_rules.py)._
 
 ## Key patterns
 

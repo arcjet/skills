@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-crewai
 description: Integrate Arcjet Guard into official CrewAI — register process-wide PRE_TOOL_CALL with register_arcjet_hooks, or wrap a standalone BaseTool you call yourself with guard_tool. Use when asked to add Arcjet to CrewAI, LiteAgent, crew-injected tools, rate limit those tools, screen inbound messages before kickoff, or block prompt injection / PII. Official crewai only; not an npm CrewAI port and not LangChain Crew wrappers.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10, official crewai>=1.15.3,<2 installed by the user, PyPI arcjet 1.0.0, and a blocking Guard client (launch_arcjet_sync). There is no arcjet[crewai] extra.
+compatibility: Requires Python >= 3.10, official crewai>=1.15.3,<2 installed by the user, PyPI arcjet 1.0.0+, and a blocking Guard client (launch_arcjet_sync). There is no arcjet[crewai] extra.
 metadata:
   author: arcjet
   type: core

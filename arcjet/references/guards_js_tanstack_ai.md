@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/tanstack-ai/
 
-Exports: `guardMiddleware`, `tanstackAiContext`. There is no `guardTool`. There is no unversioned `@arcjet/guard/tanstack-ai` alias. This is official `@tanstack/ai` `chat({ middleware })` + authored `tool({ execute })`. It is not Vercel AI SDK (`ai` / `@arcjet/guard/vercel-ai/v7`, docs https://docs.arcjet.com/guards/vercel-ai/). It is not TanStack Start HTTP `protect()`. It is not TanStack's own `contentGuardMiddleware` (`@tanstack/ai/middlewares` stream redaction). Until-published: published `@arcjet/guard@1.11.0` does not export `./tanstack-ai/v0` (`ERR_PACKAGE_PATH_NOT_EXPORTED`). Pin `@arcjet/guard` to git SHA `d730d57a124f03843f085d41f64b0355a09d1eab` ([#6260](https://github.com/arcjet/arcjet-js/pull/6260)). Optional peer `@tanstack/ai` `>=0.8.0 <1`. The existing `tanstack-agent` example stays with Runtime. Once it ships, the packaged skill is `node_modules/@arcjet/guard/skills/integrate-arcjet-guard-tanstack-ai`.
+Exports: `guardMiddleware`, `tanstackAiContext`. There is no `guardTool`. There is no unversioned `@arcjet/guard/tanstack-ai` alias. This is official `@tanstack/ai` `chat({ middleware })` + authored `tool({ execute })`. It is not Vercel AI SDK (`ai` / `@arcjet/guard/vercel-ai/v7`, docs https://docs.arcjet.com/guards/vercel-ai/). It is not TanStack Start HTTP `protect()`. It is not TanStack's own `contentGuardMiddleware` (`@tanstack/ai/middlewares` stream redaction). Ships in `@arcjet/guard` **1.12.0** — `npm install @arcjet/guard`. Optional peer `@tanstack/ai` `>=0.8.0 <1`. The packaged skill is `node_modules/@arcjet/guard/skills/integrate-arcjet-guard-tanstack-ai`.
 
 Three gotchas first:
 

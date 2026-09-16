@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/genkit/
 
-Exports: `guardTool`, `guardMiddleware`, `genkitContext`. There is no unversioned `@arcjet/guard/genkit` alias. This is JS `genkit()` + `ai.defineTool` + `ai.generate`. Not Go / Python Genkit. Ships in `@arcjet/guard` 1.11.0. Annotate `rules` — `TInput` defaults to `unknown`. The packaged skill is `node_modules/@arcjet/guard/skills/integrate-arcjet-guard-genkit`.
+Exports: `guardTool`, `guardMiddleware`, `genkitContext`. There is no unversioned `@arcjet/guard/genkit` alias. This is JS `genkit()` + `ai.defineTool` + `ai.generate`. Not Go / Python Genkit. Ships in `@arcjet/guard` 1.11.0+. Annotate `rules` — `TInput` defaults to `unknown`. The packaged skill is `node_modules/@arcjet/guard/skills/integrate-arcjet-guard-genkit`.
 
 Three gotchas first:
 

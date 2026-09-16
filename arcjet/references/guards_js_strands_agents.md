@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/strands-agents/
 
-Exports: `guardTool`, `guardHooks`, `strandsAgentContext`. There is no unversioned `@arcjet/guard/strands-agents` alias. This is official `@strands-agents/sdk` `Agent` + `invoke()` / `stream()` + authored `tool({ callback })` + Plugin / `addHook`. It is not Python `strands`. Ships in `@arcjet/guard` 1.11.0. Optional peer `@strands-agents/sdk` `>=1.1.0 <2`. Annotate `rules` — `TInput` defaults to `unknown`. The existing `strands-agent` example stays with Runtime. The packaged skill is `node_modules/@arcjet/guard/skills/integrate-arcjet-guard-strands-agents`.
+Exports: `guardTool`, `guardHooks`, `strandsAgentContext`. There is no unversioned `@arcjet/guard/strands-agents` alias. This is official `@strands-agents/sdk` `Agent` + `invoke()` / `stream()` + authored `tool({ callback })` + Plugin / `addHook`. It is not Python `strands`. Ships in `@arcjet/guard` 1.11.0+. Optional peer `@strands-agents/sdk` `>=1.1.0 <2`. Annotate `rules` — `TInput` defaults to `unknown`. The existing `strands-agent` example stays with Runtime. The packaged skill is `node_modules/@arcjet/guard/skills/integrate-arcjet-guard-strands-agents`.
 
 Three gotchas first:
 
