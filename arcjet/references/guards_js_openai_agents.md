@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/openai-agents/
 
-Exports: `guardTool`, `openaiAgentsContext`. There is no unversioned `@arcjet/guard/openai-agents` alias. This is text `Agent` + `run()` / `Runner` + authored `tool({ execute })`. Not Realtime, not Sandbox, not hosted tools, not computer / shell / apply_patch, not MCP, not `agent.asTool()`. Ships in `@arcjet/guard` 1.11.0.
+Exports: `guardTool`, `openaiAgentsContext`. There is no unversioned `@arcjet/guard/openai-agents` alias. This is text `Agent` + `run()` / `Runner` + authored `tool({ execute })`. Not Realtime, not Sandbox, not hosted tools, not computer / shell / apply_patch, not MCP, not `agent.asTool()`. Ships in `@arcjet/guard` 1.11.0+.
 
 Three gotchas first:
 

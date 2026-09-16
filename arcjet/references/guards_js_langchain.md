@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/langchain/
 
-Exports: `guardTool`, `guardMiddleware`, `langchainContext`. There is no unversioned `@arcjet/guard/langchain` alias. This is JS `createAgent` + `createMiddleware({ wrapToolCall })` from the `langchain` package. It is not LangGraph Graph API (`StateGraph` + `ToolNode` — `@arcjet/guard/langgraph/v1`, docs https://docs.arcjet.com/guards/langgraph/). It is not Python LangChain (`arcjet.guard.langchain`, docs https://docs.arcjet.com/guards/langchain/). Ships in `@arcjet/guard` 1.11.0. Optional peers `langchain` `>=1.2.0 <2` and `@langchain/core` `>=1 <2`. No `@langchain/langgraph` peer. Does not map typed `inputs` to a remote policy — use SDK `rules`.
+Exports: `guardTool`, `guardMiddleware`, `langchainContext`. There is no unversioned `@arcjet/guard/langchain` alias. This is JS `createAgent` + `createMiddleware({ wrapToolCall })` from the `langchain` package. It is not LangGraph Graph API (`StateGraph` + `ToolNode` — `@arcjet/guard/langgraph/v1`, docs https://docs.arcjet.com/guards/langgraph/). It is not Python LangChain (`arcjet.guard.langchain`, docs https://docs.arcjet.com/guards/langchain/). Ships in `@arcjet/guard` 1.11.0+. Optional peers `langchain` `>=1.2.0 <2` and `@langchain/core` `>=1 <2`. No `@langchain/langgraph` peer. On npm 1.12.0 this wrapper takes `action` + SDK `rules`; later releases also accept optional `actor` / `inputs` (`policyInput`) — check installed types.
 
 Three gotchas first:
 

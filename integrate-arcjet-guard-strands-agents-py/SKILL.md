@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-strands-agents-py
 description: Integrate Arcjet Guard into Python Strands Agents — wrap authored @tool with guard_tool, and put guard_hooks on Agent(hooks=) for unwrapped / MCP tools via BeforeToolCallEvent.cancel_tool. Use when asked to add Arcjet to strands / strands-agents, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python strands, not JS @strands-agents/sdk.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official strands-agents>=1.11.0,<2 via arcjet[strands-agents] (safe extra, no chromadb). 1.11.0 is the first 1.x with BeforeToolCallEvent.cancel_tool. Until-published — pin arcjet to git SHA 582372916d70311873ef24b7a72443c098b3aec9; not in PyPI 1.0.0.
+compatibility: Requires Python >= 3.10 and official strands-agents>=1.11.0,<2 via arcjet[strands-agents] (safe extra, no chromadb). 1.11.0 is the first 1.x with BeforeToolCallEvent.cancel_tool. Requires PyPI arcjet 1.1.0.
 metadata:
   author: arcjet
   type: core
@@ -40,9 +40,8 @@ Three surfaces, one decision rule:
   `invocation_state`. It never mints. It never reads `trace_id`.
 
 Docs: https://docs.arcjet.com/guards/strands-agents/. Example:
-[`examples/fastapi-strands-agents-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-strands-agents-guard)
-(pins `58237291`; no verify fixture). Do not invent a second example
-name.
+[`examples/fastapi-strands-agents-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-strands-agents-guard).
+Do not invent a second example name.
 
 ## The gate is per-tool `BeforeToolCallEvent.cancel_tool`
 
@@ -109,12 +108,10 @@ Ask only what you cannot infer from the code; suggest defaults.
 
 ## Step 1: Install and find the guard client
 
-Until-published: PyPI `arcjet` 1.0.0 does not include this module. Pin
-`arcjet` to git SHA `582372916d70311873ef24b7a72443c098b3aec9` (current
-`main`, includes the extra):
+Requires PyPI `arcjet` **1.1.0** (the extra is not in 1.0.0):
 
 ```bash
-pip install "arcjet[strands-agents] @ git+https://github.com/arcjet/arcjet-py.git@582372916d70311873ef24b7a72443c098b3aec9"
+pip install "arcjet[strands-agents]"
 ```
 
 If the agent has no guard client yet, launch one **once at module scope**:

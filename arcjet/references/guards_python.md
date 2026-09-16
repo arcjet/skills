@@ -23,7 +23,7 @@ Guard protects code paths that don't have an HTTP request – tool calls, agent 
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v1.0.0** on **August 26, 2026**. That wheel includes `guard_action`, LangChain (`arcjet[langchain]` / `arcjet[langchain-agents]`), CrewAI (`arcjet.guard.crewai`, no extra), OpenAI Agents (`arcjet[openai-agents]`), `ModerateContent`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, and typed `server_input` / `local_input`. Claude Agent SDK, Claude Managed Agents, and Strands Agents extras are on `main` only – pin those in the dedicated skill. `experimental_ModerateContent` remains a deprecated alias._
+> _Published PyPI release last verified: `arcjet` **v1.1.0** on **September 16, 2026**. That wheel includes `guard_action`, LangChain (`arcjet[langchain]` / `arcjet[langchain-agents]`), CrewAI (`arcjet.guard.crewai`, no extra), OpenAI Agents (`arcjet[openai-agents]`), Claude Agent SDK (`arcjet[claude-agent-sdk]`, first in 1.1.0), Claude Managed Agents (`arcjet[claude-managed-agents]`, first in 1.1.0), Strands Agents (`arcjet[strands-agents]`, first in 1.1.0), `ModerateContent`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, and typed `server_input` / `local_input`. `experimental_ModerateContent` remains a deprecated alias._
 >
 > _Read the installed package's types before using any of them. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
