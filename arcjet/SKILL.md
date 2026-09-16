@@ -135,7 +135,7 @@ Follow the patterns in the reference file from Step 3. Key principles:
 
 **JS adapters:** wrappers fail closed; core `guard()` fails open. Load the Step 3 file for the project's framework. Google ADK, TanStack AI, and Claude Managed Agents ship in `@arcjet/guard` **1.12.0** — `npm install @arcjet/guard` is enough.
 
-**Python:** `guard_action` / `guard_action_sync` is core. LangChain, CrewAI, and OpenAI Agents ship in PyPI `arcjet` **1.0.0+**. Claude Agent SDK, Claude Managed Agents, and Strands Agents need **1.1.0** (`arcjet[claude-agent-sdk]`, `arcjet[claude-managed-agents]`, `arcjet[strands-agents]`). There is no `arcjet[crewai]` extra.
+**Python:** `guard_action` / `guard_action_sync` is core. LangChain, CrewAI, and OpenAI Agents ship in PyPI `arcjet` **1.0.0** (still available in 1.1.0). Claude Agent SDK, Claude Managed Agents, and Strands Agents need **1.1.0** (`arcjet[claude-agent-sdk]`, `arcjet[claude-managed-agents]`, `arcjet[strands-agents]`). There is no `arcjet[crewai]` extra.
 
 **Traps that run without error and enforce nothing** (full write-up in the Guard references and https://docs.arcjet.com/llms.txt):
 

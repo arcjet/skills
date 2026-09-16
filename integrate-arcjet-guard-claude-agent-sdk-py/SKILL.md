@@ -122,7 +122,7 @@ Ask only what you cannot infer from the code; suggest defaults.
 
 ## Step 1: Install and find the guard client
 
-Requires PyPI `arcjet` **1.1.0** (the extra is not in 1.0.0):
+Requires PyPI `arcjet` **1.1.0** (the `arcjet[claude-agent-sdk]` extra is not in 1.0.0):
 
 ```bash
 pip install "arcjet[claude-agent-sdk]"

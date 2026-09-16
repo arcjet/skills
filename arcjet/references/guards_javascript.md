@@ -26,7 +26,7 @@ Install with whichever package manager the project already uses (`npm install`, 
 npm install @arcjet/guard
 ```
 
-Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called out as 1.6.0 still apply. Capture, registration, Rampart, nested metadata, and threat/billing require **`@arcjet/guard` 1.10.0**. Adapters that shipped in 1.11.0 still need **1.11.0+**. Google ADK, TanStack AI, and Claude Managed Agents require **1.12.0**. Runtime minimums match the Arcjet JS SDK line:
+Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called out as 1.6.0 still apply. Capture, registration, Rampart, nested metadata, and threat/billing require **`@arcjet/guard` 1.10.0**. Adapters listed as shipped in 1.11.0 remain available from 1.11.0 onward. Google ADK, TanStack AI, and Claude Managed Agents require **1.12.0**. Runtime minimums match the Arcjet JS SDK line:
 
 | Runtime            | Minimum version          |
 | ------------------ | ------------------------ |
