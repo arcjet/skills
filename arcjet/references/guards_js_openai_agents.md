@@ -14,7 +14,7 @@ Three gotchas first:
 
 - **`guardTool`** wraps `FunctionTool.invoke` so the closed-over `execute` never runs on `DENY`. Return the shared `ArcjetDenialResult` (`{ arcjetDenied: true, … }`) on a `function_call_result` with `status: "completed"`. A throw hits `errorFunction` or `ToolCallError` and drops the fields. `timeoutMs` races the guard round trip as well as `execute`, so leave headroom; `outputGuardrails` / `customDataExtractor` receive the denial object and must not assume the tool's own shape. `guardTool` warns if `invoke` is handed neither a string nor an object (rules would silently see `{}`).
 - **`openaiAgentsContext`** preference: `context.correlationId` → `sessionId` → `conversationId` → `groupId`, then envelope copies (`conversationId`, `groupId`, already-resolved `sessionId`). It never mints an id. It never reads `traceId` (the SDK mints one when omitted). It never calls `session.getSessionId()` (`MemorySession` mints a UUID when constructed without `sessionId`). Do not call `createAgentContext` inside a run callback.
-- Fail closed by default (`onGuardError: "deny"`). Optional peer `@openai/agents` `>=0.17.0 <1`. Zod is their peer, not ours. Node.js 22+. Do not also wrap with `@arcjet/guard/vercel-ai/v7`.
+- Fail closed by default (`onGuardError: "deny"`). Optional peer `@openai/agents` `>=0.17.0 <1`. Zod is their peer, not ours. Node.js `>=22.21.0 <23 || >=24.5.0`. Optional `actor` / `inputs` take `policyInput` from `@arcjet/guard`. Do not also wrap with `@arcjet/guard/vercel-ai/v7`.
 
 ```typescript
 import { launchArcjet, detectPromptInjection, tokenBucket } from "@arcjet/guard";

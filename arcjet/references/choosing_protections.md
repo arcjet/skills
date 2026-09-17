@@ -69,3 +69,7 @@ Credential stuffing, spam registrations, and disposable email abuse on signup/lo
 Block traffic by IP metadata – VPN, Tor, country, or specific IP ranges.
 
 **Rules:** `filter` (request-based only). Can also be configured as remote rules via CLI/MCP for immediate response to active attacks without redeployment.
+
+## Claude Code / Copilot (no application SDK)
+
+Protecting the developer's own coding agent is not `protect()` or `@arcjet/guard`. Publish a coding-agent policy attached to **Execute on** (Tool call or Prompt) via MCP, then install the HTTP hooks from https://docs.arcjet.com/coding-agents. Copy the templates: the hook URL must not name a policy and must omit `?surface=`.

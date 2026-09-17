@@ -14,7 +14,7 @@ Exports: `guardTool`, `guardHooks`, `claudeAgentContext`, plus the shared
 - **`options.sessionId` must be a UUID, and a session id can only be created once.** A non-UUID exits the CLI with `Invalid session ID. Must be a valid UUID.`; passing the same id to a second `query()` exits with `Session ID … is already in use.` Mint one UUID per conversation, then continue it with `options.resume` – which is also what keeps every turn on one Sequence, since `claudeAgentContext` reads the hook's `session_id` first.
 - Isolation needs `settingSources: []` **and** `strictMcpConfig: true`. Guarding one tool only helps if it is the only path.
 - `ClaudeAgentOptions.sessionId` is unique per run; the Guard `sessionId` passed to `guardTool` / `guardHooks` is a long-lived actor id.
-- `canUseTool` is not a policy gate (skipped by `allowedTools`, allow rules, `bypassPermissions` / `acceptEdits`), and annotations / sandbox settings are not enforcement. Do not double-wrap with `vercel-ai/v7`.
+- `canUseTool` is not a policy gate (skipped by `allowedTools`, allow rules, `bypassPermissions` / `acceptEdits`), and annotations / sandbox settings are not enforcement. Optional `actor` / `inputs` take `policyInput` from `@arcjet/guard`. Do not double-wrap with `vercel-ai/v7`.
 
 ```typescript
 import { randomUUID } from "node:crypto";

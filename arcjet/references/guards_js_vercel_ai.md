@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/vercel-ai/
 
-Exports: `guardTool`, `guardAction`, `captureAction`, `aiToolsContext`, `createAgentContext`, `securityMetadata`. There is no unversioned `@arcjet/guard/vercel-ai` alias. This is `ai` >= 7 `tool({ execute })` + `generateText` / `streamText` / `ToolLoopAgent`. Ships in `@arcjet/guard` 1.11.0+. Typed for `actor` / `inputs` (`policyInput.server` / `policyInput.local`) from 1.12.0, a release before the other wrappers, which take them from 1.13.0. Wrappers take `action`, not `label`.
+Exports: `guardTool`, `guardAction`, `captureAction`, `aiToolsContext`, `createAgentContext`, `securityMetadata`. There is no unversioned `@arcjet/guard/vercel-ai` alias. This is `ai` >= 7 `tool({ execute })` + `generateText` / `streamText` / `ToolLoopAgent`. Wrappers take `action`, not `label`. Optional `actor` / `inputs` take `policyInput` imported from `@arcjet/guard`.
 
 Three gotchas first:
 
@@ -16,7 +16,7 @@ Three gotchas first:
 - **`createAgentContext`** at the run entry. Pass a caller-owned `correlationId` when you have one (1–256 printable ASCII); omit to auto-generate a ULID. Thread the context by hand — never stash it in module state or ALS.
 - **`aiToolsContext(ctx, tools)`** maps that context onto `generateText` / `streamText`. Always add a system-prompt line that a denied tool must not be retried.
 - **`guardAction`** wraps an app-invoked function. Throws `ArcjetDeniedError` on DENY and `ArcjetGuardUnavailableError` when the policy could not be evaluated. `captureAction` is observe-only.
-- Fail closed by default (`onGuardError: "deny"`). Optional peers `ai` >= 7 and `@ai-sdk/provider-utils`. Node.js 22+. Do not also wrap with Eve / Mastra / LangChain / Claude adapters.
+- Fail closed by default (`onGuardError: "deny"`). Optional peers `ai` >= 7 and `@ai-sdk/provider-utils`. Node.js `>=22.21.0 <23 || >=24.5.0`. Do not also wrap with Eve / Mastra / LangChain / Claude adapters.
 
 ```typescript
 import { launchArcjet, detectPromptInjection, policyInput, tokenBucket } from "@arcjet/guard";
@@ -59,7 +59,6 @@ export async function runAgent(prompt: string) {
       action: "order.looked-up",
       actor: userId,
       rules: () => [lookupLimit({ key: userId, requested: 5 })],
-      // Only this adapter maps typed inputs to a remote policy.
       inputs: ({ orderId }) => ({
         order_id: policyInput.server.string(orderId),
       }),

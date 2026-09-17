@@ -10,7 +10,7 @@ Exports: `guardTool`, `guardToolNode`, `langgraphAgentContext`. There is no unve
 - **`guardToolNode`** guards the tools a `ToolNode` executes (MCP / runtime-discovered / unwrapped tools). It guards in place and returns the same node. A frozen tools array throws. The tools-array form returns copies and leaves the input array alone. Already-guarded tools are skipped so Guard is not called twice.
 - **`langgraphAgentContext`** reads `configurable.thread_id`, then the run id, then `configurable.checkpoint_ns`. It never mints an id. Do not call `createAgentContext` inside a LangGraph callback.
 - There is no `guardInbound` (screen before `graph.invoke` or in the first node). There is no `guardApproval` / `guardInterrupt`: `interrupt()` / `interrupt_before=["tools"]` is human HITL, not a policy gate (same trap as Mastra `requireApproval` and Claude `canUseTool`).
-- Fail closed by default (`onGuardError: "deny"`). Do not also wrap with `@arcjet/guard/vercel-ai/v7`.
+- Fail closed by default (`onGuardError: "deny"`). Optional peers `@langchain/langgraph` `>=1 <2` and `@langchain/core` `>=1 <2`. Node.js `>=22.21.0 <23 || >=24.5.0`. Optional `actor` / `inputs` take `policyInput` from `@arcjet/guard`. Do not also wrap with `@arcjet/guard/vercel-ai/v7`.
 
 ```typescript
 import { launchArcjet, tokenBucket } from "@arcjet/guard";

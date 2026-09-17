@@ -73,9 +73,11 @@ Determine which protection type applies:
 | **JS/TS SDK** | Framework adapters such as `@arcjet/next`, `@arcjet/node`, `@arcjet/fastify` | `@arcjet/guard` |
 | **Python SDK** | `arcjet` (with `arcjet()` / `arcjet_sync()`) | `arcjet` (with `launch_arcjet()` / `launch_arcjet_sync()`) |
 | **Go SDK** | `github.com/arcjet/arcjet-go` (with `NewClient`) | `github.com/arcjet/arcjet-go` (with `NewGuardClient`) |
-| **Entry point** | `protect(request)` / `Protect(ctx, r)` | `guard(label, rules)` / `Guard(ctx, request)` |
+| **Entry point** | `protect(request)` / `Protect(ctx, r)` | Core JS `guard({ label, rules })`; Python `guard(label, …)`; Go `Guard(ctx, request)`. Wrappers take `action`, not `label`. |
 
 A single project can use both – for example, request-based on API routes and Guard on agent tool calls. If the project already uses a supported agent framework, prefer the official wrapper over hand-wrapping every tool. In Python, load the dedicated skill (table below) — not a raw `guard()` around every callable, and not the JS `@arcjet/guard/...` path. In JavaScript, load fundamentals plus **exactly one** adapter file from the JS table — not the sibling adapters. In Go, load the Microsoft Agent Framework skill when that framework is present; otherwise use `GuardAction` from the Go Guard reference.
+
+**Coding-agent hooks (Claude Code / GitHub Copilot) are a third path.** There is no SDK and no `guard()` call. Publishing a policy attached to **Execute on** (Tool call or Prompt) turns it on. Install the HTTP hooks from https://docs.arcjet.com/coding-agents — copy the templates, do not invent URLs. Hook URLs must not name a policy and must omit `?surface=` (managed settings reach CLI, IDE, Desktop, and cloud; a hard-coded `cli` mislabels most traffic). Author the policy via MCP ([references/mcp.md](references/mcp.md)).
 
 **Common misclassifications to watch for:**
 
@@ -139,9 +141,9 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - **Branch on which rule denied**, not just `DENY`. Guard `decision.reason` is a flat string (`"PROMPT_INJECTION"`) and is `undefined` on ALLOW. A denial by one rule still spends the others' budget in the same `rules` array – split calls if a PII false positive must not drain a rate limit.
 - Every rate-limit rule needs a `key` and a `bucket`. Use a trusted user/session id when you have one; otherwise a stable identifier you control.
 
-**JS adapters:** wrappers fail closed; core `guard()` fails open. Load the Step 3 file for the project's framework. Google ADK, TanStack AI, and Claude Managed Agents ship in `@arcjet/guard` **1.12.0** — `npm install @arcjet/guard` is enough.
+**JS adapters:** wrappers fail closed; core `guard()` fails open. Load the Step 3 file for the project's framework. `npm install @arcjet/guard` is enough — every listed adapter, plus `actor` / `inputs` / `validateGuardLabel`, ships in **1.13.0**.
 
-**Python:** `guard_action` / `guard_action_sync` is core. LangChain, CrewAI, and OpenAI Agents ship in PyPI `arcjet` **1.0.0** (still available in 1.1.0). Claude Agent SDK, Claude Managed Agents, and Strands Agents need **1.1.0** (`arcjet[claude-agent-sdk]`, `arcjet[claude-managed-agents]`, `arcjet[strands-agents]`). There is no `arcjet[crewai]` extra.
+**Python:** `guard_action` / `guard_action_sync` is core. Load the dedicated skill for the project's extra (`arcjet[langchain]`, `arcjet[langchain-agents]`, `arcjet[openai-agents]`, `arcjet[claude-agent-sdk]`, `arcjet[claude-managed-agents]`, `arcjet[strands-agents]`). There is no `arcjet[crewai]` extra. `validate_guard_label` and adapter `actor` / `inputs` are in PyPI `arcjet` **1.2.0**.
 
 **Traps that run without error and enforce nothing** (full write-up in the Guard references and https://docs.arcjet.com/llms.txt):
 
@@ -149,7 +151,7 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - Python `LocalDetectSensitiveInfo()` with neither `allow` nor `deny` fail-opens as ALLOW (`AJ1203`). Always pass a list. JS works with no args; still pass a list.
 - The sensitive-info rule does **not** inherit the client's backend. Entity types beyond `EMAIL` / `PHONE_NUMBER` / `IP_ADDRESS` / `CREDIT_CARD_NUMBER` need `backend` on the rule. Share one Rampart instance with the client.
 - A label the service will not match reads as `ALLOW` with `hasFailedOpen()` / `has_failed_open()` false, so the guard silently does not run. `@arcjet/guard` 1.13.0 and PyPI `arcjet` 1.2.0 refuse one up front: adapter factories throw / raise `ArcjetInvalidLabelError`, and a capture warns `AJ1023` and still sends. Check a label you build yourself with `validateGuardLabel` / `validate_guard_label`.
-- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. Python adapters all take `actor` / `inputs` (`server_input` / `local_input`) from 1.1.0. JS: core `guard()` plus every wrapper, which take `policyInput.server` / `policyInput.local` from `@arcjet/guard` 1.13.0; on 1.12.0 only `vercel-ai/v7` did. Check installed types — do not pass fields a helper does not declare.
+- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. Import `policyInput` from `@arcjet/guard` (not an adapter path). Python uses `server_input` / `local_input`. Check installed types — do not pass fields a helper does not declare.
 - A missing decision is not a denial. If the model asks a question or masks values itself, Guard never runs. Verify in Console/CLI.
 - Guarding one tool only helps if it is the only path. Claude Agent SDK needs `settingSources: []` / `setting_sources=[]` **and** `strictMcpConfig: true` / `strict_mcp_config=True`.
 - HITL (`needsApproval`, `human_input`, `can_use_tool`, `event.interrupt()`, `always_ask`) is not a policy gate.
@@ -203,6 +205,6 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 - **Python Guard integration skills**: [integrate-arcjet-guard-langchain-py](../integrate-arcjet-guard-langchain-py/SKILL.md), [integrate-arcjet-guard-crewai](../integrate-arcjet-guard-crewai/SKILL.md), [integrate-arcjet-guard-openai-agents-py](../integrate-arcjet-guard-openai-agents-py/SKILL.md), [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md), [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md), [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md).
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`). JS Guard adapter files: [references/guards_js_vercel_ai.md](references/guards_js_vercel_ai.md) and siblings listed in Step 3.
 - **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. `go get github.com/arcjet/arcjet-go` resolves **v1.0.0** (Go 1.25+). Microsoft Agent Framework helpers live in a separate module: `go get github.com/arcjet/arcjet-go/agentframework` resolves **v0.1.0** and needs Go 1.26+.
-- **Guard policies**: author and publish via MCP (`list-guard-policies` / `describe-guard-policy` / `validate-guard-policy` / `put-guard-policy`). The CLI has no policy commands. Application policies select by `label` / `action`. Coding-agent policies attach by **Execute on** (Tool call or Prompt); publishing turns them on — the hook URL must not name a policy.
+- **Guard policies**: author and publish via MCP (`list-guard-policies` / `describe-guard-policy` / `validate-guard-policy` / `put-guard-policy`). The CLI has no policy commands. Application policies select by `label` / `action`. Coding-agent policies attach by **Execute on** (Tool call or Prompt); publishing turns them on — the hook URL must not name a policy and must omit `?surface=`. Install templates: https://docs.arcjet.com/coding-agents.
 - **Docs**: https://docs.arcjet.com – narrative guides, blueprints, and product reference.
 - **Console**: https://console.arcjet.com – sites, keys, and decision history.
