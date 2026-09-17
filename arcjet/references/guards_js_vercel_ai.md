@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/vercel-ai/
 
-Exports: `guardTool`, `guardAction`, `captureAction`, `aiToolsContext`, `createAgentContext`, `securityMetadata`. There is no unversioned `@arcjet/guard/vercel-ai` alias. This is `ai` >= 7 `tool({ execute })` + `generateText` / `streamText` / `ToolLoopAgent`. Ships in `@arcjet/guard` 1.11.0+. On npm 1.12.0 this is the JS wrapper typed for `actor` / `inputs` (`policyInput.server` / `policyInput.local`). Later releases add `actor` / `inputs` to the other wrappers. Wrappers take `action`, not `label`.
+Exports: `guardTool`, `guardAction`, `captureAction`, `aiToolsContext`, `createAgentContext`, `securityMetadata`. There is no unversioned `@arcjet/guard/vercel-ai` alias. This is `ai` >= 7 `tool({ execute })` + `generateText` / `streamText` / `ToolLoopAgent`. Ships in `@arcjet/guard` 1.11.0+. Typed for `actor` / `inputs` (`policyInput.server` / `policyInput.local`) from 1.12.0, a release before the other wrappers, which take them from 1.13.0. Wrappers take `action`, not `label`.
 
 Three gotchas first:
 

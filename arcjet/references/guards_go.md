@@ -88,7 +88,7 @@ if decision.IsDenied() {
 }
 ```
 
-Labels and rate-limit buckets are validated as slugs: lowercase letters, digits, dash (`-`), and dot (`.`), starting and ending with a letter or digit. Use `tools.get-weather`, not `tools.get_weather`.
+Labels are validated as slugs: lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`), starting and ending with a lowercase letter or digit. Uppercase is rejected, so use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`.
 
 ## Rate limits and keys
 

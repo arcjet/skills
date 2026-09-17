@@ -23,7 +23,7 @@ Guard protects code paths that don't have an HTTP request – tool calls, agent 
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v1.1.0** on **September 16, 2026**. That wheel includes `guard_action`, LangChain (`arcjet[langchain]` / `arcjet[langchain-agents]`), CrewAI (`arcjet.guard.crewai`, no extra), OpenAI Agents (`arcjet[openai-agents]`), Claude Agent SDK (`arcjet[claude-agent-sdk]`, first in 1.1.0), Claude Managed Agents (`arcjet[claude-managed-agents]`, first in 1.1.0), Strands Agents (`arcjet[strands-agents]`, first in 1.1.0), `ModerateContent`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, and typed `server_input` / `local_input`. `experimental_ModerateContent` remains a deprecated alias._
+> _Published PyPI release last verified: `arcjet` **v1.2.0** on **September 17, 2026**. That wheel includes `validate_guard_label`, `guard_action`, LangChain (`arcjet[langchain]` / `arcjet[langchain-agents]`), CrewAI (`arcjet.guard.crewai`, no extra), OpenAI Agents (`arcjet[openai-agents]`), Claude Agent SDK (`arcjet[claude-agent-sdk]`, first in 1.1.0), Claude Managed Agents (`arcjet[claude-managed-agents]`, first in 1.1.0), Strands Agents (`arcjet[strands-agents]`, first in 1.1.0), `ModerateContent`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, and typed `server_input` / `local_input`. The extras first available in 1.1.0 are still 1.1.0 floors. `experimental_ModerateContent` remains a deprecated alias._
 >
 > _Read the installed package's types before using any of them. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
@@ -125,7 +125,7 @@ async def handle_tool_call(name: str, args: dict, user_id: str):  # 👎
 
 The `label` must be a hardcoded string – `"tools.get-weather"`, not `f"tools.{name}"`. Hardcoded labels stay greppable, and the Console groups by them.
 
-**Label naming rules:** labels are validated server-side as slugs – **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected. Metadata *keys* may contain underscores; labels and rate-limit `bucket` names may not. Use `tools.get-weather`, not `tools.get_weather`.
+**Label naming rules:** labels are validated as slugs – **lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`)**, must start and end with a lowercase letter or digit, max 256 bytes. Uppercase and forward slashes are rejected, which is what catches a camelCase MCP tool name: use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`.
 
 Pass `metadata` whenever you have useful auditing context. It is nested JSON, not a flat string map – `{"user": {"id": user_id}, "request_id": ...}` is valid. It shows up in the Console and does not affect the decision. Do not put secrets or PII in it.
 

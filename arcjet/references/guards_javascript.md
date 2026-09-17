@@ -39,7 +39,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.12.0** on **September 16, 2026**. That release adds `google-adk/v2`, `tanstack-ai/v0`, and `claude-managed-agents/v0` to the 1.11.0 adapter set (`vercel-ai/v7`, `vercel-eve/v0`, `mastra/v1`, `langgraph/v1`, `langchain/v1`, `claude-agent-sdk/v0`, `openai-agents/v0`, `genkit/v1`, `strands-agents/v1`). Prompt-injection `threshold` / `score` are **removed**. Decide timeout defaults to 2000 ms. Read the installed package's types. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.13.0** on **September 17, 2026**. The twelve adapters are `vercel-ai/v7`, `vercel-eve/v0`, `mastra/v1`, `langgraph/v1`, `langchain/v1`, `claude-agent-sdk/v0`, `claude-managed-agents/v0`, `openai-agents/v0`, `genkit/v1`, `strands-agents/v1`, `google-adk/v2`, and `tanstack-ai/v0`; 1.13.0 adds no new ones, gives every one of them `actor` / `inputs`, and adds `validateGuardLabel`. Prompt-injection `threshold` / `score` are **removed**. Decide timeout defaults to 2000 ms. Read the installed package's types. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
 
 ## Architecture: why things go where they do
 
@@ -132,7 +132,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>, userI
 
 The `label` must be a hardcoded string – `"tools.get-weather"`, not `` `tools.${name}` ``. Hardcoded labels stay greppable, and the Console groups by them; interpolation produces a sea of distinct-looking calls instead of one bucket per operation.
 
-**Label naming rules:** labels are validated server-side as slugs – **lowercase letters, digits, dash (`-`), and dot (`.`) only**, must start and end with a letter or digit, max 256 bytes. Underscores, uppercase, and forward slashes are rejected. Metadata *keys* may contain underscores; labels and rate-limit `bucket` names may not. Use `tools.get-weather`, not `tools.get_weather`.
+**Label naming rules:** labels are validated as slugs – **lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`)**, must start and end with a lowercase letter or digit, max 256 bytes. Uppercase and forward slashes are rejected, which is what catches a camelCase MCP tool name: use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`.
 
 Pass `metadata` whenever you have useful auditing context. It is nested JSON, not a flat string map – `{ user: { id: userId }, requestId }` is valid. It shows up in the Console and does not affect the decision. Do not put secrets or PII in it.
 
@@ -173,7 +173,7 @@ JavaScript `localDetectSensitiveInfo()` works with no arguments, but always pass
 These produce code that runs without error and enforces nothing. Full list: https://docs.arcjet.com/llms.txt.
 
 - Pass `allow` or `deny` on every local sensitive-info rule. Share `backend` with the client for non-default entity types.
-- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them (`policyInput.server` / `policyInput.local`). Core `guard()` accepts them. On npm 1.12.0 only `vercel-ai/v7` wrappers are typed for `actor` / `inputs`; later releases add the rest. Check installed types — do not pass fields a helper does not declare.
+- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them (`policyInput.server` / `policyInput.local`). Core `guard()` accepts them, and so does every wrapper from **1.13.0**. On 1.12.0 only `vercel-ai/v7` was typed for them. Check installed types — do not pass fields a helper does not declare.
 - On Genkit, OpenAI Agents, and Strands Agents, `guardTool` cannot infer `TInput` – annotate `rules: (input: { … }) => …`.
 - A missing decision is not a denial. Verify in Console/CLI.
 - Adapter-specific isolation / session / correlation traps live in that adapter file. Do not copy them from a sibling.
@@ -280,7 +280,7 @@ Load **fundamentals here, then exactly one adapter file**. Do not open sibling a
 
 | Adapter | Import | Load |
 | --- | --- | --- |
-| Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | [guards_js_vercel_ai.md](guards_js_vercel_ai.md) — on npm 1.12.0 this is the JS wrapper typed for `actor` / `inputs` |
+| Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | [guards_js_vercel_ai.md](guards_js_vercel_ai.md) — typed for `actor` / `inputs` from 1.12.0, a release before the other wrappers |
 | Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | [guards_js_vercel_eve.md](guards_js_vercel_eve.md) |
 | Mastra v1 | `@arcjet/guard/mastra/v1` | [guards_js_mastra.md](guards_js_mastra.md) |
 | LangChain `createAgent` v1 | `@arcjet/guard/langchain/v1` | [guards_js_langchain.md](guards_js_langchain.md) |
