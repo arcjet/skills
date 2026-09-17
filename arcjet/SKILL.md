@@ -108,9 +108,9 @@ When the project already uses an official Python agent framework, load the dedic
 
 When the project is Go and already uses Microsoft Agent Framework for Go, load the dedicated skill:
 
-| Go framework | Import | Skill |
-| --- | --- | --- |
-| Microsoft Agent Framework (`functool`, `mcptool`, `agent.Config.Middlewares`) | `github.com/arcjet/arcjet-go/agentframework` | [integrate-arcjet-guard-agent-framework-go](../integrate-arcjet-guard-agent-framework-go/SKILL.md) |
+| Go framework | Surfaces | Import | Skill |
+| --- | --- | --- | --- |
+| Microsoft Agent Framework | `functool`, `mcptool`, `agent.Config.Middlewares` | `github.com/arcjet/arcjet-go/agentframework` | [integrate-arcjet-guard-agent-framework-go](../integrate-arcjet-guard-agent-framework-go/SKILL.md) |
 
 These references explain architectural decisions and patterns that can't be inferred from the source code alone. For exact API signatures, read the installed package's types and doc comments.
 
