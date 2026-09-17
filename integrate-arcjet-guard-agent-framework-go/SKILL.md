@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-agent-framework-go
 description: Integrate Arcjet Guard into Microsoft Agent Framework for Go (github.com/microsoft/agent-framework-go). Wrap a functool or MCP tool with GuardTool, guard every tool an agent can see and screen inbound text with GuardMiddleware, or guard any Go function with arcjet.GuardAction. Use when asked to add Arcjet to a Go agent built on Microsoft Agent Framework, rate limit its tools, block prompt injection, or fail closed on tool calls. This is the Go framework, not the .NET or Python Microsoft Agent Framework.
 license: Apache-2.0
-compatibility: Requires Go >= 1.26 and github.com/arcjet/arcjet-go/agentframework v0.1.0 or later, which requires github.com/arcjet/arcjet-go v1.0.0 or later and github.com/microsoft/agent-framework-go v0.1.0 or later.
+compatibility: Requires Go >= 1.26 (agentframework module requirement) and github.com/arcjet/arcjet-go/agentframework v0.1.0 or later, which requires github.com/arcjet/arcjet-go v1.0.0 (Go 1.25+) or later and github.com/microsoft/agent-framework-go v0.1.0 or later.
 metadata:
   author: arcjet
   type: core
@@ -125,9 +125,11 @@ go get github.com/arcjet/arcjet-go@latest
 go get github.com/arcjet/arcjet-go/agentframework@latest
 ```
 
-The module requires Go 1.26. If the project is on an older Go, tell the user
-and stop. Create one `arcjet.NewGuardClient` at package scope; it reads
-`ARCJET_KEY` when `Key` is empty.
+The agentframework module requires Go 1.26; the root
+`github.com/arcjet/arcjet-go` module remains Go 1.25+. If the project is on
+an older Go than 1.26, tell the user and stop. Create one
+`arcjet.NewGuardClient` at package scope; it reads `ARCJET_KEY` when `Key`
+is empty.
 
 ## Step 2: Gate a tool you can name: `GuardTool`
 
