@@ -73,7 +73,7 @@ Determine which protection type applies:
 | **JS/TS SDK** | Framework adapters such as `@arcjet/next`, `@arcjet/node`, `@arcjet/fastify` | `@arcjet/guard` |
 | **Python SDK** | `arcjet` (with `arcjet()` / `arcjet_sync()`) | `arcjet` (with `launch_arcjet()` / `launch_arcjet_sync()`) |
 | **Go SDK** | `github.com/arcjet/arcjet-go` (with `NewClient`) | `github.com/arcjet/arcjet-go` (with `NewGuardClient`) |
-| **Entry point** | `protect(request)` / `Protect(ctx, r)` | JS `guard({ label, rules })`; Python `guard(label, …)`; Go `Guard(ctx, request)` |
+| **Entry point** | `protect(request)` / `Protect(ctx, r)` | Core JS `guard({ label, rules })`; Python `guard(label, …)`; Go `Guard(ctx, request)`. Wrappers take `action`, not `label`. |
 
 A single project can use both – for example, request-based on API routes and Guard on agent tool calls. If the project already uses a supported agent framework, prefer the official wrapper over hand-wrapping every tool. In Python, load the dedicated skill (table below) — not a raw `guard()` around every callable, and not the JS `@arcjet/guard/...` path. In JavaScript, load fundamentals plus **exactly one** adapter file from the JS table — not the sibling adapters. In Go, load the Microsoft Agent Framework skill when that framework is present; otherwise use `GuardAction` from the Go Guard reference.
 
