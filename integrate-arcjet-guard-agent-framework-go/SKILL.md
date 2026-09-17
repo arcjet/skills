@@ -195,11 +195,28 @@ for i, g := range guarded {
 }
 ```
 
-For **allow by default**, assert the exact set you expect to be guarded. Do
-not put an unrecognized tool in that list: the policy is supposed to decline
-it, so the loop above would report it every run. Compare the guarded names
-against the names you listed, and a tool added to the agent without a policy
-case fails the test instead of shipping unguarded.
+For **allow by default**, name the tools you intend to leave unguarded and
+assert that they are the only ones. Do not put an unrecognized tool through
+the loop above: the policy is supposed to decline it, so that assertion would
+report it every run. A tool added to the agent without a policy case shows up
+here as an entry nobody listed.
+
+```go
+guarded, err := agentframework.GuardTools(client, agentTools, toolPolicy)
+if err != nil {
+	t.Fatal(err)
+}
+exempt := []string{"health_check"} // deliberately unguarded
+var unguarded []string
+for i, g := range guarded {
+	if g == agentTools[i] {
+		unguarded = append(unguarded, g.Name())
+	}
+}
+if !slices.Equal(unguarded, exempt) {
+	t.Errorf("unguarded %v, want %v", unguarded, exempt)
+}
+```
 
 A client built with `arcjet.GuardConfig{Key: "ajkey_test"}` is enough here.
 The test never reaches the Arcjet API, so this is a literal in a test rather
