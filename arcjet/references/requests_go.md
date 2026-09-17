@@ -6,7 +6,7 @@ Request protection inspects `net/http` requests – headers, IP, body – to enf
 
 ## Installation
 
-The current documented pre-release is **`github.com/arcjet/arcjet-go` v1.0.0-rc.2** (requires Go 1.25+). `go get ...@latest` may still resolve **v0.1.0** (June 30, 2026) — pin `@v1.0.0-rc.2`. Nested `Metadata`, `WithIPSrc`, Rampart, `decision.IP.Threat`, and Protect transport-failure ERROR decisions are on that rc. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The current release is **`github.com/arcjet/arcjet-go` v1.0.0** (September 17, 2026), which `go get ...@latest` resolves. It requires Go 1.25+. Nested `Metadata`, `WithIPSrc`, Rampart, `decision.IP.Threat`, and Protect transport-failure ERROR decisions are all in it. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Install with Go tooling, not by editing `go.mod` directly:
 
