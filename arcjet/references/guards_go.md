@@ -88,7 +88,7 @@ if decision.IsDenied() {
 }
 ```
 
-Labels are validated as slugs: lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`), starting and ending with a lowercase letter or digit. Uppercase is rejected, so use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`.
+Labels are validated as slugs: lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`), starting and ending with a lowercase letter or digit. Uppercase is rejected, so use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`. Prefer dash/dot in new labels. Check a label you build yourself with `ValidateGuardLabel`. A slug the service will not match reads as `ALLOW` with `HasFailedOpen()` false, so the guard does not run. `Capture` warns `AJ1023` and still sends.
 
 ## Rate limits and keys
 
@@ -102,7 +102,7 @@ An empty `Bucket` defaults to `default-token-bucket`, `default-fixed-window`, or
 
 - `GuardPromptInjection` – use on untrusted text before it reaches a model or tool argument. The result may include optional `Billing` (`tokens`).
 - `GuardSensitiveInfo` – use to block PII entering or leaving the system; scanning happens locally. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`. Create the backend once at startup.
-- `GuardModerateContent` – Guard-only content moderation. Result is binary `Detected` plus optional `Billing` (`text_units`). `ExperimentalGuardModerateContent` remains a deprecated alias until 1.0.
+- `GuardModerateContent` – Guard-only content moderation. Result is binary `Detected` plus optional `Billing` (`text_units`). `ExperimentalGuardModerateContent` is a deprecated alias.
 - `GuardCustom` – runs your local custom function and reports the result to Arcjet. Keep the function deterministic and side-effect free.
 
 Go has no registration / free `guard()` API. Pass the client.

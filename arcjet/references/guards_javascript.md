@@ -132,7 +132,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>, userI
 
 The `label` must be a hardcoded string – `"tools.get-weather"`, not `` `tools.${name}` ``. Hardcoded labels stay greppable, and the Console groups by them; interpolation produces a sea of distinct-looking calls instead of one bucket per operation.
 
-**Label naming rules:** labels are validated as slugs – **lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`)**, must start and end with a lowercase letter or digit, max 256 bytes. Uppercase and forward slashes are rejected, which is what catches a camelCase MCP tool name: use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`.
+**Label naming rules:** labels are validated as slugs – **lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`)**, must start and end with a lowercase letter or digit, max 256 bytes. Uppercase and forward slashes are rejected, which is what catches a camelCase MCP tool name: use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`. Prefer dash/dot in new labels. Check a label you build yourself with `validateGuardLabel` — a slug the service will not match reads as `ALLOW` with `hasFailedOpen()` false.
 
 Pass `metadata` whenever you have useful auditing context. It is nested JSON, not a flat string map – `{ user: { id: userId }, requestId }` is valid. It shows up in the Console and does not affect the decision. Do not put secrets or PII in it.
 
@@ -173,7 +173,7 @@ JavaScript `localDetectSensitiveInfo()` works with no arguments, but always pass
 These produce code that runs without error and enforces nothing. Full list: https://docs.arcjet.com/llms.txt.
 
 - Pass `allow` or `deny` on every local sensitive-info rule. Share `backend` with the client for non-default entity types.
-- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them (`policyInput.server` / `policyInput.local`). Core `guard()` accepts them, and so does every wrapper from **1.13.0**. On 1.12.0 only `vercel-ai/v7` was typed for them. Check installed types — do not pass fields a helper does not declare.
+- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. Import `policyInput` from `@arcjet/guard` (not an adapter path) and pass `policyInput.server` / `policyInput.local` on core `guard()` and every wrapper. Check installed types — do not pass fields a helper does not declare.
 - On Genkit, OpenAI Agents, and Strands Agents, `guardTool` cannot infer `TInput` – annotate `rules: (input: { … }) => …`.
 - A missing decision is not a denial. Verify in Console/CLI.
 - Adapter-specific isolation / session / correlation traps live in that adapter file. Do not copy them from a sibling.
@@ -280,7 +280,7 @@ Load **fundamentals here, then exactly one adapter file**. Do not open sibling a
 
 | Adapter | Import | Load |
 | --- | --- | --- |
-| Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | [guards_js_vercel_ai.md](guards_js_vercel_ai.md) — typed for `actor` / `inputs` from 1.12.0, a release before the other wrappers |
+| Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | [guards_js_vercel_ai.md](guards_js_vercel_ai.md) |
 | Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | [guards_js_vercel_eve.md](guards_js_vercel_eve.md) |
 | Mastra v1 | `@arcjet/guard/mastra/v1` | [guards_js_mastra.md](guards_js_mastra.md) |
 | LangChain `createAgent` v1 | `@arcjet/guard/langchain/v1` | [guards_js_langchain.md](guards_js_langchain.md) |
@@ -289,9 +289,9 @@ Load **fundamentals here, then exactly one adapter file**. Do not open sibling a
 | Genkit v1 | `@arcjet/guard/genkit/v1` | [guards_js_genkit.md](guards_js_genkit.md) |
 | Claude Agent SDK v0 | `@arcjet/guard/claude-agent-sdk/v0` | [guards_js_claude_agent_sdk.md](guards_js_claude_agent_sdk.md) |
 | Strands Agents v1 | `@arcjet/guard/strands-agents/v1` | [guards_js_strands_agents.md](guards_js_strands_agents.md) |
-| Google ADK v2 | `@arcjet/guard/google-adk/v2` | [guards_js_google_adk.md](guards_js_google_adk.md) — ships in npm 1.12.0 |
-| TanStack AI v0 | `@arcjet/guard/tanstack-ai/v0` | [guards_js_tanstack_ai.md](guards_js_tanstack_ai.md) — ships in npm 1.12.0 |
-| Claude Managed Agents v0 | `@arcjet/guard/claude-managed-agents/v0` | [guards_js_claude_managed_agents.md](guards_js_claude_managed_agents.md) — ships in npm 1.12.0 |
+| Google ADK v2 | `@arcjet/guard/google-adk/v2` | [guards_js_google_adk.md](guards_js_google_adk.md) |
+| TanStack AI v0 | `@arcjet/guard/tanstack-ai/v0` | [guards_js_tanstack_ai.md](guards_js_tanstack_ai.md) |
+| Claude Managed Agents v0 | `@arcjet/guard/claude-managed-agents/v0` | [guards_js_claude_managed_agents.md](guards_js_claude_managed_agents.md) |
 
 Docs are the merged pages at https://docs.arcjet.com/guards/<adapter>/. Language-specific `*-js` / `*-py` URLs redirect there. The JS SDK also ships `integrate-arcjet-guard-*` skills under `node_modules/@arcjet/guard/skills/` — this repo does not duplicate those as separately triggered skills.
 

@@ -16,7 +16,7 @@ Three gotchas first:
 - **`guardProcessor`** for inbound / outbound text. On DENY, `processInput` / `processInputStep` call `abort()`; if `abort()` were to return, the processor still throws so the turn cannot fail open. Inbound `"allow"` is a legitimate `onGuardError` choice because failing closed stops the agent answering.
 - **`guardHooks`** — `beforeToolCall` returns `{ proceed: false, output }` on DENY so unwrapped MCP / workspace tools never execute. `afterToolCall` is observe-only. Pass `hooks` to the `Agent` constructor (or to `generate` / `stream`).
 - **`mastraAgentContext`** is exported from `@arcjet/guard/mastra/v1` in 1.11.0+. It reads `MASTRA_THREAD_ID_KEY`, then resource, then run. It never mints. It never calls `createAgentContext` (that splits the Sequence). Wrappers read `RequestContext` themselves; use this helper when calling core `guard()`. Set the reserved keys on `RequestContext` before `generate` / `stream`.
-- Fail closed by default (`onGuardError: "deny"`). Optional peer `@mastra/core` `>=1 <2`. Node.js 22+.
+- Fail closed by default (`onGuardError: "deny"`). Optional peer `@mastra/core` `>=1 <2`. Node.js `>=22.21.0 <23 || >=24.5.0`. Optional `actor` / `inputs` take `policyInput` from `@arcjet/guard`.
 
 ```typescript
 import { Agent } from "@mastra/core/agent";

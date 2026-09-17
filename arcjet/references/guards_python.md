@@ -125,7 +125,7 @@ async def handle_tool_call(name: str, args: dict, user_id: str):  # 👎
 
 The `label` must be a hardcoded string – `"tools.get-weather"`, not `f"tools.{name}"`. Hardcoded labels stay greppable, and the Console groups by them.
 
-**Label naming rules:** labels are validated as slugs – **lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`)**, must start and end with a lowercase letter or digit, max 256 bytes. Uppercase and forward slashes are rejected, which is what catches a camelCase MCP tool name: use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`.
+**Label naming rules:** labels are validated as slugs – **lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`)**, must start and end with a lowercase letter or digit, max 256 bytes. Uppercase and forward slashes are rejected, which is what catches a camelCase MCP tool name: use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`. Prefer dash/dot in new labels. Check a label you build yourself with `validate_guard_label` — a slug the service will not match reads as `ALLOW` with `has_failed_open()` false.
 
 Pass `metadata` whenever you have useful auditing context. It is nested JSON, not a flat string map – `{"user": {"id": user_id}, "request_id": ...}` is valid. It shows up in the Console and does not affect the decision. Do not put secrets or PII in it.
 

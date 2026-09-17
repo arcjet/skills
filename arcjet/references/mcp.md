@@ -84,7 +84,7 @@ Once connected, the MCP server exposes tools for managing teams, sites, keys, re
 
 **Add protection without redeploying:** `create-rule` (bot/filter in DRY_RUN) → `get-dry-run-impact` → `promote-rule`
 
-**Author a Guard policy:** `list-guard-policies` → `describe-guard-policy` → `validate-guard-policy` → `put-guard-policy`. Application policies select by `label` / wrapper `action`. Coding-agent policies attach by **Execute on** (Tool call or Prompt), not by label; publishing turns them on.
+**Author a Guard policy:** `list-guard-policies` → `describe-guard-policy` → `validate-guard-policy` → `put-guard-policy`. Application policies select by `label` / wrapper `action`. Coding-agent policies attach by **Execute on** (Tool call or Prompt), not by label; publishing turns them on. Install Claude Code / Copilot HTTP hooks from https://docs.arcjet.com/coding-agents — copy the templates. The hook URL must not name a policy and must omit `?surface=` (managed settings reach CLI, IDE, Desktop, and cloud; a hard-coded `cli` mislabels most traffic).
 
 ## Security notes
 

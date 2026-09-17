@@ -103,7 +103,11 @@ Ask only what you cannot infer from the code; suggest defaults.
 1. **Labels are hardcoded.** `Action: "refund.issued"`, never
    `fmt.Sprintf`. In a `GuardTools` policy function, `switch t.Name()`.
 2. **`Action`, not `Label`.** Wrappers take `Action`; the raw
-   `GuardRequest` takes `Label`. Same slug.
+   `GuardRequest` takes `Label`. Same slug. `ToolPolicy.Action` and
+   `InboundPolicy.Action` are validated when you build the helper, not on
+   the first call — a typo returns an error from `GuardTool` /
+   `GuardTools` / `GuardMiddleware` at startup. Check a slug you build
+   yourself with `arcjet.ValidateGuardLabel`.
 3. **Denial is a result.** See above.
 4. **Correlation is caller-owned.** Put it on the context, or store it on
    the session under `agentframework.CorrelationIDStateKey`. Never
