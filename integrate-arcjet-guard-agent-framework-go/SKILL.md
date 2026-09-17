@@ -43,11 +43,19 @@ successful result. Do not "fix" this by returning an error, and do not set
 ## Fail closed by default
 
 `GuardTool`, `GuardTools`, `GuardMiddleware`, and `arcjet.GuardAction` deny
-when policy cannot be evaluated. A denied tool call returns
-`arcjet.NewGuardUnavailableResult()` (reason `ERROR`, five second retry hint);
-an inbound denial ends the run with that message. Set
-`OnGuardError: arcjet.OnGuardErrorAllow` only where availability matters
-more than enforcement, such as a read-only lookup. A `DENY` always blocks.
+when policy cannot be evaluated. That is a different outcome from a policy
+`DENY`, and the two return different results to the model.
+
+- Policy could not be evaluated: `arcjet.NewGuardUnavailableResult()`, reason
+  `ERROR`, five second retry hint.
+- Policy denied the call, such as an exhausted rate limit or detected prompt
+  injection: `arcjet.NewGuardDenialResult(decision)`, or whatever
+  `ToolPolicy.OnDeny` returns in its place.
+
+An inbound denial ends the run with its message. Set
+`OnGuardError: arcjet.OnGuardErrorAllow` only where availability matters more
+than enforcement, such as a read-only lookup; it changes the unavailable path
+alone, and a `DENY` always blocks.
 
 ## Human approval is not policy
 
@@ -126,13 +134,26 @@ and stop. Create one `arcjet.NewGuardClient` at package scope; it reads
 ```go
 guarded := agentframework.MustGuardTool(guard, issueRefund, agentframework.ToolPolicy{
 	Action: "refund.issued",
-	Actor:  func(context.Context, json.RawMessage) (string, error) { return userID, nil },
-	Rules: agentframework.Args(func(_ context.Context, in refundArgs) ([]arcjet.GuardRuleInput, error) {
+	Actor: func(ctx context.Context, _ json.RawMessage) (string, error) {
+		return userIDFromContext(ctx)
+	},
+	Rules: agentframework.Args(func(ctx context.Context, in refundArgs) ([]arcjet.GuardRuleInput, error) {
+		userID, err := userIDFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
 		return []arcjet.GuardRuleInput{refundLimit.Key(userID, 1)}, nil
 	}),
-	Metadata: arcjet.SecurityMetadata{User: userID, Reversibility: "irreversible"}.Metadata(),
+	Metadata: arcjet.SecurityMetadata{Reversibility: "irreversible"}.Metadata(),
 })
 ```
+
+`Actor` and `Rules` run per call and receive the call's context, so read the
+caller's identity from there. A package-level or captured variable holds one
+user for the life of the process: every caller would share one rate-limit
+bucket and every decision would name the same actor. `Metadata` is read once
+when the tool is wrapped, so per-call identity does not belong in it; `Actor`
+already carries the user.
 
 `GuardTool` returns `(tool.FuncTool, error)`; `MustGuardTool` panics on a
 configuration error and suits package-level initialization. For MCP tools,
