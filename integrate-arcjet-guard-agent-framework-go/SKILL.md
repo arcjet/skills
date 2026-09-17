@@ -175,20 +175,46 @@ Decide which of the two you want, and write it down:
 - **Allow by default.** Return `false` for unrecognized names, and assert the
   set of guarded tools in a test so an addition is caught there.
 
-A test for the second form passes the policy a tool it has no case for.
-`GuardTools` returns the same value it was given when it declines, so an
-identity comparison is what detects an unguarded tool:
+Test whichever you chose. `GuardTools` returns the same value it was given
+when it declines, so an identity comparison is what detects an unguarded tool.
+
+For **deny by default**, pass the policy a tool it has no case for and assert
+that it still comes back guarded. The unlisted tool is the point of the test:
+it fails if the default branch stops covering it.
 
 ```go
-tools := []tool.Tool{lookupOrder, issueRefund, unrecognizedTool}
+tools := []tool.Tool{lookupOrder, issueRefund, unlistedTool}
 guarded, err := agentframework.GuardTools(client, tools, toolPolicy)
 if err != nil {
 	t.Fatal(err)
 }
 for i, g := range guarded {
 	if g == tools[i] {
-		t.Errorf("tool %q came back unwrapped", g.Name())
+		t.Errorf("tool %q came back unguarded", g.Name())
 	}
+}
+```
+
+For **allow by default**, name the tools you intend to leave unguarded and
+assert that they are the only ones. Do not put an unrecognized tool through
+the loop above: the policy is supposed to decline it, so that assertion would
+report it every run. A tool added to the agent without a policy case shows up
+here as an entry nobody listed.
+
+```go
+guarded, err := agentframework.GuardTools(client, agentTools, toolPolicy)
+if err != nil {
+	t.Fatal(err)
+}
+exempt := []string{"health_check"} // deliberately unguarded
+var unguarded []string
+for i, g := range guarded {
+	if g == agentTools[i] {
+		unguarded = append(unguarded, g.Name())
+	}
+}
+if !slices.Equal(unguarded, exempt) {
+	t.Errorf("unguarded %v, want %v", unguarded, exempt)
 }
 ```
 
