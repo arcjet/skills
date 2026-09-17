@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-cloudflare-think
 description: Integrate Arcjet Guard into Cloudflare Think — delegate beforeToolCall to guardHooks so a DENY substitutes/blocks the tool, and read a caller-owned id via cloudflareThinkContext. Use when asked to add Arcjet to @cloudflare/think, Cloudflare Agents Think, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Cloudflare Think, not the Vercel AI SDK and not needsApproval HITL.
 license: Apache-2.0
-compatibility: Requires official @cloudflare/think >=0.3.0 <1 on Node.js >= 22 (Workers-compatible). This is Think subclass beforeToolCall via guardHooks. Path is /v0. Do not use @arcjet/guard/vercel-ai/v7. Until-published — pin @arcjet/guard to git SHA 58a7d8b82f2a360c67eced13e9899f0c1799289f; not in npm 1.12.0.
+compatibility: Requires official @cloudflare/think >=0.3.0 <1 on Node.js >= 22 (Workers-compatible). This is Think subclass beforeToolCall via guardHooks. Path is /v0. Do not use @arcjet/guard/vercel-ai/v7. Until-published — pin @arcjet/guard to git SHA 863ac0d98070529436a6528a4c80b779c3857328; not in npm 1.12.0.
 metadata:
   author: arcjet
   type: core
@@ -49,7 +49,7 @@ There is no `/guards/cloudflare-think/` docs page yet. Do not
 invent a second slug and do not overwrite any other `/guards/...`
 page. Example:
 [`examples/cloudflare-think-agent`](https://github.com/arcjet/examples/tree/main/examples/cloudflare-think-agent)
-(vendors `58a7d8b8`; no verify fixture). Do not invent a second
+(vendors `863ac0d9`; no verify fixture). Do not invent a second
 example name.
 
 ## The gate is `beforeToolCall` block / substitute
@@ -140,11 +140,11 @@ Ask only what you cannot infer from the code; suggest defaults.
 
 Until-published: npm `@arcjet/guard@1.12.0` does not export
 `./cloudflare-think/v0` (`ERR_PACKAGE_PATH_NOT_EXPORTED`). Pin
-`@arcjet/guard` to git SHA `58a7d8b82f2a360c67eced13e9899f0c1799289f`
+`@arcjet/guard` to git SHA `863ac0d98070529436a6528a4c80b779c3857328`
 (`david/cursor/cloudflare-think-guard-v0-1b24`):
 
 ```bash
-npm install github:arcjet/arcjet-js#58a7d8b82f2a360c67eced13e9899f0c1799289f
+npm install github:arcjet/arcjet-js#863ac0d98070529436a6528a4c80b779c3857328
 npm install @cloudflare/think
 ```
 
@@ -259,5 +259,5 @@ the call is uncorrelated rather than joined to a generated id.
 
 Worked example:
 [`examples/cloudflare-think-agent`](https://github.com/arcjet/examples/tree/main/examples/cloudflare-think-agent)
-(vendors `58a7d8b8`; no verify fixture). Do not invent a second
+(vendors `863ac0d9`; no verify fixture). Do not invent a second
 example name. Do not add an example in this skills repo.
