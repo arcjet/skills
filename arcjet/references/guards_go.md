@@ -6,7 +6,9 @@ Guard protects code paths that do not have an HTTP request – agent tool calls,
 
 ## Installation
 
-The current documented pre-release is **`github.com/arcjet/arcjet-go` v1.0.0-rc.2** (requires Go 1.25+). `go get ...@latest` may still resolve **v0.1.0** (June 30, 2026) — pin `@v1.0.0-rc.2`. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, `GuardModerateContent`, and required Guard `Mode` are on that rc. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The current release is **`github.com/arcjet/arcjet-go` v1.0.0** (September 17, 2026), which `go get ...@latest` resolves. It requires Go 1.25+. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, `GuardModerateContent`, and required Guard `Mode` are all in it. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+
+The Microsoft Agent Framework helpers are a separate module, **`github.com/arcjet/arcjet-go/agentframework` v0.1.0**, which requires Go 1.26+ because the framework does.
 
 Install with Go tooling:
 
@@ -105,6 +107,22 @@ An empty `Bucket` defaults to `default-token-bucket`, `default-fixed-window`, or
 
 Go has no registration / free `guard()` API. Pass the client.
 
+## Fail-closed helpers: `GuardAction`
+
+For a sensitive tool call or action, wrap it in `arcjet.GuardAction` instead of hand-writing the `HasFailedOpen()` gate. It calls Guard (always, even with no rules), denies with `*arcjet.GuardDeniedError`, fails closed with `*arcjet.GuardUnavailableError` when policy could not be evaluated, runs the function otherwise, and records one capture event whose metadata `outcome` is `success`, `degraded`, `denied`, `error`, or `unavailable`.
+
+```go
+out, err := arcjet.GuardAction(ctx, guard, arcjet.GuardActionPolicy{
+	Action: "refund.issued",
+	Actor:  userID,
+	Rules:  []arcjet.GuardRuleInput{refundLimit.Key(userID, 1)},
+}, func(ctx context.Context) (Receipt, error) { return refundPayment(ctx, id) })
+```
+
+Distinguish the two errors with `errors.As`. `OnGuardError: arcjet.OnGuardErrorAllow` opts a call site back into fail-open; a `DENY` still blocks. Use `arcjet.NewGuardDenialResult(decision)` and `arcjet.NewGuardUnavailableResult()` when the caller is a model and needs a JSON result rather than a Go error. Available from `arcjet-go` v1.0.0.
+
+For Microsoft Agent Framework for Go, load [integrate-arcjet-guard-agent-framework-go](../../integrate-arcjet-guard-agent-framework-go/SKILL.md) instead of wrapping tools by hand.
+
 ## Capture and flush
 
 `Capture` records that an action happened. It is not a security decision – it never denies, never returns an error, and never sets `HasFailedOpen()`.
@@ -112,8 +130,8 @@ Go has no registration / free `guard()` API. Pass the client.
 ```go
 guard.Capture(arcjet.CaptureEvent{
 	Action:        "refund.issued",
-	CorrelationId: runID,
-	DecisionId:    decision.ID,
+	CorrelationID: runID,
+	DecisionID:    decision.ID,
 	Metadata: arcjet.Metadata{
 		"invoice":  map[string]any{"id": "inv_123", "amount": 4200},
 		"refunded": true,
@@ -143,7 +161,7 @@ for _, w := range decision.Warnings {
 
 ## Correlation IDs
 
-Set `GuardRequest.CorrelationId` to correlate this guard call with HTTP requests, workflow runs, or agent traces. It is a dedicated field, not metadata, and does not affect the decision.
+Set `GuardRequest.CorrelationID` to correlate this guard call with HTTP requests, workflow runs, or agent traces. It is a dedicated field, not metadata, and does not affect the decision. The agent helpers read `arcjet.ContextWithCorrelationID(ctx, id)`; `Guard` and `Capture` do not, so pass `CorrelationID` to them explicitly.
 
 ## Metadata
 

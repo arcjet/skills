@@ -1,7 +1,7 @@
 ---
 name: arcjet
 license: Apache-2.0
-description: Add Arcjet security protection to HTTP routes, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection, sensitive information blocking (including Rampart NER), content moderation, capture/flush, remote Guard policies, typed inputs, and abuse prevention. Works in JavaScript/TypeScript, Python, and Go. HTTP frameworks share this skill. JS Guard adapters (Vercel AI SDK, Eve, Mastra, LangChain, LangGraph, OpenAI Agents, Genkit, Google ADK, Strands, TanStack AI, Claude Agent SDK, Claude Managed Agents) are per-adapter reference files loaded from Step 3 — do not keep the whole JS Guard reference in context. Official Python LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents have dedicated integrate-arcjet-guard skills. Use when the user wants security, rate limiting, bot protection, or abuse prevention – "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," or "prevent abuse" – even without naming Arcjet.
+description: Add Arcjet security protection to HTTP routes, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection, sensitive information blocking (including Rampart NER), content moderation, capture/flush, remote Guard policies, typed inputs, and abuse prevention. Works in JavaScript/TypeScript, Python, and Go. HTTP frameworks share this skill. JS Guard adapters (Vercel AI SDK, Eve, Mastra, LangChain, LangGraph, OpenAI Agents, Genkit, Google ADK, Strands, TanStack AI, Claude Agent SDK, Claude Managed Agents) are per-adapter reference files loaded from Step 3 — do not keep the whole JS Guard reference in context. Official Python LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents have dedicated integrate-arcjet-guard skills. Microsoft Agent Framework for Go has a dedicated integrate-arcjet-guard-agent-framework-go skill. Use when the user wants security, rate limiting, bot protection, or abuse prevention – "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," or "prevent abuse" – even without naming Arcjet.
 metadata:
   author: arcjet
 ---
@@ -61,7 +61,7 @@ See [references/cli.md](references/cli.md) for install options beyond `npx`, age
 
 #### Install the SDK with the project's package manager
 
-Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.12.0`; Python `arcjet` is `1.1.0`; Go must use the module tag `@v1.0.0-rc.2`, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
+Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.12.0`; Python `arcjet` is `1.1.0`; Go must use a module tag, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
 
 ### Step 3: Detect protection type and read the reference
 
@@ -75,7 +75,7 @@ Determine which protection type applies:
 | **Go SDK** | `github.com/arcjet/arcjet-go` (with `NewClient`) | `github.com/arcjet/arcjet-go` (with `NewGuardClient`) |
 | **Entry point** | `protect(request)` / `Protect(ctx, r)` | `guard(label, rules)` / `Guard(ctx, request)` |
 
-A single project can use both – for example, request-based on API routes and Guard on agent tool calls. If the project already uses a supported agent framework, prefer the official wrapper over hand-wrapping every tool. In Python, load the dedicated skill (table below) — not a raw `guard()` around every callable, and not the JS `@arcjet/guard/...` path. In JavaScript, load fundamentals plus **exactly one** adapter file from the JS table — not the sibling adapters.
+A single project can use both – for example, request-based on API routes and Guard on agent tool calls. If the project already uses a supported agent framework, prefer the official wrapper over hand-wrapping every tool. In Python, load the dedicated skill (table below) — not a raw `guard()` around every callable, and not the JS `@arcjet/guard/...` path. In JavaScript, load fundamentals plus **exactly one** adapter file from the JS table — not the sibling adapters. In Go, load the Microsoft Agent Framework skill when that framework is present; otherwise use `GuardAction` from the Go Guard reference.
 
 **Common misclassifications to watch for:**
 
@@ -105,6 +105,12 @@ When the project already uses an official Python agent framework, load the dedic
 | Claude Agent SDK | `arcjet.guard.claude_agent_sdk` | [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md) |
 | Claude Managed Agents | `arcjet.guard.claude_managed_agents` | [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md) |
 | Strands Agents | `arcjet.guard.strands_agents` | [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md) |
+
+When the project is Go and already uses Microsoft Agent Framework for Go, load the dedicated skill:
+
+| Go framework | Import | Skill |
+| --- | --- | --- |
+| Microsoft Agent Framework (`functool`, `mcptool`, `agent.Config.Middlewares`) | `github.com/arcjet/arcjet-go/agentframework` | [integrate-arcjet-guard-agent-framework-go](../integrate-arcjet-guard-agent-framework-go/SKILL.md) |
 
 These references explain architectural decisions and patterns that can't be inferred from the source code alone. For exact API signatures, read the installed package's types and doc comments.
 
@@ -195,7 +201,7 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 - **Python SDK**: https://github.com/arcjet/arcjet-py – `arcjet` package (request protection) and `arcjet.guard` subpackage (non-HTTP guard).
 - **Python Guard integration skills**: [integrate-arcjet-guard-langchain-py](../integrate-arcjet-guard-langchain-py/SKILL.md), [integrate-arcjet-guard-crewai](../integrate-arcjet-guard-crewai/SKILL.md), [integrate-arcjet-guard-openai-agents-py](../integrate-arcjet-guard-openai-agents-py/SKILL.md), [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md), [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md), [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md).
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`). JS Guard adapter files: [references/guards_js_vercel_ai.md](references/guards_js_vercel_ai.md) and siblings listed in Step 3.
-- **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. Pin `go get github.com/arcjet/arcjet-go@v1.0.0-rc.2` (Go 1.25+). `go get ...@latest` may still resolve **v0.1.0**.
+- **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. `go get github.com/arcjet/arcjet-go` resolves **v1.0.0** (Go 1.25+). Microsoft Agent Framework helpers live in a separate module: `go get github.com/arcjet/arcjet-go/agentframework` resolves **v0.1.0** and needs Go 1.26+.
 - **Guard policies**: author and publish via MCP (`list-guard-policies` / `describe-guard-policy` / `validate-guard-policy` / `put-guard-policy`). The CLI has no policy commands. Application policies select by `label` / `action`. Coding-agent policies attach by **Execute on** (Tool call or Prompt); publishing turns them on — the hook URL must not name a policy.
 - **Docs**: https://docs.arcjet.com – narrative guides, blueprints, and product reference.
 - **Console**: https://console.arcjet.com – sites, keys, and decision history.
