@@ -175,22 +175,31 @@ Decide which of the two you want, and write it down:
 - **Allow by default.** Return `false` for unrecognized names, and assert the
   set of guarded tools in a test so an addition is caught there.
 
-A test for the second form passes the policy a tool it has no case for.
-`GuardTools` returns the same value it was given when it declines, so an
-identity comparison is what detects an unguarded tool:
+Test whichever you chose. `GuardTools` returns the same value it was given
+when it declines, so an identity comparison is what detects an unguarded tool.
+
+For **deny by default**, pass the policy a tool it has no case for and assert
+that it still comes back guarded. The unlisted tool is the point of the test:
+it fails if the default branch stops covering it.
 
 ```go
-tools := []tool.Tool{lookupOrder, issueRefund, unrecognizedTool}
+tools := []tool.Tool{lookupOrder, issueRefund, unlistedTool}
 guarded, err := agentframework.GuardTools(client, tools, toolPolicy)
 if err != nil {
 	t.Fatal(err)
 }
 for i, g := range guarded {
 	if g == tools[i] {
-		t.Errorf("tool %q came back unwrapped", g.Name())
+		t.Errorf("tool %q came back unguarded", g.Name())
 	}
 }
 ```
+
+For **allow by default**, assert the exact set you expect to be guarded. Do
+not put an unrecognized tool in that list: the policy is supposed to decline
+it, so the loop above would report it every run. Compare the guarded names
+against the names you listed, and a tool added to the agent without a policy
+case fails the test instead of shipping unguarded.
 
 A client built with `arcjet.GuardConfig{Key: "ajkey_test"}` is enough here.
 The test never reaches the Arcjet API, so this is a literal in a test rather
