@@ -61,7 +61,7 @@ See [references/cli.md](references/cli.md) for install options beyond `npx`, age
 
 #### Install the SDK with the project's package manager
 
-Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.12.0`; Python `arcjet` is `1.1.0`; Go must use a module tag, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
+Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.13.0`; Python `arcjet` is `1.2.0`; Go must use a module tag, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
 
 ### Step 3: Detect protection type and read the reference
 
@@ -132,7 +132,7 @@ Follow the patterns in the reference file from Step 3. Key principles:
 
 #### Guard (non-HTTP code):
 - Client at module scope: `launchArcjet()` (JS), `launch_arcjet()` / `launch_arcjet_sync()` (Python – match async vs sync), `NewGuardClient` (Go).
-- Rules at module scope. **One `guard()` per operation with a hardcoded slug label** (`tools.get-weather`). Interpolated labels break grep and Console grouping. Slugs: lowercase letters, digits, `-`, `.` only; start and end with a letter or digit; max 256 bytes.
+- Rules at module scope. **One `guard()` per operation with a hardcoded slug label** (`tools.get-weather`). Interpolated labels break grep and Console grouping. Slugs: lowercase letters, digits, `-`, `.`, `_` only; start and end with a lowercase letter or digit; max 256 bytes.
 - `metadata` is nested JSON for audit only. No secrets or PII. `capture()` is visibility, never a decision – flush on shutdown. Python helper `success` is not "the action ran" – see the Python Guard reference.
 - Free `guard()` (JS/Python registration) fail-opens if nothing is registered. Go has no registration API. Prefer an explicit client.
 - Prefer official wrappers over hand-wrapping. Import the **versioned** JS path and load that adapter file from Step 3. Load the dedicated Python skill from Step 3. Unversioned `@arcjet/guard/<adapter>` aliases do not resolve.
@@ -148,7 +148,8 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - Guard has no `sensitiveInfo` rule – that is HTTP `protect()` only. Use `localDetectSensitiveInfo` / `LocalDetectSensitiveInfo`.
 - Python `LocalDetectSensitiveInfo()` with neither `allow` nor `deny` fail-opens as ALLOW (`AJ1203`). Always pass a list. JS works with no args; still pass a list.
 - The sensitive-info rule does **not** inherit the client's backend. Entity types beyond `EMAIL` / `PHONE_NUMBER` / `IP_ADDRESS` / `CREDIT_CARD_NUMBER` need `backend` on the rule. Share one Rampart instance with the client.
-- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. Python 1.1.0 adapters all take `actor` / `inputs` (`server_input` / `local_input`). JS: core `guard()` plus any wrapper whose types list `actor` / `inputs` (`policyInput.server` / `policyInput.local`). On npm 1.12.0 that is `vercel-ai/v7`; later releases add the rest. Check installed types — do not pass fields a helper does not declare.
+- A label the service will not match reads as `ALLOW` with `hasFailedOpen()` / `has_failed_open()` false, so the guard silently does not run. `@arcjet/guard` 1.13.0 and PyPI `arcjet` 1.2.0 refuse one up front: adapter factories throw / raise `ArcjetInvalidLabelError`, and a capture warns `AJ1023` and still sends. Check a label you build yourself with `validateGuardLabel` / `validate_guard_label`.
+- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. Python adapters all take `actor` / `inputs` (`server_input` / `local_input`) from 1.1.0. JS: core `guard()` plus every wrapper, which take `policyInput.server` / `policyInput.local` from `@arcjet/guard` 1.13.0; on 1.12.0 only `vercel-ai/v7` did. Check installed types — do not pass fields a helper does not declare.
 - A missing decision is not a denial. If the model asks a question or masks values itself, Guard never runs. Verify in Console/CLI.
 - Guarding one tool only helps if it is the only path. Claude Agent SDK needs `settingSources: []` / `setting_sources=[]` **and** `strictMcpConfig: true` / `strict_mcp_config=True`.
 - HITL (`needsApproval`, `human_input`, `can_use_tool`, `event.interrupt()`, `always_ask`) is not a policy gate.
@@ -184,7 +185,7 @@ If you can't run the app in the current environment, tell the user exactly what 
 - **Wrong placement**: `protect()` must not be called in Express middleware or Next.js middleware. Call it inside each route handler.
 - **Wrong layer for `guard()`**: don't put `guard()` in a generic dispatcher. Use the official wrapper from the table above, or put `guard()` inside the specific tool. Load the dedicated Python skill instead of hand-wrapping.
 - **Python adapter denials and HITL:** load the dedicated skill. Capture handlers never block. HITL is not a policy gate. Helper `metadata.outcome` details live in the Python Guard reference.
-- **Hand-edited dependency manifests**: run the project's package manager so the version is real (`@arcjet/*` 1.12.0, Python `arcjet` 1.1.0).
+- **Hand-edited dependency manifests**: run the project's package manager so the version is real (`@arcjet/*` 1.13.0, Python `arcjet` 1.2.0).
 - **Double-counting**: calling `protect()` or `guard()` multiple times for the same operation counts against rate limits multiple times.
 - **Client-IP warning bypass**: never "fix" an `unverified-header` warning by copying `X-Forwarded-For` into `ipSrc` / `ip_src` / `WithIPSrc`.
 - **JS denial envelopes:** one `ArcjetDenialResult` payload; delivery is per-framework. Read the adapter file from Step 3 before inventing a status or throwing. `guardTool` and `guardAction` are different handlers.
