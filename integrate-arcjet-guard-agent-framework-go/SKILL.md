@@ -160,6 +160,42 @@ configuration error and suits package-level initialization. For MCP tools,
 wrap the output of `mcptool.ListTools` with `GuardTools` and a policy
 function that switches on the tool name.
 
+## A policy function that returns false leaves the tool unguarded
+
+`GuardTools` appends a tool unchanged when the policy function returns
+`false`, and does the same for a tool that is not a `tool.FuncTool`. Nothing
+fails, nothing logs, and the tool runs unprotected. A `switch` on the tool
+name therefore guards exactly the names it lists: add a tool later and it is
+unguarded until someone adds a case.
+
+Decide which of the two you want, and write it down:
+
+- **Deny by default.** Return a policy for every tool, with a restrictive one
+  for names the switch does not recognize. Nothing new is ever unguarded.
+- **Allow by default.** Return `false` for unrecognized names, and assert the
+  set of guarded tools in a test so an addition is caught there.
+
+A test for the second form passes the policy a tool it has no case for.
+`GuardTools` returns the same value it was given when it declines, so an
+identity comparison is what detects an unguarded tool:
+
+```go
+tools := []tool.Tool{lookupOrder, issueRefund, unrecognizedTool}
+guarded, err := agentframework.GuardTools(client, tools, toolPolicy)
+if err != nil {
+	t.Fatal(err)
+}
+for i, g := range guarded {
+	if g == tools[i] {
+		t.Errorf("tool %q came back unwrapped", g.Name())
+	}
+}
+```
+
+A client built with `arcjet.GuardConfig{Key: "ajkey_test"}` is enough here.
+The test never reaches the Arcjet API, so this is a literal in a test rather
+than a key in application code.
+
 ## Step 3: Gate an agent: `GuardMiddleware`
 
 ```go

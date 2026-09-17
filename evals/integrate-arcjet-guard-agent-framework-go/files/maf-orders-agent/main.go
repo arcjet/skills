@@ -3,6 +3,9 @@
 // The agent has two tools. lookup_order looks up an order's status.
 // issue_refund refunds an order in full. Neither tool call is rate limited,
 // screened for prompt injection, or otherwise checked before it runs.
+//
+// The context carries a Session holding the customer and conversation the run
+// belongs to.
 package main
 
 import (
@@ -21,6 +24,25 @@ import (
 
 type orderArgs struct {
 	OrderNumber string `json:"orderNumber"`
+}
+
+// Session is the customer conversation this process is serving. A real
+// application builds one per request; here it is fixed so the example runs on
+// its own. Tool handlers read it from the context they are called with.
+type Session struct {
+	CustomerID     string
+	ConversationID string
+}
+
+type sessionKey struct{}
+
+func WithSession(ctx context.Context, s Session) context.Context {
+	return context.WithValue(ctx, sessionKey{}, s)
+}
+
+func SessionFrom(ctx context.Context) (Session, bool) {
+	s, ok := ctx.Value(sessionKey{}).(Session)
+	return s, ok
 }
 
 func main() {
@@ -44,8 +66,12 @@ func run() error {
 			return fmt.Sprintf("Order %s: shipped, arriving tomorrow", in.OrderNumber), nil
 		})
 	issueRefund := functool.MustNew(functool.Config{Name: "issue_refund", Description: "Refund an order in full"},
-		func(_ context.Context, in orderArgs) (string, error) {
-			return fmt.Sprintf("Refund issued for order %s", in.OrderNumber), nil
+		func(ctx context.Context, in orderArgs) (string, error) {
+			s, ok := SessionFrom(ctx)
+			if !ok {
+				return "", errors.New("no session on the context")
+			}
+			return fmt.Sprintf("Refund issued for order %s to customer %s", in.OrderNumber, s.CustomerID), nil
 		})
 
 	a := anthropicprovider.NewAgent(anthropic.NewClient(), anthropicprovider.AgentConfig{
@@ -57,7 +83,8 @@ func run() error {
 		},
 	})
 
-	ctx := context.Background()
+	session := Session{CustomerID: "cus_8Fq2Rv", ConversationID: "conv_5Kd9Ta"}
+	ctx := WithSession(context.Background(), session)
 	for _, prompt := range []string{
 		"Where is order o-1001?",
 		"Please refund order o-1001.",
