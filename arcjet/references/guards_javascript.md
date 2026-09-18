@@ -39,7 +39,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.13.0** on **September 17, 2026**. The twelve adapters are `vercel-ai/v7`, `vercel-eve/v0`, `mastra/v1`, `langgraph/v1`, `langchain/v1`, `claude-agent-sdk/v0`, `claude-managed-agents/v0`, `openai-agents/v0`, `genkit/v1`, `strands-agents/v1`, `google-adk/v2`, and `tanstack-ai/v0`; 1.13.0 adds no new ones, gives every one of them `actor` / `inputs`, and adds `validateGuardLabel`. Prompt-injection `threshold` / `score` are **removed**. Decide timeout defaults to 2000 ms. Read the installed package's types. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.13.0** on **September 17, 2026**. The twelve adapters are `vercel-ai/v7`, `vercel-eve/v0`, `mastra/v1`, `langgraph/v1`, `langchain/v1`, `claude-agent-sdk/v0`, `claude-managed-agents/v0`, `openai-agents/v0`, `genkit/v1`, `strands-agents/v1`, `google-adk/v2`, and `tanstack-ai/v0`; 1.13.0 adds no new ones, gives every one of them `actor` / `inputs`, and adds `validateGuardLabel`. Prompt-injection `threshold` / `score` are **removed**. Decide timeout defaults to 2000 ms. `cloudflare-think/v0` is not in 1.13.0 — load [integrate-arcjet-guard-cloudflare-think](../../integrate-arcjet-guard-cloudflare-think/SKILL.md). Read the installed package's types. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
 
 ## Architecture: why things go where they do
 
@@ -173,7 +173,7 @@ JavaScript `localDetectSensitiveInfo()` works with no arguments, but always pass
 These produce code that runs without error and enforces nothing. Full list: https://docs.arcjet.com/llms.txt.
 
 - Pass `allow` or `deny` on every local sensitive-info rule. Share `backend` with the client for non-default entity types.
-- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. Import `policyInput` from `@arcjet/guard` (not an adapter path) and pass `policyInput.server` / `policyInput.local` on core `guard()` and every wrapper. Check installed types — do not pass fields a helper does not declare.
+- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. Import `policyInput` from `@arcjet/guard` (not an adapter path) and pass `policyInput.server` / `policyInput.local` on core `guard()` and every wrapper. Check installed types — do not pass fields a helper does not declare. Omit `actor` / `inputs` and those remote rules never fire. A resolver throw fail-closes. Take `actor` from authenticated server context, never from a model-produced tool argument.
 - On Genkit, OpenAI Agents, and Strands Agents, `guardTool` cannot infer `TInput` – annotate `rules: (input: { … }) => …`.
 - A missing decision is not a denial. Verify in Console/CLI.
 - Adapter-specific isolation / session / correlation traps live in that adapter file. Do not copy them from a sibling.
@@ -274,9 +274,9 @@ For tests, `registerTestClient()` from `@arcjet/guard/testing` records calls and
 
 ## Framework integrations
 
-Import the **versioned** path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/mastra`, …) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`). Core `guard()` fails open.
+Import the **versioned** path. Unversioned aliases (`@arcjet/guard/vercel-ai`, `/mastra`, `/cloudflare-think`, …) do not resolve. Wrappers fail closed by default (`onGuardError: "deny"`). Core `guard()` fails open.
 
-Load **fundamentals here, then exactly one adapter file**. Do not open sibling adapters. This table is the source of truth — `SKILL.md` links here instead of copying it.
+Load **fundamentals here, then exactly one adapter**. Do not open sibling adapters. Published adapters are `guards_js_*.md` files; unpublished Cloudflare Think is a dedicated skill. This table is the source of truth — `SKILL.md` links here instead of copying it.
 
 | Adapter | Import | Load |
 | --- | --- | --- |
@@ -292,8 +292,9 @@ Load **fundamentals here, then exactly one adapter file**. Do not open sibling a
 | Google ADK v2 | `@arcjet/guard/google-adk/v2` | [guards_js_google_adk.md](guards_js_google_adk.md) |
 | TanStack AI v0 | `@arcjet/guard/tanstack-ai/v0` | [guards_js_tanstack_ai.md](guards_js_tanstack_ai.md) |
 | Claude Managed Agents v0 | `@arcjet/guard/claude-managed-agents/v0` | [guards_js_claude_managed_agents.md](guards_js_claude_managed_agents.md) |
+| Cloudflare Think v0 | `@arcjet/guard/cloudflare-think/v0` | Until-published (not in npm 1.13.0). Official `@cloudflare/think` `>=0.3.0 <1`. Load [integrate-arcjet-guard-cloudflare-think](../../integrate-arcjet-guard-cloudflare-think/SKILL.md) for extras/peers, deny envelope, fail-closed, no ID minting, HITL, and `actor` / `inputs` + `policyInput`. |
 
-Docs are the merged pages at https://docs.arcjet.com/guards/<adapter>/. Language-specific `*-js` / `*-py` URLs redirect there. The JS SDK also ships `integrate-arcjet-guard-*` skills under `node_modules/@arcjet/guard/skills/` — this repo does not duplicate those as separately triggered skills.
+Docs are the merged pages at https://docs.arcjet.com/guards/<adapter>/. Language-specific `*-js` / `*-py` URLs redirect there. Published JS adapters also ship `integrate-arcjet-guard-*` skills under `node_modules/@arcjet/guard/skills/` — this repo does not duplicate those. Cloudflare Think is unpublished, so it is a dedicated skill here instead of a `guards_js_*.md` file.
 
 ### Denial responses
 
