@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/google-adk/
 
-Exports: `guardPlugin`, `googleAdkContext`. There is no `guardTool`. There is no unversioned `@arcjet/guard/google-adk` alias. This is JS `@google/adk` `>=2 <3` `Runner` + `LlmAgent` + `FunctionTool`. Not Python / Go / Java ADK. Ships in `@arcjet/guard` **1.12.0** — `npm install @arcjet/guard`. Optional peer `@google/adk` `>=2 <3`. Example: [`examples/google-adk-agent`](https://github.com/arcjet/examples/tree/main/examples/google-adk-agent).
+Exports: `guardPlugin`, `googleAdkContext`. There is no `guardTool`. There is no unversioned `@arcjet/guard/google-adk` alias. This is JS `@google/adk` `>=2 <3` `Runner` + `LlmAgent` + `FunctionTool`. Not Python / Go / Java ADK. Python is `arcjet.guard.google_adk` (`guard_tool` + `guard_plugin` + `google_adk_context`) — load [integrate-arcjet-guard-google-adk-py](../../integrate-arcjet-guard-google-adk-py/SKILL.md). Do not use this JS `@arcjet/guard/google-adk/v2` path for Python. Ships in `@arcjet/guard` **1.12.0** — `npm install @arcjet/guard`. Optional peer `@google/adk` `>=2 <3`. Example: [`examples/google-adk-agent`](https://github.com/arcjet/examples/tree/main/examples/google-adk-agent).
 
 Three gotchas first:
 
