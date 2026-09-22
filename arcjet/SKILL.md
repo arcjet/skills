@@ -1,7 +1,7 @@
 ---
 name: arcjet
 license: Apache-2.0
-description: Add Arcjet security protection to HTTP routes, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection, sensitive information blocking (including Rampart NER), content moderation, capture/flush, remote Guard policies, typed inputs, and abuse prevention. Works in JavaScript/TypeScript, Python, and Go. HTTP frameworks share this skill. JS Guard adapters (Vercel AI SDK, Eve, Mastra, LangChain, LangGraph, OpenAI Agents, Genkit, Google ADK, Strands, TanStack AI, Claude Agent SDK, Claude Managed Agents) are per-adapter reference files loaded from Step 3 — do not keep the whole JS Guard reference in context. Official Python LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents have dedicated integrate-arcjet-guard skills. Microsoft Agent Framework for Go has a dedicated integrate-arcjet-guard-agent-framework-go skill. Use when the user wants security, rate limiting, bot protection, or abuse prevention – "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," or "prevent abuse" – even without naming Arcjet.
+description: Add Arcjet security protection to HTTP routes, AI agent tool calls, MCP servers, background jobs, and queue workers. Covers rate limiting, bot detection, email validation, prompt injection, sensitive information blocking (including Rampart NER), content moderation, capture/flush, remote Guard policies, typed inputs, and abuse prevention. Works in JavaScript/TypeScript, Python, and Go. HTTP frameworks share this skill. JS Guard adapters that ship on npm are per-adapter reference files loaded from Step 3 — do not keep the whole JS Guard reference in context. Official Python adapters (including Google ADK) have dedicated integrate-arcjet-guard skills, as do JS Cloudflare Think and Microsoft Agent Framework for Go. Use when the user wants security, rate limiting, bot protection, or abuse prevention – "protect my API," "rate limit tool calls," "block bots," "secure my endpoint," or "prevent abuse" – even without naming Arcjet.
 metadata:
   author: arcjet
 ---
@@ -14,7 +14,7 @@ metadata:
 - [Choose protections](#choose-protections)
 - [Resources](#resources)
 
-Python Guard adapters for LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, and Strands Agents are dedicated skills (see Step 3). JS Guard adapters are per-file references under `references/guards_js_*.md`. Shared fundamentals stay in [references/guards_javascript.md](references/guards_javascript.md) and [references/guards_python.md](references/guards_python.md).
+Python Guard adapters for LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Claude Managed Agents, Strands Agents, and Google ADK are dedicated skills (see Step 3). JS Guard adapters that ship on npm are per-file references under `references/guards_js_*.md`. Unpublished JS Cloudflare Think is a dedicated skill. Shared fundamentals stay in [references/guards_javascript.md](references/guards_javascript.md) and [references/guards_python.md](references/guards_python.md).
 
 ## Add Arcjet protection to your app
 
@@ -75,7 +75,7 @@ Determine which protection type applies:
 | **Go SDK** | `github.com/arcjet/arcjet-go` (with `NewClient`) | `github.com/arcjet/arcjet-go` (with `NewGuardClient`) |
 | **Entry point** | `protect(request)` / `Protect(ctx, r)` | Core JS `guard({ label, rules })`; Python `guard(label, …)`; Go `Guard(ctx, request)`. Wrappers take `action`, not `label`. |
 
-A single project can use both – for example, request-based on API routes and Guard on agent tool calls. If the project already uses a supported agent framework, prefer the official wrapper over hand-wrapping every tool. In Python, load the dedicated skill (table below) — not a raw `guard()` around every callable, and not the JS `@arcjet/guard/...` path. In JavaScript, load fundamentals plus **exactly one** adapter file from the JS table — not the sibling adapters. In Go, load the Microsoft Agent Framework skill when that framework is present; otherwise use `GuardAction` from the Go Guard reference.
+A single project can use both – for example, request-based on API routes and Guard on agent tool calls. If the project already uses a supported agent framework, prefer the official wrapper over hand-wrapping every tool. In Python, load the dedicated skill (table below) — not a raw `guard()` around every callable, and not the JS `@arcjet/guard/...` path. In JavaScript, load fundamentals plus **exactly one** adapter from the JS table — not the sibling adapters. Cloudflare Think loads [integrate-arcjet-guard-cloudflare-think](../integrate-arcjet-guard-cloudflare-think/SKILL.md) from that table, not a `guards_js_*.md` file and not `@arcjet/guard/vercel-ai/v7`. Install published `@arcjet/guard` plus the `@cloudflare/think` peer. In Go, load the Microsoft Agent Framework skill when that framework is present; otherwise use `GuardAction` from the Go Guard reference.
 
 **Coding-agent hooks (Claude Code / GitHub Copilot) are a third path.** There is no SDK and no `guard()` call. Publishing a policy attached to **Execute on** (Tool call or Prompt) turns it on. Install the HTTP hooks from https://docs.arcjet.com/coding-agents — copy the templates, do not invent URLs. Hook URLs must not name a policy and must omit `?surface=` (managed settings reach CLI, IDE, Desktop, and cloud; a hard-coded `cli` mislabels most traffic). Author the policy via MCP ([references/mcp.md](references/mcp.md)).
 
@@ -95,7 +95,7 @@ Read the appropriate reference:
 - **Guard Python**: [references/guards_python.md](references/guards_python.md)
 - **Guard Go**: [references/guards_go.md](references/guards_go.md)
 
-When the project already uses an official JS agent framework, open the fundamentals file and load **exactly one** adapter from its table. Do not open sibling adapters.
+When the project already uses an official JS agent framework, open the fundamentals file and load **exactly one** adapter from its table. Do not open sibling adapters. Cloudflare Think is the dedicated-skill exception: load that skill from the table.
 
 When the project already uses an official Python agent framework, load the dedicated skill instead of the long adapter sections that used to live in the Python Guard reference:
 
@@ -107,6 +107,7 @@ When the project already uses an official Python agent framework, load the dedic
 | Claude Agent SDK | `arcjet.guard.claude_agent_sdk` | [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md) |
 | Claude Managed Agents | `arcjet.guard.claude_managed_agents` | [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md) |
 | Strands Agents | `arcjet.guard.strands_agents` | [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md) |
+| Google ADK (`LlmAgent` / `Runner`) | `arcjet.guard.google_adk` | [integrate-arcjet-guard-google-adk-py](../integrate-arcjet-guard-google-adk-py/SKILL.md) |
 
 When the project is Go and already uses Microsoft Agent Framework for Go, load the dedicated skill:
 
@@ -141,9 +142,9 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - **Branch on which rule denied**, not just `DENY`. Guard `decision.reason` is a flat string (`"PROMPT_INJECTION"`) and is `undefined` on ALLOW. A denial by one rule still spends the others' budget in the same `rules` array – split calls if a PII false positive must not drain a rate limit.
 - Every rate-limit rule needs a `key` and a `bucket`. Use a trusted user/session id when you have one; otherwise a stable identifier you control.
 
-**JS adapters:** wrappers fail closed; core `guard()` fails open. Load the Step 3 file for the project's framework. `npm install @arcjet/guard` is enough — every listed adapter, plus `actor` / `inputs` / `validateGuardLabel`, ships in **1.13.0**.
+**JS adapters:** wrappers fail closed; core `guard()` fails open. Load the Step 3 file (or the Cloudflare Think skill) for the project's framework. `npm install @arcjet/guard` or `pnpm add @arcjet/guard` is enough for every published adapter — plus `actor` / `inputs` / `validateGuardLabel`. Cloudflare Think is the same published `@arcjet/guard` install plus peer `@cloudflare/think`; load [integrate-arcjet-guard-cloudflare-think](../integrate-arcjet-guard-cloudflare-think/SKILL.md). Do not pin a git SHA.
 
-**Python:** `guard_action` / `guard_action_sync` is core. Load the dedicated skill for the project's extra (`arcjet[langchain]`, `arcjet[langchain-agents]`, `arcjet[openai-agents]`, `arcjet[claude-agent-sdk]`, `arcjet[claude-managed-agents]`, `arcjet[strands-agents]`). There is no `arcjet[crewai]` extra. `validate_guard_label` and adapter `actor` / `inputs` are in PyPI `arcjet` **1.2.0**.
+**Python:** `guard_action` / `guard_action_sync` is core. Load the dedicated skill for the project's extra (`arcjet[langchain]`, `arcjet[langchain-agents]`, `arcjet[openai-agents]`, `arcjet[claude-agent-sdk]`, `arcjet[claude-managed-agents]`, `arcjet[strands-agents]`, `arcjet[google-adk]`). There is no `arcjet[crewai]` extra. `validate_guard_label` and adapter `actor` / `inputs` are in PyPI `arcjet` **1.2.0**. Google ADK is `pip install "arcjet[google-adk]"` or `uv add "arcjet[google-adk]"` — load [integrate-arcjet-guard-google-adk-py](../integrate-arcjet-guard-google-adk-py/SKILL.md). Do not pin a git SHA.
 
 **Traps that run without error and enforce nothing** (full write-up in the Guard references and https://docs.arcjet.com/llms.txt):
 
@@ -202,7 +203,8 @@ When you need to pick which rules address the user's concern – bot abuse, rate
 For exact API signatures, parameter names, and the full set of rules and helpers, read the installed SDK's source – types and docstrings are the source of truth:
 
 - **Python SDK**: https://github.com/arcjet/arcjet-py – `arcjet` package (request protection) and `arcjet.guard` subpackage (non-HTTP guard).
-- **Python Guard integration skills**: [integrate-arcjet-guard-langchain-py](../integrate-arcjet-guard-langchain-py/SKILL.md), [integrate-arcjet-guard-crewai](../integrate-arcjet-guard-crewai/SKILL.md), [integrate-arcjet-guard-openai-agents-py](../integrate-arcjet-guard-openai-agents-py/SKILL.md), [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md), [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md), [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md).
+- **Python Guard integration skills**: [integrate-arcjet-guard-langchain-py](../integrate-arcjet-guard-langchain-py/SKILL.md), [integrate-arcjet-guard-crewai](../integrate-arcjet-guard-crewai/SKILL.md), [integrate-arcjet-guard-openai-agents-py](../integrate-arcjet-guard-openai-agents-py/SKILL.md), [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md), [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md), [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md), [integrate-arcjet-guard-google-adk-py](../integrate-arcjet-guard-google-adk-py/SKILL.md).
+- **JS Cloudflare Think skill**: [integrate-arcjet-guard-cloudflare-think](../integrate-arcjet-guard-cloudflare-think/SKILL.md).
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`). JS Guard adapter files: [references/guards_js_vercel_ai.md](references/guards_js_vercel_ai.md) and siblings listed in Step 3.
 - **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. `go get github.com/arcjet/arcjet-go` resolves **v1.0.0** (Go 1.25+). Microsoft Agent Framework helpers live in a separate module: `go get github.com/arcjet/arcjet-go/agentframework` resolves **v0.1.0** and needs Go 1.26+.
 - **Guard policies**: author and publish via MCP (`list-guard-policies` / `describe-guard-policy` / `validate-guard-policy` / `put-guard-policy`). The CLI has no policy commands. Application policies select by `label` / `action`. Coding-agent policies attach by **Execute on** (Tool call or Prompt); publishing turns them on — the hook URL must not name a policy and must omit `?surface=`. Install templates: https://docs.arcjet.com/coding-agents.
