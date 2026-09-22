@@ -16,7 +16,7 @@ arcjet/                                    # Shared skill (HTTP + Guard fundamen
     ├── guards_js_<adapter>.md             # One JS adapter each — load exactly one
     ├── guards_python.md                   # Python Guard fundamentals
     └── …
-integrate-arcjet-guard-<adapter>[-py]/     # Dedicated Python Guard adapter skills (+ unpublished JS Cloudflare Think)
+integrate-arcjet-guard-<adapter>[-py]/     # Dedicated Python Guard adapter skills (+ JS Cloudflare Think)
 └── SKILL.md
 evals/
 └── skill-name/
@@ -29,7 +29,7 @@ evals/
 
 Dedicated Guard adapter skills follow the `integrate-arcjet-guard-*` conventions (`name`, `description`, `license`, `compatibility`, `metadata.author` / `type` / `library`). Use a `-py` suffix when the JS SDK already ships the same adapter name (Google ADK JS is `integrate-arcjet-guard-google-adk` in `@arcjet/guard`; Python is `integrate-arcjet-guard-google-adk-py`). Cloudflare Think is JS-only, so it is unsuffixed. Shared fundamentals stay in `arcjet/references/guards_*.md` — do not copy adapter wiring back into those files.
 
-JS Guard adapters that already ship on npm stay as `references/guards_js_*.md` behind the shared `arcjet` skill. The adapter routing table lives only in `guards_javascript.md` — `SKILL.md` links there instead of copying it. Do not add a separately triggered skill per published JS adapter (the npm package already ships those `integrate-arcjet-guard-*` under `node_modules/@arcjet/guard/skills/`). Unpublished JS adapters that are not in the npm package yet (currently Cloudflare Think) live as a dedicated `integrate-arcjet-guard-*` skill here and are listed in that table. Do not put adapter wiring back into `guards_javascript.md`. HTTP frameworks stay in the request references — do not split Next.js / Express / FastAPI into their own skills.
+JS Guard adapters that ship inside `@arcjet/guard` stay as `references/guards_js_*.md` behind the shared `arcjet` skill. The adapter routing table lives only in `guards_javascript.md` — `SKILL.md` links there instead of copying it. Do not add a separately triggered skill per JS adapter that already has a `guards_js_*.md` file (the npm package ships those `integrate-arcjet-guard-*` under `node_modules/@arcjet/guard/skills/`). Cloudflare Think is the JS adapter taught here as `integrate-arcjet-guard-cloudflare-think` and listed in that table. Do not put adapter wiring back into `guards_javascript.md`. HTTP frameworks stay in the request references — do not split Next.js / Express / FastAPI into their own skills.
 
 ## skill-creator
 

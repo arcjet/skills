@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-google-adk-py
 description: Integrate Arcjet Guard into Python Google ADK — assign guard_tool to LlmAgent(before_tool_callback=), put guard_plugin first on Runner(plugins=) so a deny dict with arcjetDenied skips the tool, and read a caller-owned id via google_adk_context. Use when asked to add Arcjet to google-adk, Google ADK Python, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python google-adk 2.x, not JS @google/adk and not @google/genai.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official google-adk>=2.0.0,<3 via arcjet[google-adk] (safe extra, no chromadb). This is LlmAgent.before_tool_callback plus Runner BasePlugin. DENY is a skip dict with arcjetDenied. Until-published — pin arcjet to git SHA a71970dc6d434a47e77e71e35fd485ac1be7ab14; not in PyPI 1.2.0.
+compatibility: Requires Python >= 3.10 and official google-adk>=2.0.0,<3 via the published arcjet[google-adk] extra (safe extra, no chromadb). Install with pip install or uv add. This is LlmAgent.before_tool_callback plus Runner BasePlugin. DENY is a skip dict with arcjetDenied.
 metadata:
   author: arcjet
   type: core
@@ -50,7 +50,7 @@ There is no `/guards/google-adk-py/` docs page. Do not invent one.
 The JS adapter page is https://docs.arcjet.com/guards/google-adk/
 — this skill is the Python teaching. Example:
 [`examples/fastapi-google-adk-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-google-adk-guard)
-(pins `a71970dc`). Do not invent a second example name.
+on arcjet-py `main`. Do not invent a second example name.
 
 ## The gate is `before_tool_callback` skip dict
 
@@ -170,12 +170,12 @@ Ask only what you cannot infer from the code; suggest defaults.
 
 ## Step 1: Install and find the guard client
 
-Until-published: PyPI `arcjet` 1.2.0 does not include this module.
-Pin `arcjet` to git SHA `a71970dc6d434a47e77e71e35fd485ac1be7ab14`
-(`david/cursor/google-adk-guard-5549`):
+Install the published extra. Use the package manager the project
+already uses — do not pin a git SHA:
 
 ```bash
-pip install "arcjet[google-adk] @ git+https://github.com/arcjet/arcjet-py.git@a71970dc6d434a47e77e71e35fd485ac1be7ab14"
+pip install "arcjet[google-adk]"
+uv add "arcjet[google-adk]"
 ```
 
 The extra pulls `google-adk>=2.0.0,<3`. If the agent has no guard
@@ -346,5 +346,5 @@ uncorrelated rather than joined to a generated id.
 
 Worked example:
 [`examples/fastapi-google-adk-guard`](https://github.com/arcjet/arcjet-py/tree/main/examples/fastapi-google-adk-guard)
-(pins `a71970dc`). Do not invent a second example name. Do not add
+on arcjet-py `main`. Do not invent a second example name. Do not add
 an example in this skills repo.
