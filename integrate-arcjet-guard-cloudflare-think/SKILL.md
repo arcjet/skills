@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-cloudflare-think
 description: Integrate Arcjet Guard into Cloudflare Think — delegate beforeToolCall to guardHooks so a DENY substitutes or blocks the tool, and read a caller-owned id via cloudflareThinkContext. Use when asked to add Arcjet to @cloudflare/think, Cloudflare Agents Think, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Cloudflare Think, not the Vercel AI SDK and not needsApproval HITL.
 license: Apache-2.0
-compatibility: Requires official @cloudflare/think >=0.3.0 <1 as a peer of published @arcjet/guard. Install with npm install or pnpm add. Local Node.js follows the @arcjet/guard runtime floor (>=22.21.0 <23 || >=24.5.0). Cloudflare Workers need nodejs_compat and compat date 2025-09-01. Path is /v0. Do not use @arcjet/guard/vercel-ai/v7.
+compatibility: Requires official @cloudflare/think >=0.3.0 <1 as a peer of published @arcjet/guard. Install with npm install or pnpm add. Local Node.js follows the @arcjet/guard runtime floor (>=22.21.0 <23 || >=24.5.0). Cloudflare Workers need nodejs_compat and compat date 2025-09-01 or later (minimum, not an exact pin). Path is /v0. Do not use @arcjet/guard/vercel-ai/v7.
 metadata:
   author: arcjet
   type: core
@@ -206,7 +206,8 @@ const lookupLimit = tokenBucket({
   intervalSeconds: 60,
   maxTokens: 10,
 });
-// Per conversation: authenticated caller + caller-owned conversation id.
+// From auth middleware or Durable Object state you already trust.
+// Not this.ctx.id / this.name, and not a model-produced argument.
 const userId = authenticatedUserId;
 const conversationId = authenticatedConversationId;
 

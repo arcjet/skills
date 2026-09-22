@@ -197,7 +197,7 @@ at import time.
 ```python
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from arcjet.guard import DetectPromptInjection, TokenBucket, launch_arcjet, server_input
+from arcjet.guard import TokenBucket, launch_arcjet, server_input
 from arcjet.guard.google_adk import google_adk_context, guard_plugin, guard_tool
 
 aj = launch_arcjet(key=os.environ["ARCJET_KEY"])
@@ -208,7 +208,6 @@ lookup_limit = TokenBucket(
     interval_seconds=60,
     max_tokens=10,
 )
-inbound = DetectPromptInjection()
 # Per request: authenticated caller + caller-owned conversation id.
 user_id = authenticated_user_id
 conversation_id = authenticated_conversation_id
@@ -278,9 +277,14 @@ runner = Runner(
 
 ## Step 4: Screen inbound before `runner.run_async`
 
+`google_adk_context` accepts `sessionId` or `session_id` (same for
+`correlationId` / `conversationId`). CamelCase is not required.
+
 ```python
 from google.genai import types
+from arcjet.guard import DetectPromptInjection
 
+inbound = DetectPromptInjection()
 app_context = {"sessionId": conversation_id}
 derived = google_adk_context(app_context)
 decision = await aj.guard(
