@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-cloudflare-think
 description: Integrate Arcjet Guard into Cloudflare Think — delegate beforeToolCall to guardHooks so a DENY substitutes or blocks the tool, and read a caller-owned id via cloudflareThinkContext. Use when asked to add Arcjet to @cloudflare/think, Cloudflare Agents Think, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Cloudflare Think, not the Vercel AI SDK and not needsApproval HITL.
 license: Apache-2.0
-compatibility: Requires official @cloudflare/think >=0.3.0 <1 as a peer of published @arcjet/guard. Install with npm install or pnpm add. Local Node.js follows the @arcjet/guard runtime floor (>=22.21.0 <23 || >=24.5.0). Cloudflare Workers need nodejs_compat and compat date 2025-09-01 or later (minimum, not an exact pin). Path is /v0. Do not use @arcjet/guard/vercel-ai/v7.
+compatibility: Requires official @cloudflare/think >=0.3.0 <1 as a peer of `@arcjet/guard` that exports `/cloudflare-think/v0`. That path is **not** in npm `@arcjet/guard` **1.13.0** (it is on `arcjet-js` main / the open 1.14.0 release). Until that release publishes, install from the `arcjet-js` workspace or wait — do not invent a git SHA. Local Node.js follows the `@arcjet/guard` runtime floor (>=22.21.0 <23 || >=24.5.0). Cloudflare Workers need nodejs_compat and compat date 2025-09-01 or later (minimum, not an exact pin). Path is /v0. Do not use @arcjet/guard/vercel-ai/v7.
 metadata:
   author: arcjet
   type: core
@@ -168,14 +168,19 @@ Ask only what you cannot infer from the code; suggest defaults.
 
 ## Step 1: Install and find the guard client
 
-Install published `@arcjet/guard` and the `@cloudflare/think` peer.
-Use the package manager the project already uses — do not pin a
-git SHA:
+`@arcjet/guard/cloudflare-think/v0` is **not** an export of npm
+`@arcjet/guard` **1.13.0**. Prefer waiting for the next release that
+exports it (open release work is `@arcjet/guard` **1.14.0**), then:
 
 ```bash
 npm install @arcjet/guard @cloudflare/think
 pnpm add @arcjet/guard @cloudflare/think
 ```
+
+Until that release, install from the `arcjet-js` workspace / main tree
+the project already uses for development — do not invent a git SHA.
+Confirm `import "@arcjet/guard/cloudflare-think/v0"` resolves before
+wiring hooks.
 
 Peer range is `@cloudflare/think` `>=0.3.0 <1`. The versioned path
 `@arcjet/guard/cloudflare-think/v0` resolves; the unversioned
