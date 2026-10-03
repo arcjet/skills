@@ -63,9 +63,12 @@ the original send runs — the only place a turn can be declined before
 the hosted harness reads the prompt. Inbound `rules` receive
 `{"prompt", "content", "type"}` from `message_arguments()` — not the JS
 `{ text, events }`. `guard_custom_tool(run=…)` returns
-`await handler(event, send=…, session_id=…)`. Built-ins never enter that
-handler. Optional `tool=` wraps a self-hosted `@beta_tool` `run` the
-same way; the CLI worker cannot register custom tools.
+`await handler(event, send=…, anthropic_session_id=…)`. The handler
+uses `anthropic_session_id` (Anthropic's `ses_…`) only to post
+`user.custom_tool_result`; the wrap-time `session_id=` is the
+caller-owned correlation id. Built-ins never enter that handler.
+Optional `tool=` wraps a self-hosted `@beta_tool` `run` the same way;
+the CLI worker cannot register custom tools.
 
 ## Custom-tool denial is `user.custom_tool_result` with `is_error`
 
@@ -217,7 +220,7 @@ with client.beta.sessions.events.stream(session_id=session.id) as stream:
             await handle_lookup(
                 event,
                 send=client.beta.sessions.events.send,
-                session_id=session.id,
+                anthropic_session_id=session.id,
             )
         # agent.tool_use / always_ask + user.tool_confirmation are not this policy gate
 ```
