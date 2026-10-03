@@ -11,7 +11,7 @@ Exports: `guardTool`, `guardApproval`, `guardInbound`, `arcjetHooks`, `eveAgentC
 - **`approval` is one field.** It can be a function (request-time only) or `{ request, response }`. You cannot compose `guardApproval` with Eve's `always()` / `once()` / `never()`.
 - Omit `response` and `guardApproval()` returns Eve's `ApprovalPolicy` function. Set `response` and it returns `{ request, response }` (`ApprovalConfiguration`).
 - **`onAllow: "user-approval"`** parks the call for a human after the request-time gate.
-- Optional `response` is `GuardApprovalResponsePolicy` against Eve's `ApprovalResponseContext`. Use it to authorize who may approve a parked HITL request (for example key a limit on `ctx.responder.principalId`). The request-time policy typically keys on `ctx.session.id` – split buckets, don't share one.
+- Optional `response` is `GuardApprovalResponsePolicy` against Eve's `ApprovalResponseContext`. Use it to authorize who may approve a parked HITL request (for example key a limit on `ctx.response.principal.principalId`). Eve releases before 0.69 expose the responder as `ctx.responder` instead. The request-time policy typically keys on `ctx.session.id` – split buckets, don't share one.
 - Response-time ALLOW → `{ status: "allowed" }`. If the response policy denies the responder, or Arcjet is unreachable and `onGuardError` is `"deny"` (default), it returns `{ status: "rejected", reason }` and the approval stays pending. A rejection does not deny the tool.
 - Request-time denials remain `{ type: "denied", reason }`. HITL clients answer with `cancel`, not `deny`.
 - Fail closed by default (`onGuardError: "deny"`).
@@ -44,7 +44,7 @@ export default defineOpenAPIConnection({
     onAllow: "user-approval",
     response: {
       action: "weather.approved",
-      rules: (ctx) => [approverLimit({ key: ctx.responder.principalId, requested: 1 })],
+      rules: (ctx) => [approverLimit({ key: ctx.response.principal.principalId, requested: 1 })],
     },
   }),
   operations: {
