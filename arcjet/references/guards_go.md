@@ -88,7 +88,7 @@ if decision.IsDenied() {
 }
 ```
 
-Labels are validated as slugs: lowercase letters, digits, dash (`-`), dot (`.`), and underscore (`_`), starting and ending with a lowercase letter or digit. Uppercase is rejected, so use `tools.get-weather` or `tools.get_weather`, not `tools.getWeather`. Prefer dash/dot in new labels. Check a label you build yourself with `ValidateGuardLabel`. A slug the service will not match reads as `ALLOW` with `HasFailedOpen()` false, so the guard does not run. `Capture` warns `AJ1023` and still sends.
+Labels are validated as slugs: ASCII letters of either case, digits, dash (`-`), dot (`.`), and underscore (`_`), starting and ending with a letter or digit. A label is matched case-sensitively, so `Order.looked-up` and `order.looked-up` are different labels. Uppercase letters need **v1.2.0**; earlier versions reject them. Prefer dash/dot in new labels. Check a label you build yourself with `ValidateGuardLabel`. A slug the service will not match reads as `ALLOW` with `HasFailedOpen()` false, so the guard does not run. `Capture` warns `AJ1023` and still sends.
 
 ## Rate limits and keys
 

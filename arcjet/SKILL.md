@@ -137,7 +137,7 @@ Follow the patterns in the reference file from Step 3. Key principles:
 
 #### Guard (non-HTTP code):
 - Client at module scope: `launchArcjet()` (JS), `launch_arcjet()` / `launch_arcjet_sync()` (Python – match async vs sync), `NewGuardClient` (Go).
-- Rules at module scope. **One `guard()` per operation with a hardcoded slug label** (`tools.get-weather`). Interpolated labels break grep and Console grouping. Slugs: lowercase letters, digits, `-`, `.`, `_` only; start and end with a lowercase letter or digit; max 256 bytes.
+- Rules at module scope. **One `guard()` per operation with a hardcoded slug label** (`tools.get-weather`). Interpolated labels break grep and Console grouping. Slugs: ASCII letters of either case, digits, `-`, `.`, `_` only; start and end with a letter or digit; max 256 bytes. Matched case-sensitively, so `Order.looked-up` and `order.looked-up` are different labels.
 - `metadata` is nested JSON for audit only. No secrets or PII. `capture()` is visibility, never a decision – flush on shutdown. Python helper `success` is not "the action ran" – see the Python Guard reference.
 - Free `guard()` (JS/Python registration) fail-opens if nothing is registered. Go has no registration API. Prefer an explicit client.
 - Prefer official wrappers over hand-wrapping. Import the **versioned** JS path and load that adapter file from Step 3. Load the dedicated Python skill from Step 3. Unversioned `@arcjet/guard/<adapter>` aliases do not resolve.
