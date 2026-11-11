@@ -187,7 +187,7 @@ These produce code that runs without error and enforces nothing. Full list: http
 
 ### On-device Rampart backend
 
-Install `@arcjet/sensitive-info-rampart` and pass `backend: rampart()`. `rampartEntities` is the full type list. Custom patterns: `rampart({ recognizers: [...defaultRecognizers, fn] })`. Rampart's bundled loader needs Node/Bun/Deno with filesystem access – on Workers pass your own `rampart({ classify })`. Next.js: add `@arcjet/sensitive-info-rampart`, `@huggingface/transformers`, `onnxruntime-node` to `serverExternalPackages`. There is no input-length option in 1.15.0; bound text size before it reaches Guard.
+Install `@arcjet/sensitive-info-rampart` and pass `backend: rampart()`. `rampartEntities` is the full type list. Custom patterns: `rampart({ recognizers: [...defaultRecognizers, fn] })`. Rampart's bundled loader needs Node/Bun/Deno with filesystem access – on Workers pass your own `rampart({ classify })`. Next.js: add `@arcjet/sensitive-info-rampart`, `@huggingface/transformers`, `onnxruntime-node` to `serverExternalPackages`. `rampart({ maxInputChars })` defaults to 100,000 UTF-16 code units and must be a positive safe integer. Over the limit, the rule returns DENY with no detected entities, without scanning – a `LOCAL` policy input is denied the same way; in `DRY_RUN` the denial is recorded, not enforced. For longer text or PHI, send a `SERVER` input to the server-side detector (~100 KB per value, at most two values over 2 KB per call – split longer text across calls).
 
 ```typescript
 import { localDetectSensitiveInfo } from "@arcjet/guard";

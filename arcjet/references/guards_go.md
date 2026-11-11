@@ -116,7 +116,7 @@ An empty `Bucket` defaults to `default-token-bucket`, `default-fixed-window`, or
 - `GuardPromptInjection` – untrusted text before it reaches a model or tool argument. Max 128 KiB; a live rule denies larger text (`AJ1131`). Split long text. Optional `Billing` (`tokens`).
 - `GuardModerateContent` – evaluates the first 60 KB only (warning `AJ1142`); over 128 KiB denies (`AJ1141`). Use separate labels for input and output. `ExperimentalGuardModerateContent` is a deprecated alias.
 - For both: gate on `decision.IsDenied() || decision.HasFailedOpen()`, never on a reason match alone. Empty text gives an error result.
-- `GuardSensitiveInfo` – on-device. Set `Backend` to one shared `rampart.New(...)`; without it only email, phone, IP, and card are detected. Rampart scans the first `MaxInputChars` (default **4,096**) and truncates the rest with a logged warning – raise it for long text. Custom detection: `rampart.Options.Recognizers`.
+- `GuardSensitiveInfo` – on-device. Set `Backend` to one shared `rampart.New(...)`; without it only email, phone, IP, and card are detected. `MaxInputChars` defaults to **4,096** code points – raise it for long text. Over the limit, the rule returns DENY with no detected entities, without scanning – a `LOCAL` policy input is denied the same way; in `DRY_RUN` the denial is recorded, not enforced. For longer text or PHI, send a `SERVER` input to the server-side detector (~100 KB per value, at most two values over 2 KB per call – split longer text across calls). Custom detection: `rampart.Options.Recognizers`.
 - `GuardCustom` – runs your local function and reports the result. Keep it deterministic and side-effect free.
 - One `Guard` call evaluates at most 50 rules; the rest are `NOT_RUN` with warning `AJ1003`.
 

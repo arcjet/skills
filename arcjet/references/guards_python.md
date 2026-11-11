@@ -162,7 +162,7 @@ sensitive = LocalDetectSensitiveInfo(
 )
 ```
 
-Rampart scans only the first `max_input_chars` (default 100,000 code points), logs a warning, and **does not deny** the unscanned tail – cap input size yourself. Inference is synchronous and blocks the event loop; the first call loads the model. Custom detection and options: [requests_python.md](requests_python.md#sensitive-info-on-rampart). PHI types (`MEDICAL_RECORD_NUMBER`, …) are detected only by the server-side detector in a remote policy, never on-device.
+Rampart's `max_input_chars` defaults to 100,000 code points. Over the limit, the rule returns DENY with no detected entities, without scanning – a `LOCAL` policy input is denied the same way; in `DRY_RUN` the denial is recorded, not enforced. For longer text or PHI, send a `SERVER` input to the server-side detector (~100 KB per value, at most two values over 2 KB per call – split longer text across calls). Inference is synchronous and blocks the event loop; the first call loads the model. Custom detection and options: [requests_python.md](requests_python.md#sensitive-info-on-rampart). PHI types (`MEDICAL_RECORD_NUMBER`, …) are detected only by the server-side detector in a remote policy, never on-device.
 
 ### Content moderation
 

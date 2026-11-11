@@ -97,7 +97,7 @@ arcjet.SensitiveInfo(arcjet.SensitiveInfoOptions{
 ```
 
 - Without `Backend` only email, phone, IP, and card are detected. Set it on every rule; `rampart.Entities()` returns the full set.
-- `rampart.Options.MaxInputChars` defaults to **4,096** characters. Longer text is truncated: only the prefix is scanned and a warning is logged. Raise it for long input and cap the request body size in the handler.
+- **Length limit:** Rampart denies input over `rampart.Options.MaxInputChars` (default **4,096** code points – far lower than JS/Python; raise it for long fields) **without scanning any of it** – it never scans a prefix and lets the rest through. The denial has an ERROR reason: `decision.IsDenied()` and `decision.Reason.IsError()` are true, `Reason.IsSensitiveInfo()` is false, so an arm that checks only the sensitive-info reason lets it through – keep the catch-all deny. Optionally answer 413. `DRY_RUN` logs a warning and doesn't deny. The limit must be a positive integer; there is no unlimited setting. For longer text or PHI, use the server-side detector (`SERVER` input, ~100 KB per value). Don't add your own length pre-check. A custom backend declares its limit by implementing `SensitiveInfoBackendLimiter` (`MaxInputChars() int`). Calling `Detect` directly still scans only the prefix.
 - Custom detection is `rampart.Options.Recognizers` (`append(rampart.DefaultRecognizers, fn)`, `fn func(string) []rampart.DetectedSpan`, byte offsets). Recognizers win over the model on overlap. `Config.SensitiveInfoDetect` and `ContextWindowSize` are ignored by Rampart.
 - Arcjet receives entity types and positions, never the matched text. PHI types (`MEDICAL_RECORD_NUMBER`, …) are not detected on-device; they need the server-side detector in a remote Guard policy.
 
