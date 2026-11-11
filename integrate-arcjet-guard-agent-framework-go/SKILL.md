@@ -143,6 +143,15 @@ guarded := agentframework.MustGuardTool(guard, issueRefund, agentframework.ToolP
 	Actor: func(ctx context.Context, _ json.RawMessage) (string, error) {
 		return userIDFromContext(ctx)
 	},
+	Inputs: func(_ context.Context, raw json.RawMessage) (map[string]arcjet.GuardPolicyInput, error) {
+		var in refundArgs
+		if err := json.Unmarshal(raw, &in); err != nil {
+			return nil, err
+		}
+		return map[string]arcjet.GuardPolicyInput{
+			"amount": arcjet.GuardPolicyServerInteger(in.AmountCents),
+		}, nil
+	},
 	Rules: agentframework.Args(func(ctx context.Context, in refundArgs) ([]arcjet.GuardRuleInput, error) {
 		userID, err := userIDFromContext(ctx)
 		if err != nil {
@@ -154,9 +163,12 @@ guarded := agentframework.MustGuardTool(guard, issueRefund, agentframework.ToolP
 })
 ```
 
-`Actor` and `Rules` run per call and receive the call's context, so read the
-caller's identity from there. A package-level or captured variable holds one
-user for the life of the process: every caller would share one rate-limit
+`Actor`, `Inputs`, and `Rules` run per call and receive the call's context,
+so read the caller's identity from there. `Inputs` feeds a remote policy's
+declared inputs (`Args` only adapts `Rules`, so decode `raw` yourself); a
+missing required one makes the policy `INCOMPLETE` and the wrapper denies.
+Copy input names from the Console's generated SDK call. A package-level or
+captured variable holds one user for the life of the process: every caller would share one rate-limit
 bucket and every decision would name the same actor. `Metadata` is read once
 when the tool is wrapped, so per-call identity does not belong in it; `Actor`
 already carries the user.
@@ -268,8 +280,9 @@ resp, err := a.RunText(ctx, prompt).Collect()
    `arcjetDenied: true` and explains it), an inbound prompt-injection
    denial (the run ends before the provider is called), and fail-closed
    (an unreachable Arcjet returns `reason: "ERROR"`).
-3. Confirm in the Arcjet Console or CLI that decisions share the
-   caller-owned correlation ID.
+3. Confirm in the Arcjet Console or CLI (`arcjet guards list`) that
+   decisions carry the caller-owned correlation ID. The Console Sequence
+   view groups the capture events, not the decisions.
 4. Manual E2E with a real `ARCJET_KEY` is still-to-verify until you run it.
 
 Worked example:

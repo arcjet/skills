@@ -22,7 +22,7 @@ Pick the adapter for the project's framework, then install it with whichever pac
 
 **Runtime baseline:** **Node.js `>=22.21.0 <23 || >=24.5.0`**, **Bun ≥ 1.3.0**, **Deno** `stable` / `lts`. Node 20 is end-of-life and is no longer supported by the SDK. If the project is below any of these, the install will fail or runtime behavior will misbehave – bump the runtime first.
 
-> _Version info last verified against the published `@arcjet/*` **v1.13.0** on **September 17, 2026**. The Decide timeout defaults to 2000 ms (every adapter, same as Guard). Prompt-injection `threshold` / `score` are **removed**. Numbers in the following table may drift – before relying on them, check the `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the published release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
+> _Version info last verified against the published `@arcjet/*` **v1.15.0** on **November 11, 2026**. The Decide timeout defaults to 2000 ms (every adapter, same as Guard). Prompt-injection `threshold` / `score` are **removed**. Numbers in the following table may drift – before relying on them, check the `package.json` of the relevant `@arcjet/*` package at https://github.com/arcjet/arcjet-js (or the published release at https://github.com/arcjet/arcjet-js/releases). Minimums tend to creep upward over time._
 
 | Framework         | Package                                                   | Min framework version                                |
 | ----------------- | --------------------------------------------------------- | ---------------------------------------------------- |
@@ -89,7 +89,7 @@ Five frameworks don't fit the "shared client file" pattern. Use the following st
 
 ### Astro
 
-Astro registers Arcjet as a build-time **integration** in `astro.config.mjs`. The configured client is exposed as a virtual module – there is no `lib/arcjet.ts` file and no `withRule()`. Rules are global to the integration; per-route variation isn't supported.
+Astro registers Arcjet as a build-time **integration** in `astro.config.mjs`. The configured client is exposed as the virtual module `arcjet:client` – there is no `lib/arcjet.ts` file. Base rules go in the integration; add per-route rules with `aj.withRule(...)` in the route. A rule that takes a runtime object (`sensitiveInfo` with `backend: rampart()`) must go per-route: `astro.config.mjs` cannot hold it. Import that `sensitiveInfo` from the core `arcjet` package (`npm install arcjet @arcjet/sensitive-info-rampart`).
 
 If an existing config still has `detectPromptInjection({ threshold })`, drop `threshold`. `@arcjet/astro` validates with Zod `.strict()`, so leftover `threshold` throws at startup. Core adapters ignore leftover `threshold`; Astro does not.
 
@@ -229,13 +229,26 @@ Without the `Bindings` type, `c.env.incoming` won't typecheck.
 For rule selection and rate-limiting strategy comparisons, see [Choose protections](choosing_protections.md). Key framework-specific notes:
 
 - **`shield`** – always include, and pass `mode: "LIVE"` to enforce. Omitted `mode` is `DRY_RUN`.
-- **`detectBot`** – pass exactly one of `allow` or `deny`. Neither or both throws. Empty `allow: []` blocks every detected bot, including `CURL`. Temporarily `allow: ["CURL"]` when you need curl to reach later rules (email, rate limit), then drop it.
+- **`detectBot`** – pass exactly one of `allow` or `deny`. Neither or both throws. Empty `allow: []` blocks every detected bot, including `CURL`. Temporarily `allow: ["CURL"]` when you need curl to reach later rules (email, rate limit), then drop it. Signed agents (Web Bot Auth) – see [below](#signed-bots-web-bot-auth).
 - **Rate limits** – use `characteristics: ["userId"]` to key by something other than IP.
 - **`validateEmail`** – for signup/login forms.
 - **`protectSignup`** – combined bot + email + rate limit, purpose-built for registration flows. One composite rule (unlike Python's tuple or Go's `[]Rule`).
-- **`sensitiveInfo`** – blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `@arcjet/sensitive-info-rampart` and pass `backend: rampart()`.
-- **`detectPromptInjection`** – for AI endpoints receiving user prompts. On `main` the only option is `mode`; do not pass `threshold`.
+- **`sensitiveInfo`** – blocks PII in the text you pass as `sensitiveInfoValue`. Install `@arcjet/sensitive-info-rampart` and always pass `backend: rampart()` (on-device NER; text never leaves the process). Without a backend only `EMAIL`, `PHONE_NUMBER`, `IP_ADDRESS`, `CREDIT_CARD_NUMBER` are detectable, and listing any other type throws. `rampartEntities` lists every type Rampart detects. Custom patterns: `rampart({ recognizers: [...defaultRecognizers, myRecognizer] })` – a recognizer returns `{ start, end, type }` spans (UTF-16 offsets); `[]` means model only. PHI types (medical record number and so on) are detected only server-side, in a remote Guard policy – not by `sensitiveInfo`.
+  - Next.js: add `"@arcjet/sensitive-info-rampart"`, `"@huggingface/transformers"`, `"onnxruntime-node"` to `serverExternalPackages` and keep the route on `runtime = "nodejs"`. Not Edge.
+  - Don't add a manual length pre-check. Cap request body size in the framework instead; the JS backend has no input-length option in 1.15.0.
+- **`detectPromptInjection`** – for AI endpoints receiving user prompts. The only option is `mode`; do not pass `threshold`. Text over 128 KiB is denied in LIVE (error in DRY_RUN). A missing or empty `detectPromptInjectionMessage` returns an ERROR result, which fails open – so a forgotten message silently allows.
 - **`filter`** – block by IP metadata (VPN, Tor, country, IP range).
+
+### Signed bots (Web Bot Auth)
+
+From `@arcjet/*` **1.15.0**. No new options: put signers in the existing `allow` / `deny` lists, either by catalog name (`CHATGPT_AGENT`, `BROWSERBASE`, `MANUS_BOT`, …) or as `"SIGNED_BOT:https://<host>/.well-known/http-message-signatures-directory"` (public HTTPS host, that exact path, no port/IP/query). Arcjet Cloud verifies the signature.
+
+- Check `decision.isDenied()` first, then `isVerifiedBot` (`@arcjet/inspect`). A verified signer missing from an `allow` list is denied.
+- An existing allow list such as `["CATEGORY:SEARCH_ENGINE"]` now denies verified browser agents that used to pass as browsers. Add the signers you want.
+- Signatures covering `@path` verify only on `@arcjet/node` (and Express), `@arcjet/fastify`, `@arcjet/nest`, and Next.js Pages API routes. On App Router, middleware, Bun, Deno, SvelteKit, Remix, React Router, Astro, and Nuxt they never verify.
+- The first request from an uncached signer is unverified. Don't make a signature the only way a request can succeed; test in `DRY_RUN` and check a later request.
+- A signature is identity, not authorization. Keep rate limits on.
+- A proxy that strips `Signature`, `Signature-Input`, or `Signature-Agent`, or rewrites `Host` or the path, breaks verification.
 
 ## Framework-specific `protect()` calls
 
@@ -261,17 +274,30 @@ The request object to pass differs by framework:
 
 ## Decision handling
 
-`decision.isDenied()` means a LIVE rule triggered a denial. Map denial reasons to HTTP status codes, but **only branch on reasons that produce a different response** – skip arms that would just return the same status as the default 403:
+Order the checks like this:
 
-- `decision.reason.isRateLimit()` → 429
-- `decision.reason.isEmail()` → 400
-- `decision.reason.isSensitiveInfo()` → 400
-- `decision.reason.isPromptInjection()` → 400 (`injectionDetected` is the binary verdict; there is no `score`)
-- everything else (bot, shield, filter) → default 403
+1. **Reason-specific denials** – only where the response differs from 403:
+   - `decision.reason.isRateLimit()` → 429
+   - `decision.reason.isEmail()` → 400
+   - `decision.reason.isSensitiveInfo()` → 400 ("remove it and try again"; never echo the matched text)
+   - `decision.reason.isPromptInjection()` → 400 or 403 (`injectionDetected` is the verdict; there is no `score`)
+2. **Catch-all `if (decision.isDenied())` → 403.** Required. Remote rules and other denials only land here; code that checks just `reason.isBot()` / `isShield()` lets them through. Don't add a separate `isShield()` arm that also returns 403.
+3. **`decision.isErrored()`** – the SDK failed open. On routes that send text to a model or screen PII (prompt injection, sensitive info), deny with 503 unless the app can accept unchecked text. Elsewhere (Shield, bot, rate limit) log it and allow.
 
-Writing an explicit `else if (reason.isShield())` arm that returns 403 just adds noise when the default already returns 403.
+```typescript
+if (decision.isDenied()) {
+  if (decision.reason.isSensitiveInfo()) {
+    return Response.json({ error: "Remove personal information and try again" }, { status: 400 });
+  }
+  return Response.json({ error: "Forbidden" }, { status: 403 });
+}
+if (decision.isErrored()) {
+  console.error("Arcjet error", decision.reason.message);
+  return Response.json({ error: "Service unavailable" }, { status: 503 }); // AI / PII routes only
+}
+```
 
-`decision.isErrored()` means something went wrong during rule evaluation but the SDK failed open. Log it and allow the request.
+Since 1.15.0, `protect()` returns an ERROR decision (fails open) instead of throwing when `key` is missing or empty, or when `characteristics` is not an array of strings. Check `isErrored()` in development so a missing `ARCJET_KEY` is visible.
 
 ### Correlation IDs
 
@@ -340,7 +366,7 @@ As of `@arcjet/*` 1.6.0, the request-based SDK still carries a couple of depreca
 
 In `@arcjet/*` **1.11.0**, `detectPromptInjection({ threshold })` and `PromptInjectionReason.score` are **removed**, not deprecated. Only `mode` remains. Do not pass `threshold` in new code, and drop it from existing configs when you see it – especially Astro, where leftover `threshold` throws (see [Astro](#astro)). Don't read `score`; branch on `decision.reason.isPromptInjection()` / `injectionDetected`.
 
-> _Deprecations last verified against the `@arcjet/*` v1.13.0 release on **September 17, 2026**. Before relying on these items, grep the installed package for `@deprecated` markers – see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
+> _Deprecations last verified against the `@arcjet/*` v1.15.0 release on **November 11, 2026**. Before relying on these items, grep the installed package for `@deprecated` markers – see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
 
 ## Key patterns
 

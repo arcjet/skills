@@ -101,6 +101,10 @@ Ask only what you cannot infer from the code; suggest defaults.
    order id. `sanitize_tool_name` matches `Send Email` and `send_email`.
 8. **Do not hand-wrap every CrewAI tool with raw `guard()`.**
 9. **`inputs=` is accepted.** The hook resolver is `(arguments, ctx)`.
+   Standalone `guard_tool` `rules=` also takes a callable `(arguments)`
+   (1.4.0+). A callable that raises still calls Guard with no local rules;
+   `on_guard_error` decides. Since 1.4.0 the hooks record `degraded`, not
+   `success`, when evaluation was degraded.
    A missing decision is not a denial — verify in Console/CLI.
 
 ## Step 1: Install and find the guard client

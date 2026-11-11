@@ -90,7 +90,7 @@ decision**) before the turn starts. Core `guard()` fails open:
 `decision.hasFailedOpen()` if this call site must fail closed;
 `guardHooks` already defaults to that.
 
-## `actor` / `inputs` — omit and remote rules never fire
+## `actor` / `inputs` — required by the policy, or it does not apply
 
 A remote policy that declares `actor` or typed `inputs` only
 evaluates those values when this call sends them. Pass `actor` and
@@ -99,11 +99,20 @@ evaluates those values when this call sends them. Pass `actor` and
 Check installed types — do not pass fields a helper does not
 declare.
 
-- **Omit `actor` / `inputs`** and a remote policy that requires
-  them never fires. The guard call still happens; the remote rules
-  just have nothing to read.
-- **A resolver that throws fail-closes** under the default
-  `onGuardError: "deny"` (unavailable substitute — never `void`).
+- **Omit a required input or actor** and the policy is
+  `INCOMPLETE` (`AJP1003` / `AJP1002`); `guardHooks` denies
+  (substitute). An undeclared input is dropped (warning `AJ1060`,
+  SDK-only — log `decision.warnings`).
+- **A callback that throws or returns an unusable value** does not
+  skip Guard: it is called without that value (no local rules,
+  default label), a remote DENY stands, otherwise the default
+  `onGuardError: "deny"` substitutes — never `void`. `rules` /
+  `action` / `metadata` / `sessionId` must be synchronous; a Promise
+  counts as a failure. `actor` / `inputs` may be async.
+- **PII on Think:** Rampart's bundled loader needs a filesystem,
+  which Workers lack. Use
+  `localDetectSensitiveInfo({ deny: [...], backend: rampart({ classify }) })`
+  from `@arcjet/sensitive-info-rampart` with your own `classify`.
 - **`actor` is the authenticated caller**, never a model-produced
   tool argument. `input` on the Think envelope is model-controlled.
   Derive `actor` from authenticated server-side context (a signed
@@ -161,9 +170,10 @@ Ask only what you cannot infer from the code; suggest defaults.
    `@arcjet/guard/cloudflare-think` does not.
 9. **Key rate limits on the authenticated caller**, not a
    model-supplied order id. Same for `actor`.
-10. **Omit `actor` / `inputs` and remote rules never fire.** A
-    resolver throw fail-closes. Import `policyInput` from
-    `@arcjet/guard`.
+10. **Send every input the policy requires.** A missing one denies
+    (`INCOMPLETE`). A throwing callback still calls Guard without
+    that value, then `onGuardError` decides. Import `policyInput`
+    from `@arcjet/guard`.
 11. **Do not hand-wrap every Think tool with raw `guard()`.**
 
 ## Step 1: Install and find the guard client
@@ -290,9 +300,9 @@ the call is uncorrelated rather than joined to a generated id.
    `hasFailedOpen()`), a substitute-deny (model sees
    `ArcjetDenialResult`), a block-deny (reason string; real DENY
    only), unavailable + `onDeny: "block"` still substitute, void
-   execute, no-throw, never-mint, omitted `actor` / `inputs`
-   (remote rules silent), a resolver throw (fail-closed
-   substitute), and fail-closed (an unreachable guard →
+   execute, no-throw, never-mint, a missing required input
+   (`INCOMPLETE`, substitute), a throwing callback (Guard still
+   called; substitute unless remote DENY), and fail-closed (an unreachable guard →
    substitute, never void). Confirm `needsApproval` is never
    treated as the gate and that tools are not also wrapped with
    `@arcjet/guard/vercel-ai/v7`.

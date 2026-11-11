@@ -23,7 +23,7 @@ Guard protects code paths that don't have an HTTP request – tool calls, agent 
 
 Needs `libgcc` for the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v1.2.0** on **September 17, 2026**. That wheel includes `validate_guard_label`, `guard_action`, LangChain (`arcjet[langchain]` / `arcjet[langchain-agents]`), CrewAI (`arcjet.guard.crewai`, no extra), OpenAI Agents (`arcjet[openai-agents]`), Claude Agent SDK (`arcjet[claude-agent-sdk]`, first in 1.1.0), Claude Managed Agents (`arcjet[claude-managed-agents]`, first in 1.1.0), Strands Agents (`arcjet[strands-agents]`, first in 1.1.0), `ModerateContent`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, and typed `server_input` / `local_input`. The extras first available in 1.1.0 are still 1.1.0 floors. `experimental_ModerateContent` remains a deprecated alias. `arcjet[google-adk]` is the published extra for `arcjet.guard.google_adk` (`pip install` / `uv add`) — load [integrate-arcjet-guard-google-adk-py](../../integrate-arcjet-guard-google-adk-py/SKILL.md). Do not pin a git SHA._
+> _Published PyPI release last verified: `arcjet` **v1.5.0** on **November 11, 2026**. Floors: server-side sensitive-info and IP-threat policy results **1.3.0**; uppercase labels, LangChain / CrewAI `rules` callables, and "a failing callable still calls Guard" **1.4.0**; Claude Agent SDK `result_rules` / `tool_results` **1.5.0**. Earlier wheels include `validate_guard_label`, `guard_action`, LangChain (`arcjet[langchain]` / `arcjet[langchain-agents]`), CrewAI (`arcjet.guard.crewai`, no extra), OpenAI Agents (`arcjet[openai-agents]`), Claude Agent SDK (`arcjet[claude-agent-sdk]`, first in 1.1.0), Claude Managed Agents (`arcjet[claude-managed-agents]`, first in 1.1.0), Strands Agents (`arcjet[strands-agents]`, first in 1.1.0), `ModerateContent`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, and typed `server_input` / `local_input`. The extras first available in 1.1.0 are still 1.1.0 floors. `experimental_ModerateContent` remains a deprecated alias. `arcjet[google-adk]` is the published extra for `arcjet.guard.google_adk` (`pip install` / `uv add`) — load [integrate-arcjet-guard-google-adk-py](../../integrate-arcjet-guard-google-adk-py/SKILL.md). Do not pin a git SHA._
 >
 > _Read the installed package's types before using any of them. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
@@ -145,11 +145,11 @@ Use `DetectPromptInjection()` on any untrusted text before it reaches a model or
 
 ### Sensitive information detection
 
-Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (for example users sending credit card numbers, or tool outputs leaking email addresses). The scan runs locally – raw text never leaves the SDK.
+Use `LocalDetectSensitiveInfo()` to block PII from entering or leaving the system (for example users sending credit card numbers, or tool outputs leaking email addresses). The scan runs on-device; the SDK sends a SHA-256 hash of the text plus each finding's type and position, not the text.
 
-**Always pass `allow` or `deny`.** `LocalDetectSensitiveInfo()` with neither list fails local evaluation (`AJ1203`) and the decision still concludes `ALLOW`, so the check looks configured and blocks nothing. Only `has_failed_open()` reveals it. Guard has no `sensitiveInfo` / `detect_sensitive_info` export – those are HTTP `protect()` rules.
+**Always pass `allow` or `deny`** (not both – that raises). With neither list the rule blocks nothing. Guard has no `sensitiveInfo` / `detect_sensitive_info` export – those are HTTP `protect()` rules.
 
-The default WASM backend detects exactly four types: `EMAIL`, `PHONE_NUMBER`, `IP_ADDRESS`, `CREDIT_CARD_NUMBER`. Every other type needs `backend` **on the rule**. The rule does not inherit the client's `sensitive_info_backend`. Share one Rampart instance:
+Always pass `backend=rampart()` **on the rule** (`pip install "arcjet[sensitive-info-rampart]"`). The rule does not inherit the client's `sensitive_info_backend`; that client option only feeds the SDK-local detector in remote policies. Share one Rampart instance:
 
 ```python
 from arcjet.guard import LocalDetectSensitiveInfo
@@ -161,6 +161,8 @@ sensitive = LocalDetectSensitiveInfo(
     backend=sensitive_info_backend,
 )
 ```
+
+Rampart scans only the first `max_input_chars` (default 100,000 code points), logs a warning, and **does not deny** the unscanned tail – cap input size yourself. Inference is synchronous and blocks the event loop; the first call loads the model. Custom detection and options: [requests_python.md](requests_python.md#sensitive-info-on-rampart). PHI types (`MEDICAL_RECORD_NUMBER`, …) are detected only by the server-side detector in a remote policy, never on-device.
 
 ### Content moderation
 
@@ -177,31 +179,27 @@ decision = await arcjet.guard(
 )
 ```
 
-Treat evaluation errors as fail-open and inspect `decision.has_failed_open()` / `decision.error_results()`.
+### Text limits and content-scan failures
+
+- Gate prompt injection and moderation on `decision.conclusion == "DENY" or decision.has_failed_open()`. Don't gate on `reason == "MODERATE_CONTENT"` alone – a failed scan reads as ALLOW and the unchecked text goes through.
+- Prompt injection and moderation accept up to **128 KiB** of text per call; more is a LIVE deny (`AJ1131` / `AJ1141`). Moderation evaluates only the **first 60 KB** and adds warning `AJ1142` – the rest is not moderated. Split long text across calls.
+- Empty or whitespace-only text to a text detector is allowed unscreened (`AJ1062`).
+- A `guard()` call evaluates at most **50 rules**; the rest are `NOT_RUN` (`AJ1003`).
 
 ### Common mistakes
 
 These produce code that runs without error and enforces nothing. Full list: https://docs.arcjet.com/llms.txt.
 
-- Always pass `allow` or `deny` on `LocalDetectSensitiveInfo`. Share `backend` with the client for non-default entity types.
-- Every Python adapter accepts typed `inputs` (`server_input` / `local_input`). Resolver arity varies: `guard_tool` gets the arguments mapping; CrewAI hooks get `(arguments, ctx)`; LangChain `guard_tool` gets `(arguments, config)`; Google ADK helpers get the tool-call envelope (args plus `tool_name`). LangChain `rules=` is a **static sequence**, not a lambda. Omit `actor` / `inputs` and a remote policy that requires them never fires; a resolver throw fail-closes. Take `actor` from authenticated server context, never from a model-produced tool argument.
+- Always pass `allow` or `deny` and `backend=rampart()` on `LocalDetectSensitiveInfo`.
+- Every Python adapter accepts typed `inputs` (`server_input` / `local_input`). Resolver arity varies: `guard_tool` gets the arguments mapping; CrewAI hooks get `(arguments, ctx)`; LangChain `guard_tool` gets `(arguments, config)`; Google ADK helpers get the tool-call envelope (args plus `tool_name`). Since 1.4.0 LangChain / CrewAI `guard_tool` `rules=` also take a callable with the same arity as `inputs=`. Take `actor` from authenticated server context, never from a model-produced tool argument.
+- A `rules` / `metadata` / `action` / `actor` / `inputs` callable that raises or returns an unusable value does not skip Guard (1.4.0+): Guard is still called without it (no local rules, default `{tool_name}.invoked` label), a remote DENY stands, and `on_guard_error` decides the rest (`"deny"` → blocked, `unavailable`).
+- A remote policy whose **required** input is missing or the wrong kind/size reports `AJP1003` (missing required actor: `AJP1002`); evaluation is `INCOMPLETE`, so helpers deny and core `guard()` returns ALLOW with `has_failed_open()`. An undeclared input is dropped with warning `AJ1060`. Limits: 64 inputs per call, ~100 KB per server string, 256 items / ~100 KB per list. Generate input names from the policy (Console "Generate the SDK call"), don't guess them.
+- Server-side sensitive-info detector values over 2 KB can take up to 3 s; the client default is 2 s, so set `launch_arcjet(timeout_ms=...)` above 3000 or the call fails open first.
+- Warnings (`AJ1060`, `AJ1062`, `AJ1142`, `AJ1003`) are returned only to the SDK – the Console does not show them. Log `decision.warnings`.
 - A missing decision is not a denial. Verify in Console/CLI.
 - Guarding one tool only helps if it is the only path. Claude Agent SDK needs `setting_sources=[]` **and** `strict_mcp_config=True`.
 - Claude Agent SDK `session_id` on options must be a unique UUID per run (`resume` later); the Guard `session_id` is a long-lived actor id.
 - Claude Managed Agents: `guard_events` has no `inbound=` – `action` and `rules` sit at the top level, it takes `send=`, and the returned callable replaces `send`. Correlate on a caller-owned id; the helper drops Anthropic `sesn_…` / `sevt_…`.
-
-### On-device Rampart backend
-
-`LocalDetectSensitiveInfo()` defaults to the bundled WASM engine (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()`:
-
-```python
-from arcjet.guard import LocalDetectSensitiveInfo
-from arcjet_sensitive_info_rampart import rampart
-
-sensitive = LocalDetectSensitiveInfo(deny=["GIVEN_NAME", "SSN"], backend=rampart())
-```
-
-Listing a backend-only entity type without a supporting `backend` raises.
 
 ## Decision handling
 
@@ -219,7 +217,7 @@ if decision.conclusion == "DENY":
     raise Exception("blocked")
 ```
 
-`decision.reason` is a flat string – one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"SENSITIVE_INFO"`, `"MODERATE_CONTENT"`, `"CUSTOM"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Prompt-injection and content-moderation results may include optional `billing` (`unit` / `count`). Prompt injection uses `tokens`; moderation uses `text_units`. The moderation result is `detected` plus that optional `billing` only. Read the types on the decision object for the full structure.
+`decision.reason` is a flat string – one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"MODERATE_CONTENT"`, `"SENSITIVE_INFO"`, `"INPUT_CONSTRAINT"`, `"CUSTOM"`, `"POLICY_EXPRESSION"`, `"IP_THREAT"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Branch on the ones you handle and keep a catch-all for DENY. Remote policy results arrive in `decision.policy_results` (policy, revision, rule, mode, execution `SDK`/`SERVER`); `decision.policy_evaluation.status` is `NOT_CONFIGURED` (no published policy for the label), `APPLIED`, `INCOMPLETE`, `UNAVAILABLE`, or `UNKNOWN`. Prompt-injection and content-moderation results may include optional `billing` (`unit` / `count`). Prompt injection uses `tokens`; moderation uses `text_units`. The moderation result is `detected` plus that optional `billing` only. Read the types on the decision object for the full structure.
 
 ### Errors vs warnings (failing open)
 
@@ -233,7 +231,7 @@ To attribute a failure to a *specific* rule rather than scanning the whole decis
 ```python
 decision = await arcjet.guard(label="tools.get-weather", rules=rules)
 if decision.has_failed_open():
-    # Arcjet couldn't fully evaluate. Allow by default, or deny for a sensitive op.
+    # Deny when the rules screen content (prompt injection, PII, moderation).
     logging.error("guard failed open: %s", decision.error_results())
 for w in decision.warnings:
     logging.warning("%s: %s", w.code, w.message)
@@ -243,7 +241,7 @@ On `arcjet` ≤ 0.8.0 the only signal is `decision.has_error()`, which is **depr
 
 ### Correlation IDs
 
-Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision. Keep a whole run on one Sequence with `arcjet_sequence`. Framework adapters each have their own caller-owned reader — load the dedicated skill for that adapter. Never mint a new id per turn.
+Available from **`arcjet` 0.9.0**: pass `correlation_id` to `.guard()` to correlate a guard decision with a request, workflow run, or agent trace. It is a dedicated field, not metadata, and it does not affect the decision. A Sequence is the **capture events** sharing a correlation ID – decisions alone don't form one. Keep a whole run on one id with `arcjet_sequence`. Framework adapters each have their own caller-owned reader — load the dedicated skill for that adapter. Never mint a new id per turn.
 
 ### Outbound HTTP proxy
 
