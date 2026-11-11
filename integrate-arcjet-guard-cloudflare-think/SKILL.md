@@ -216,32 +216,37 @@ const lookupLimit = tokenBucket({
   intervalSeconds: 60,
   maxTokens: 10,
 });
-// From auth middleware or Durable Object state you already trust.
-// Not this.ctx.id / this.name, and not a model-produced argument.
-const userId = authenticatedUserId;
-const conversationId = authenticatedConversationId;
-
-const hooks = guardHooks(arcjet, {
-  action: ({ toolName }) => `${toolName}.invoked`,
-  // Authenticated caller — never a model-produced order id / ctx.input.
-  actor: userId,
-  inputs: ({ toolName }) => ({
-    tool: policyInput.server.string(toolName),
-  }),
-  // Keyed on the authenticated caller, not the model-supplied order id.
-  rules: () => [lookupLimit({ key: userId, requested: 1 })],
-  sessionId: conversationId,
-  onGuardError: "deny",
-  // default DENY is substitute (ArcjetDenialResult). onDeny: "block"
-  // uses { action: "block", reason } on real DENY only. Unavailable
-  // still substitutes.
-});
-
 export class SupportAgent extends Think<Env> {
+  // Set from auth middleware or Durable Object state you already trust.
+  // Not this.ctx.id / this.name, and not a model-produced argument.
+  private userId!: string;
+  private conversationId!: string;
+
+  // Per instance: several Durable Objects can share one isolate, so
+  // module-level identity would leak across conversations.
+  private hooks = guardHooks(arcjet, {
+    action: ({ toolName }) => `${toolName}.invoked`,
+    // Authenticated caller — never a model-produced order id / ctx.input.
+    actor: () => this.userId,
+    inputs: ({ toolName }) => ({
+      tool: policyInput.server.string(toolName),
+    }),
+    // Keyed on the authenticated caller, not the model-supplied order id.
+    rules: () => [lookupLimit({ key: this.userId, requested: 1 })],
+    sessionId: () => this.conversationId,
+    onGuardError: "deny",
+    // default DENY is substitute (ArcjetDenialResult). onDeny: "block"
+    // uses { action: "block", reason } on real DENY only. Unavailable
+    // still substitutes.
+  });
+
   // needsApproval on a tool is HITL — not this policy gate
-  override beforeToolCall = hooks.beforeToolCall;
+  override beforeToolCall = this.hooks.beforeToolCall;
 }
 ```
+
+Keep `arcjet` and the rule factories at module scope. Never capture a
+caller or conversation id there.
 
 If the subclass already implements `beforeToolCall`, call
 `hooks.beforeToolCall(ctx)` and return its `ToolCallDecision`. Do
@@ -259,12 +264,13 @@ import { detectPromptInjection, policyInput } from "@arcjet/guard";
 import { cloudflareThinkContext } from "@arcjet/guard/cloudflare-think/v0";
 
 const inbound = detectPromptInjection();
+// Inside the agent, before the turn: same per-instance identity as Step 2.
 const decision = await arcjet.guard({
   label: "message.received",
-  actor: userId,
+  actor: this.userId,
   inputs: { content: policyInput.server.string(userText) },
   rules: [inbound(userText)],
-  ...cloudflareThinkContext({ context: { sessionId: conversationId } }),
+  ...cloudflareThinkContext({ context: { sessionId: this.conversationId } }),
 });
 if (decision.conclusion === "DENY") {
   throw new Error("message blocked");

@@ -231,8 +231,9 @@ To attribute a failure to a *specific* rule rather than scanning the whole decis
 ```python
 decision = await arcjet.guard(label="tools.get-weather", rules=rules)
 if decision.has_failed_open():
-    # Deny when the rules screen content (prompt injection, PII, moderation).
+    # Content scans (prompt injection, PII, moderation) must not proceed unchecked.
     logging.error("guard failed open: %s", decision.error_results())
+    raise RuntimeError("guard unavailable")
 for w in decision.warnings:
     logging.warning("%s: %s", w.code, w.message)
 ```
@@ -272,7 +273,7 @@ Call `await aj.flush()` (async) or `aj.flush()` (sync) on shutdown. Default dead
 
 ### Helper capture outcomes
 
-`guard_action`, LangChain `guard_tool`, and `ArcjetMiddleware` write `metadata.outcome` themselves. This is capture telemetry on those helpers ([arcjet-py#225](https://github.com/arcjet/arcjet-py/pull/225), in 1.0.0) – not a Decision field, not a conclusion, and not a new `on_guard_error` value. The helper applies `outcome` last, so a caller metadata key of the same name cannot overwrite it. A raw `aj.capture()` does not write these values. CrewAI `register_arcjet_hooks` still records `success` on proceed — do not read that stream as this five-value table.
+`guard_action`, LangChain `guard_tool`, and `ArcjetMiddleware` write `metadata.outcome` themselves. This is capture telemetry on those helpers ([arcjet-py#225](https://github.com/arcjet/arcjet-py/pull/225), in 1.0.0) – not a Decision field, not a conclusion, and not a new `on_guard_error` value. The helper applies `outcome` last, so a caller metadata key of the same name cannot overwrite it. A raw `aj.capture()` does not write these values. CrewAI `register_arcjet_hooks` writes the same values from **1.4.0**; before that it recorded `success` on every proceed.
 
 `success` is not "the action ran." It means the action ran **and** policy judged all of it.
 
@@ -323,7 +324,7 @@ Python LangChain (docs https://docs.arcjet.com/guards/langchain/) is not JS `cre
 
 ### Shared helper rules
 
-- **Fail closed.** Framework wrappers default to `on_guard_error="deny"` (same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196)). Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`). `guard_action`, LangChain `guard_tool`, and `ArcjetMiddleware` write `metadata.outcome` — see [Helper capture outcomes](#helper-capture-outcomes). CrewAI `register_arcjet_hooks` is not that path — a proceed still records `success`.
+- **Fail closed.** Framework wrappers default to `on_guard_error="deny"` (same fail-closed default as [#196](https://github.com/arcjet/arcjet-py/pull/196)). Only `"allow"` fails open; any other value is refused. A `DENY` always blocks. Core `guard()` still fails open (`has_failed_open()`). `guard_action`, LangChain `guard_tool`, and `ArcjetMiddleware` write `metadata.outcome` — see [Helper capture outcomes](#helper-capture-outcomes). CrewAI `register_arcjet_hooks` follows it from 1.4.0.
 - **One Sequence per conversation.** Use `with arcjet_sequence(correlation_id=session.id):` for core Guard. Framework adapters each have a caller-owned reader in their skill. Do not mint a new id per turn.
 - **HITL is not a policy gate.** CrewAI `human_input`, Strands `event.interrupt()`, Claude Agent SDK `can_use_tool`, OpenAI Agents `needs_approval`, Claude Managed Agents `always_ask` + `user.tool_confirmation`, and Google ADK `require_confirmation` are human-in-the-loop. Same trap as JS `humanInTheLoopMiddleware` and LangGraph `interrupt()`.
 
