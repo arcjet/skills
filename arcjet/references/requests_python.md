@@ -10,7 +10,7 @@ Request protection inspects HTTP requests – headers, IP, body – to enforce s
 - **FastAPI / Flask:** no formal peer dependency – the SDK adapts to whatever request shape is passed (ASGI scope dict, Flask/Werkzeug `Request`, Django `HttpRequest`, or a pre-built `RequestContext`). The SDK's own tests run against `fastapi==0.135.1` and `flask==3.1.3`; very old releases of either may not expose the expected request attributes. FastAPI form fields need `python-multipart` or the app fails at startup.
 - **`libgcc`:** needed by the bundled WebAssembly runtime. Most Linux distributions include this by default, but Alpine Linux does not – run `apk add libgcc` first, otherwise `import arcjet` fails with `OSError: Error loading shared library libgcc_s.so.1`.
 
-> _Published PyPI release last verified: `arcjet` **v1.2.0** on **September 17, 2026**. Nested metadata, Rampart, `ip_details.threat`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, `set_rate_limit_headers`, local Protect priority, and the 2000 ms Decide timeout all ship in 1.0.0+. `detect_prompt_injection(threshold=...)` is a `TypeError`. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
+> _Published PyPI release last verified: `arcjet` **v1.5.0** on **November 11, 2026**. Nested metadata, Rampart, `ip_details.threat`, `with_rule()`, `protect_signup()`, required HTTP `mode=`, `set_rate_limit_headers`, local Protect priority, and the 2000 ms Decide timeout ship in 1.0.0+. Web Bot Auth (`SIGNED_BOT:` and signed catalog names) needs **1.5.0**. `detect_prompt_injection(threshold=...)` is a `TypeError`. Check `requires-python` in [`pyproject.toml`](https://github.com/arcjet/arcjet-py/blob/main/pyproject.toml)._
 
 ## Installation
 
@@ -73,10 +73,11 @@ In **1.0.0**, `shield`, `detect_bot`, `token_bucket`, `fixed_window`, `sliding_w
 
 - **`shield`** – always include. Requires `mode=Mode.LIVE` or `mode=Mode.DRY_RUN`.
 - **`detect_bot`** – pass exactly one of `allow` or `deny`. Neither or both raises `ValueError` – the factory no longer treats an omitted list as empty. Empty `allow=[]` is valid and means "block every detected bot", including `CURL`. Temporarily `allow=["CURL"]` when you need curl to reach later rules, then drop it. The usual starting point is `allow=[BotCategory.SEARCH_ENGINE]`.
+- **Signed bots (Web Bot Auth, 1.5.0)** – no new option. Put signed catalog names (`CHATGPT_AGENT`, `BROWSERBASE`, `GOOGLE_AGENT`, …) or `"SIGNED_BOT:https://<host>/.well-known/http-message-signatures-directory"` in the same `allow` / `deny` list; Arcjet Cloud verifies the signature. An allow list that omits a signer now **denies** it, so `allow=[BotCategory.SEARCH_ENGINE]` blocks verified browser agents that used to pass – add the signers you want. Forward `Signature`, `Signature-Input`, `Signature-Agent` unchanged. Signatures covering `@path` need the raw path: ASGI `scope["raw_path"]`, WSGI `RAW_URI` / `REQUEST_URI`, or `RequestContext(raw_path=...)`. A signature is identity, not authorization – keep rate limits on. The first request from an uncached signer is unverified; test in `DRY_RUN` and check a later request.
 - **Rate limits** – use `characteristics` to key by something other than IP.
 - **`validate_email`** – for signup/login forms. Same XOR contract as `detect_bot`: exactly one of `allow` or `deny`. Typical signup config is `deny=[EmailType.DISPOSABLE, EmailType.INVALID]`. Empty `allow=[]` allows no email types. `validate_email()` with no lists raises the same `ValueError`.
 - **`protect_signup`** – signup/login helper: sliding-window rate limit + bot detection + email validation. Returns a tuple – unpack with `*protect_signup(...)` into `arcjet(..., rules=...)` / `arcjet_sync(...)`. It is **not** a single composite rule like JS `protectSignup`. Keyword-only mappings `rate_limit`, `bots`, and `email` are forwarded to those factories. Nested `bots` / `email` still need exactly one of `allow` or `deny` (`allow=[]` is valid). Ships in **1.0.0**.
-- **`detect_sensitive_info`** – blocks PII in request bodies. Default backend is WASM (card, email, phone, IP). For names, addresses, and government / financial identifiers, install `arcjet[sensitive-info-rampart]` and pass `backend=rampart()` from `arcjet_sensitive_info_rampart`.
+- **`detect_sensitive_info`** – blocks PII in request bodies. Install `arcjet[sensitive-info-rampart]` and always pass `backend=rampart()` (from `arcjet_sensitive_info_rampart`), including for `EMAIL` / `CREDIT_CARD_NUMBER`. Pass `sensitive_info_value=...` to every `protect()` or the rule is silently skipped. Details: [Sensitive info on Rampart](#sensitive-info-on-rampart).
 - **`detect_prompt_injection`** – for AI endpoints receiving user prompts. Do not pass `threshold` – it is a `TypeError`. HTTP `detect_prompt_injection(*, mode=)` is required; omitting `mode` is also a `TypeError`. New configs are `detect_prompt_injection(mode=Mode.LIVE)`. Guard `DetectPromptInjection` still defaults to LIVE.
 - **`filter_request`** – block by IP metadata (VPN, Tor, country).
 
@@ -165,13 +166,44 @@ def list_items():
 
 - `"RATE_LIMIT"` → 429
 - `"EMAIL"` → 400
-- `"SENSITIVE_INFO"` → 400
+- `"SENSITIVE_INFO"` → 400 (generic message; never echo the matched text)
 - `"PROMPT_INJECTION"` → 400
-- everything else (`"BOT"`, `"SHIELD"`, `"FILTER"`, fallback) → default 403
+- everything else → catch-all `if decision.is_denied():` 403
 
-A branch that returns 403 for SHIELD when the default already returns 403 is dead code; drop it.
+Order: reason-specific arms → **catch-all `is_denied()` → 403** → `is_error()`. The catch-all is required: remote rules and unknown reasons only reach it. Code that only checks `reason_v2.type == "BOT"` lets a remote-rule denial through.
 
-`decision.is_error()` means something went wrong during rule evaluation but the SDK failed open. Log it and allow the request.
+`decision.is_error()` means evaluation failed and the SDK failed open (`is_denied()` is `False`). On routes that send text to a model or screen PII (`detect_prompt_injection`, `detect_sensitive_info`), **fail closed**: log and return 503. On Shield / bot / rate-limit routes, logging and allowing is acceptable.
+
+```python
+if decision.is_denied():
+    if decision.reason_v2.type == "SENSITIVE_INFO":
+        return JSONResponse({"error": "Remove sensitive information from your message"}, status_code=400)
+    return JSONResponse({"error": "Forbidden"}, status_code=403)
+if decision.is_error():
+    logging.error("arcjet error: %s", decision.reason_v2)
+    return JSONResponse({"error": "Service unavailable"}, status_code=503)
+```
+
+### Sensitive info on Rampart
+
+```python
+from arcjet import Mode, arcjet, detect_sensitive_info, shield
+from arcjet_sensitive_info_rampart import rampart
+
+aj = arcjet(
+    key=os.environ["ARCJET_KEY"],
+    rules=[shield(mode=Mode.LIVE),
+           detect_sensitive_info(mode=Mode.LIVE, deny=["CREDIT_CARD_NUMBER", "EMAIL"], backend=rampart())],
+)
+decision = await aj.protect(request, sensitive_info_value=body["message"])
+```
+
+- `rampart(RampartOptions(...))`: `threshold` (0.5), `max_input_chars`, `providers` (`("CPUExecutionProvider",)`), `recognizers`, `model_path`. `rampart_entities` lists every type the model detects.
+- Custom detection: `RampartOptions(recognizers=(*default_recognizers, my_fn))`; a recognizer returns `DetectedSpan`s (code-point offsets) and wins over the model where they overlap. `recognizers=()` means model only. The `detect=` / `context_window_size=` arguments are ignored by Rampart.
+- **Length limit:** Rampart denies input over `max_input_chars` (default 100,000 code points) **without scanning any of it** – it never scans a prefix and lets the rest through. The denial has an ERROR reason: `decision.is_denied()` and `reason_v2.type == "ERROR"` are true, the sensitive-info reason is false, so an arm that checks only the sensitive-info reason lets it through – keep the catch-all deny. Optionally answer 413. `DRY_RUN` logs a warning and doesn't deny. The limit must be a positive integer; there is no unlimited setting. For longer text or PHI, use the server-side detector (`SERVER` input, ~100 KB per value). Don't add your own length pre-check. A custom backend declares its own limit with a `max_input_chars` attribute. Calling the backend's `detect()` directly still scans only the prefix – treat that as incomplete.
+- Inference runs synchronously and blocks the request, even in async `arcjet()`. The first call loads the model and is slow.
+- On-device detection covers the version-1 entity types only. PHI types (`MEDICAL_RECORD_NUMBER`, `HEALTH_PLAN_BENEFICIARY_NUMBER`, …) need the server-side detector in a Guard policy.
+- The SDK sends Arcjet each finding's entity type and position, not the matched text.
 
 ### Correlation IDs
 
@@ -234,7 +266,10 @@ When the handler needs to treat a verified crawler, a missing `User-Agent`, or a
 ```python
 from arcjet import is_missing_user_agent, is_spoofed_bot, is_verified_bot
 
-# Verified search-engine crawler – skip other signals and return SEO content
+if decision.is_denied():
+    raise HTTPException(status_code=403, detail="Forbidden")
+
+# Check is_denied() first: a verified signer missing from `allow` is denied.
 if any(is_verified_bot(r) for r in decision.results):
     return {"message": "Hello bot"}
 
@@ -247,8 +282,8 @@ if any(is_spoofed_bot(r) for r in decision.results):
     raise HTTPException(status_code=403, detail="Spoofed bot")
 ```
 
-- `is_verified_bot(result)` – a live bot rule matched the client IP against official crawler ranges.
-- `is_missing_user_agent(result)` – a live bot rule failed because `User-Agent` was missing.
+- `is_verified_bot(result)` – a live bot rule verified the client by IP range, reverse DNS, or a Web Bot Auth signature.
+- `is_missing_user_agent(result)` – a live bot rule failed because `User-Agent` was missing (a verified signer may omit it).
 - `is_spoofed_bot(result)` – a live bot rule found a spoofed user agent.
 
 All three ignore `DRY_RUN` results (same as JS `isActive`) so an observation-only rule cannot drive the response ([arcjet-py#216](https://github.com/arcjet/arcjet-py/pull/216) aligned `is_spoofed_bot`). They return `False` for dry-run and non-bot results – Python is `bool`, not JS's `boolean | undefined`.
@@ -282,7 +317,7 @@ As of `arcjet` 1.0.0, the request-based SDK still carries a few deprecated bits.
 
 In **1.0.0**, `detect_prompt_injection(threshold=...)` is **removed**, not deprecated. Passing `threshold` raises `TypeError`. The server never honored it. New configs are `detect_prompt_injection(mode=Mode.LIVE)` – `mode` is required; omitting it is a `TypeError`. Drop leftover `threshold` from existing configs; unlike older JS cores that ignored leftover `threshold`, Python throws.
 
-> _Deprecations last verified against the published `arcjet` v1.2.0 on **September 17, 2026**. Before relying on these items, grep the installed package for `@deprecated` markers – see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py), [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py), and [`src/arcjet/_rules.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_rules.py)._
+> _Deprecations last verified against the published `arcjet` v1.5.0 on **November 11, 2026**. Before relying on these items, grep the installed package for `@deprecated` markers – see [`src/arcjet/_decision.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_decision.py), [`src/arcjet/_dataclasses.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_dataclasses.py), and [`src/arcjet/_rules.py`](https://github.com/arcjet/arcjet-py/blob/main/src/arcjet/_rules.py)._
 
 ## Key patterns
 

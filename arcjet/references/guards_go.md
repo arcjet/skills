@@ -6,15 +6,9 @@ Guard protects code paths that do not have an HTTP request – agent tool calls,
 
 ## Installation
 
-The current release is **`github.com/arcjet/arcjet-go` v1.0.0** (September 17, 2026), which `go get ...@latest` resolves. It requires Go 1.25+. Capture, Rampart, nested metadata, `WithIPSrc`, threat/billing, `GuardModerateContent`, and required Guard `Mode` are all in it. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The current release is **`github.com/arcjet/arcjet-go` v1.3.0** (verified November 11, 2026), which `go get ...@latest` resolves. It requires Go 1.25+. Uppercase labels and the default `client.Guard` deadline need **v1.2.0**. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
-The Microsoft Agent Framework helpers are a separate module, **`github.com/arcjet/arcjet-go/agentframework` v0.1.0**, which requires Go 1.26+ because the framework does.
-
-Install with Go tooling:
-
-```bash
-go get github.com/arcjet/arcjet-go@latest
-```
+Separate modules: `github.com/arcjet/arcjet-go/agentframework` **v0.1.0** (Go 1.26+) and `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`. Install with `go get ...@latest`, not by editing `go.mod`.
 
 ## Architecture: why things go where they do
 
@@ -28,10 +22,7 @@ var guard = must(arcjet.NewGuardClient(arcjet.GuardConfig{
 }))
 ```
 
-The client owns the connection to Arcjet. Creating it inside a tool function means a new connection per call.
-The snippets use a small generic `must(value, err)` startup helper; use the project's existing initialization/error pattern if it has one.
-
-Go does not load `.env` files automatically. Ensure the worker process or service manager exports `ARCJET_KEY`, or use the project's existing environment loader. Do not add a dotenv dependency solely to copy this example without reviewing it first.
+Creating the client inside a tool function means a new connection per call. `must(value, err)` is a startup helper; use the project's own pattern if it has one. Go does not load `.env` files; the process must export `ARCJET_KEY`. The key is an actor key (`ajkey_`), never a project key (`aj_prj_key_`).
 
 When `Key` is empty, `NewGuardClient` reads `ARCJET_KEY`. An explicit `Key` wins. That env fallback is intentional Go policy (same as `NewClient`), not a missing-key bug. JavaScript Guard never reads environment variables; Python Guard requires an explicit key. There is no `ARCJET_ENV` switch.
 
@@ -88,7 +79,29 @@ if decision.IsDenied() {
 }
 ```
 
-Labels are validated as slugs: ASCII letters of either case, digits, dash (`-`), dot (`.`), and underscore (`_`), starting and ending with a letter or digit. A label is matched case-sensitively, so `Order.looked-up` and `order.looked-up` are different labels. Uppercase letters need **v1.2.0**; earlier versions reject them. Prefer dash/dot in new labels. Check a label you build yourself with `ValidateGuardLabel`. A slug the service will not match reads as `ALLOW` with `HasFailedOpen()` false, so the guard does not run. `Capture` warns `AJ1023` and still sends.
+Labels are validated as slugs: ASCII letters of either case, digits, dash (`-`), dot (`.`), and underscore (`_`), starting and ending with a letter or digit, max 256 bytes. Matched case-sensitively. Uppercase needs v1.2.0. Prefer dash/dot in new labels. Check a label you build yourself with `ValidateGuardLabel`. A slug the service will not match reads as `ALLOW` with `HasFailedOpen()` false, so the guard does not run. `Capture` warns `AJ1023` and still sends.
+
+## Remote policy inputs
+
+A remote policy that declares `actor` or typed inputs only sees what the call sends. Generate the call from the policy in the Console ("Generate the SDK call") so names don't drift.
+
+```go
+decision, err := guard.Guard(ctx, arcjet.GuardRequest{
+	Label: "refund.issued",
+	Actor: &userID, // pointer here; plain string on GuardActionPolicy
+	Inputs: map[string]arcjet.GuardPolicyInput{
+		"amount": arcjet.GuardPolicyServerInteger(amountCents), // int64
+		"note":   arcjet.GuardPolicyLocalString(note),          // stays in process; only a digest is sent
+	},
+})
+```
+
+Constructors: `GuardPolicyServerString`, `GuardPolicyServerBoolean`, `GuardPolicyServerInteger` (`int64`), `GuardPolicyServerNumber` (`float64`), `GuardPolicyServerStringList`, `GuardPolicyLocalString`.
+
+- Missing **required** input → `AJP1003`; missing required actor → `AJP1002`. Policy evaluation is `INCOMPLETE`: `Guard` returns `ALLOW` with `HasFailedOpen()` true; `GuardAction` denies. An undeclared input is dropped with warning `AJ1060`.
+- Limits: 64 inputs per call, ~100 KB per server string, 256 items and ~100 KB per string list (quotes, backslashes, newlines count extra). Over any limit, every live rule fails closed with `AJP1003`.
+- Server-side sensitive-info detection on a value over 2 KB can take up to 3 s. The default Guard deadline is 2 s, so give `ctx` a longer deadline or the call fails open first. At most two `SERVER` inputs over 2 KB per call (`AJP1004`). PHI types are server-side only.
+- Threat-intel detector: at most 30 distinct hosts per call (`AJP1009`). A failed lookup scores `none` – pair it with an allow list.
 
 ## Rate limits and keys
 
@@ -100,16 +113,18 @@ An empty `Bucket` defaults to `default-token-bucket`, `default-fixed-window`, or
 
 ## Content scanning rules
 
-- `GuardPromptInjection` – use on untrusted text before it reaches a model or tool argument. The result may include optional `Billing` (`tokens`).
-- `GuardSensitiveInfo` – use to block PII entering or leaving the system; scanning happens locally. Default backend is WASM (email, phone, IP, card). For names, addresses, and government / financial identifiers, set `Backend` to a `rampart.New(...)` from `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`. Create the backend once at startup.
-- `GuardModerateContent` – Guard-only content moderation. Result is binary `Detected` plus optional `Billing` (`text_units`). `ExperimentalGuardModerateContent` is a deprecated alias.
-- `GuardCustom` – runs your local custom function and reports the result to Arcjet. Keep the function deterministic and side-effect free.
+- `GuardPromptInjection` – untrusted text before it reaches a model or tool argument. Max 128 KiB; a live rule denies larger text (`AJ1131`). Split long text. Optional `Billing` (`tokens`).
+- `GuardModerateContent` – evaluates the first 60 KB only (warning `AJ1142`); over 128 KiB denies (`AJ1141`). Use separate labels for input and output. `ExperimentalGuardModerateContent` is a deprecated alias.
+- For both: gate on `decision.IsDenied() || decision.HasFailedOpen()`, never on a reason match alone. Empty text gives an error result.
+- `GuardSensitiveInfo` – on-device. Set `Backend` to one shared `rampart.New(...)`; without it only email, phone, IP, and card are detected. `MaxInputChars` defaults to **4,096** code points – raise it for long text. Over the limit, the rule returns DENY with no detected entities, without scanning – a `LOCAL` policy input is denied the same way; in `DRY_RUN` the denial is recorded, not enforced. For longer text or PHI, send a `SERVER` input to the server-side detector (~100 KB per value, at most two values over 2 KB per call – split longer text across calls). Custom detection: `rampart.Options.Recognizers`.
+- `GuardCustom` – runs your local function and reports the result. Keep it deterministic and side-effect free.
+- One `Guard` call evaluates at most 50 rules; the rest are `NOT_RUN` with warning `AJ1003`.
 
 Go has no registration / free `guard()` API. Pass the client.
 
 ## Fail-closed helpers: `GuardAction`
 
-For a sensitive tool call or action, wrap it in `arcjet.GuardAction` instead of hand-writing the `HasFailedOpen()` gate. It calls Guard (always, even with no rules), denies with `*arcjet.GuardDeniedError`, fails closed with `*arcjet.GuardUnavailableError` when policy could not be evaluated, runs the function otherwise, and records one capture event whose metadata `outcome` is `success`, `degraded`, `denied`, `error`, or `unavailable`.
+For a sensitive tool call or action, wrap it in `arcjet.GuardAction` instead of hand-writing the `HasFailedOpen()` gate. It calls Guard (always, even with no rules, under a 2 s deadline when `ctx` has none), denies with `*arcjet.GuardDeniedError`, fails closed with `*arcjet.GuardUnavailableError` when policy could not be evaluated, runs the function otherwise, and records one capture event whose metadata `outcome` is `success`, `degraded`, `denied`, `error`, or `unavailable`.
 
 ```go
 out, err := arcjet.GuardAction(ctx, guard, arcjet.GuardActionPolicy{
@@ -119,7 +134,7 @@ out, err := arcjet.GuardAction(ctx, guard, arcjet.GuardActionPolicy{
 }, func(ctx context.Context) (Receipt, error) { return refundPayment(ctx, id) })
 ```
 
-Distinguish the two errors with `errors.As`. `OnGuardError: arcjet.OnGuardErrorAllow` opts a call site back into fail-open; a `DENY` still blocks. Use `arcjet.NewGuardDenialResult(decision)` and `arcjet.NewGuardUnavailableResult()` when the caller is a model and needs a JSON result rather than a Go error. Available from `arcjet-go` v1.0.0.
+Distinguish the two errors with `errors.As`. `OnGuardError: arcjet.OnGuardErrorAllow` opts a call site back into fail-open; a `DENY` still blocks, and so does `ErrGuardMisconfigured` (an unusable request). `Resolve func(ctx) (GuardActionInputs, error)` computes `Actor`, `Inputs`, and `Rules` per call; a `Resolve` error skips Guard and is governed by `OnGuardError`. Use `arcjet.NewGuardDenialResult(decision)` / `arcjet.NewGuardUnavailableResult()` when the caller is a model and needs a JSON result.
 
 For Microsoft Agent Framework for Go, load [integrate-arcjet-guard-agent-framework-go](../../integrate-arcjet-guard-agent-framework-go/SKILL.md) instead of wrapping tools by hand.
 
@@ -143,12 +158,10 @@ Call `Flush(ctx)` on shutdown (one-second deadline if `ctx` has none). `Close` f
 
 ## Errors vs warnings
 
-Available in **`arcjet-go` v0.1.0**:
-
 - `decision.HasFailedOpen()` is true when the decision is `ALLOW` only because a rule or the decision itself could not be processed. This is the fail-closed gate for sensitive operations.
 - `decision.ErrorResults()` returns the errored rule results for logging.
 - Each rule also exposes a per-rule `ErrorResult(decision)` accessor – the mirror of `DeniedResult(decision)` – returning that rule's `*ArcjetError` if it errored, else `nil`. Use it to attribute a fail-open to a specific rule (for example only block when the prompt-injection scan errored) instead of scanning `ErrorResults()`.
-- `decision.Warnings` contains decision-level diagnostics such as invalid metadata that was stripped. Warnings never change the conclusion.
+- `decision.Warnings` holds diagnostics (`AJ1060`, `AJ1062`, `AJ1142`, `AJ1003`, stripped metadata). They never change the conclusion and are **not shown in the Console** – log them, or a misnamed input goes unnoticed.
 
 ```go
 if decision.HasFailedOpen() {
@@ -161,7 +174,7 @@ for _, w := range decision.Warnings {
 
 ## Correlation IDs
 
-Set `GuardRequest.CorrelationID` to correlate this guard call with HTTP requests, workflow runs, or agent traces. It is a dedicated field, not metadata, and does not affect the decision. The agent helpers read `arcjet.ContextWithCorrelationID(ctx, id)`; `Guard` and `Capture` do not, so pass `CorrelationID` to them explicitly.
+Set `GuardRequest.CorrelationID` to link this call with HTTP requests and capture events. It is a dedicated field, not metadata, and does not affect the decision. A Console Sequence is the **capture events** sharing a correlation ID; decisions alone don't form one. The agent helpers read `arcjet.ContextWithCorrelationID(ctx, id)`; `Guard` and `Capture` do not, so pass `CorrelationID` to them explicitly.
 
 ## Metadata
 
@@ -169,4 +182,4 @@ Set `GuardRequest.CorrelationID` to correlate this guard call with HTTP requests
 
 ## Outbound HTTP proxy
 
-Available in **`arcjet-go` v0.1.0**: standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables are honored for outbound Arcjet API calls. Do not log proxy URLs because they may contain credentials.
+Standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables are honored for outbound Arcjet API calls. Do not log proxy URLs because they may contain credentials.

@@ -96,7 +96,7 @@ Core `guard()` fails open: `ALLOW` is not proof the rules ran.
 Gate on `decision.has_failed_open()` if this call site must fail
 closed; `guard_tool` / `guard_plugin` already default to that.
 
-## `actor` / `inputs` — omit and remote rules never fire
+## `actor` / `inputs` — a missing required one denies
 
 A remote policy that declares `actor` or typed `inputs` only
 evaluates those values when this call sends them. Pass `actor=`
@@ -106,11 +106,12 @@ and `inputs=` on `guard_tool` / `guard_plugin` (and on inbound
 `policyInput` equivalent. Do not import JS `policyInput` and do
 not invent a second helper.
 
-- **Omit `actor` / `inputs`** and a remote policy that requires
-  them never fires. The call still contacts Guard; the remote
-  rules just have nothing to read.
-- **A resolver that throws is degraded and fail-closes** under the
-  default `on_guard_error="deny"`. The tool does not run.
+- **Omit a required `actor` / input** and the policy reports
+  `AJP1002` / `AJP1003`, evaluation is `INCOMPLETE`, and the helper
+  denies. An optional input left out just gives the rule nothing to read.
+- **A resolver that throws** (1.4.0+) still calls Guard without that
+  value; a remote DENY stands, and the default `on_guard_error="deny"`
+  blocks the tool.
 - **`actor` is the authenticated caller**, never a model-produced
   tool argument. An order id or email `to=` the model chose is
   not who is acting. Take `actor` from a signed session, verified
@@ -163,8 +164,9 @@ Ask only what you cannot infer from the code; suggest defaults.
    never `trace_id`, never session auto-ids.
 9. **Key rate limits on the authenticated caller**, not a
    model-supplied order id. Same for `actor`.
-10. **Omit `actor` / `inputs` and remote rules never fire.** A
-    resolver throw fail-closes. Use `server_input` / `local_input`,
+10. **A missing required `actor` / input denies (`AJP1002` /
+    `AJP1003`).** A resolver throw still calls Guard, then denies by
+    default. Use `server_input` / `local_input`,
     not JS `policyInput`.
 11. **Do not hand-wrap every ADK tool with raw `guard()`.**
 

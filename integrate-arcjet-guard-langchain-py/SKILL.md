@@ -96,10 +96,11 @@ Ask only what you cannot infer from the code; suggest defaults.
 7. **`success` on helper capture is not "the action ran".**
    `guard_action` / `guard_tool` / `ArcjetMiddleware` write
    `metadata.outcome`. See the shared Python Guard reference.
-8. **`rules=` is a static sequence**, not a lambda – a callable raises
-   `TypeError`. Put per-argument checks in the tool body, or use
-   `inputs=` (this adapter accepts typed inputs; the resolver is
-   `(arguments, config)`).
+8. **`rules=` takes a list or (1.4.0+) a callable** resolved per call:
+   `guard_tool` `(arguments, config)`, `ToolPolicy` `(args)`. On 1.3.x and
+   earlier a callable raises `TypeError`. A callable that raises or
+   returns non-rules still calls Guard with no local rules; remote policy
+   runs and `on_guard_error` decides. Keep it synchronous on sync paths.
 9. **A missing decision is not a denial.** Verify in Console/CLI.
 
 ## Step 1: Install and find the guard client

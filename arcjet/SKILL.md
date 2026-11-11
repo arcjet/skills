@@ -40,7 +40,7 @@ Before writing any code, the project needs a real `ARCJET_KEY` in its env file. 
 
 1. **Arcjet CLI** (preferred). Check whether you're already signed in, then retrieve a key.
 2. **Arcjet MCP server** (endpoint: `https://api.arcjet.com/mcp`) – for clients with built-in MCP. See [references/mcp.md](references/mcp.md).
-3. **Manual** (last resort): tell the user to grab a key from https://console.arcjet.com.
+3. **Manual** (last resort): in https://console.arcjet.com select **New actor**, then copy the **Actor key** (`ajkey_`). The Console says *actor*; the CLI and API say *site*.
 
 #### CLI bootstrap (the normal path)
 
@@ -49,21 +49,23 @@ npx -y @arcjet/cli@latest auth status        # is the user already signed in?
 # if not signed in:
 npx -y @arcjet/cli@latest auth login         # browser device flow, see references/cli.md
 
-npx -y @arcjet/cli@latest teams list --output json --fields id,name
-npx -y @arcjet/cli@latest sites list --team-id <team_id> --output json --fields id,name
-# if no suitable site exists:
+npx -y @arcjet/cli@latest teams list --output json
+npx -y @arcjet/cli@latest sites list --team-id <team_id> --output json
+# if no suitable site exists – previews and exits 4; show the user `changes`, then run `confirmCommand`:
 npx -y @arcjet/cli@latest sites create --team-id <team_id> --name "<project>"
 
 npx -y @arcjet/cli@latest sites get-key --site-id <site_id> --output json --fields key
 ```
 
-Write the `key` value to the project's env file as `ARCJET_KEY=ajkey_...`. Match whatever the project already does – filename, `.env.example` companion, `.gitignore` entry. If the project doesn't have a convention yet, default to whatever the framework expects and add the env file to `.gitignore`. Never hardcode the key in source.
+Don't use `--fields` on list commands – it keeps top-level keys only, so `teams list --fields id,name` prints `{}`. Don't pass `--confirm` on the first run.
+
+Write the `key` value to the project's env file as `ARCJET_KEY=ajkey_...`. Never use a project key (`aj_prj_key_`) as `ARCJET_KEY` – `protect()` and `guard()` need the actor key. Match whatever the project already does – filename, `.env.example` companion, `.gitignore` entry. If the project doesn't have a convention yet, default to whatever the framework expects and add the env file to `.gitignore`. Never hardcode the key in source.
 
 See [references/cli.md](references/cli.md) for install options beyond `npx`, agent-mode flags, and the full command reference.
 
 #### Install the SDK with the project's package manager
 
-Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.13.0`; Python `arcjet` is `1.2.0`; Go must use a module tag, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
+Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.15.0`; Python `arcjet` is `1.5.0`; Go must use a module tag, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
 
 ### Step 3: Detect protection type and read the reference
 
@@ -79,7 +81,13 @@ Determine which protection type applies:
 
 A single project can use both – for example, request-based on API routes and Guard on agent tool calls. If the project already uses a supported agent framework, prefer the official wrapper over hand-wrapping every tool. In Python, load the dedicated skill (table below) — not a raw `guard()` around every callable, and not the JS `@arcjet/guard/...` path. In JavaScript, load fundamentals plus **exactly one** adapter from the JS table — not the sibling adapters. Cloudflare Think loads [integrate-arcjet-guard-cloudflare-think](../integrate-arcjet-guard-cloudflare-think/SKILL.md) from that table, not a `guards_js_*.md` file and not `@arcjet/guard/vercel-ai/v7`. Install published `@arcjet/guard` plus the `@cloudflare/think` peer. In Go, load the Microsoft Agent Framework skill when that framework is present; otherwise use `GuardAction` from the Go Guard reference.
 
-**Coding-agent hooks (Claude Code / GitHub Copilot) are a third path.** There is no SDK and no `guard()` call. Publishing a policy attached to **Execute on** (Tool call, Prompt, or Model switch) turns it on. Install the HTTP hooks from https://docs.arcjet.com/coding-agents — copy the templates, do not invent URLs. Hook URLs must not name a policy and must omit `?surface=` (managed settings reach CLI, IDE, Desktop, and cloud; a hard-coded `cli` mislabels most traffic). Author the policy via MCP ([references/mcp.md](references/mcp.md)).
+**Coding-agent hooks are a third path** (Claude Code, GitHub Copilot, Codex, Cursor, Muse Code). There is no SDK and no `guard()` call. Publish a coding-agent policy from a Console starter, attached to **Execute on** (Tool call, Prompt, or Model switch); publishing turns it on. Install the hooks from the vendor's page under https://docs.arcjet.com/coding-agents – copy the template, do not invent URLs. Hooks take the project key (`aj_prj_key_`, `arcjet projects get-key`) or an actor key.
+
+- Don't add a `matcher`, a `label`, or `?surface=` to the template. A matcher hides calls from the policy; managed settings reach every surface, so a hard-coded `cli` mislabels traffic.
+- Don't read "no denials" as "working". Claude Code and Copilot HTTP hooks fail open on a timeout, network error, or any non-2xx including `401`. Codex, Cursor, and Muse Code fail closed – a wrong key denies everything.
+- Copilot can't enforce a prompt denial. Don't install Copilot hooks in VS Code (no HTTP hooks).
+- Don't run hooks and OpenTelemetry or Compliance ingest into the same project – sessions are ingested twice.
+- Claude Code cloud sessions need `decide.arcjet.com` in the environment's allowed domains.
 
 **Common misclassifications to watch for:**
 
@@ -129,7 +137,8 @@ Follow the patterns in the reference file from Step 3. Key principles:
 - In Python, create one `arcjet()` / `arcjet_sync()` client and use `with_rule()` for route-specific extras so clones share `DecisionCache`. Check `decision.is_denied()`. Sibling constructors do not share cache.
 - In Go, create one `NewClient` at package scope. `WithRule()` derives route-specific clients that share the parent cache, and returns `(*Client, error)`, so handle initialization errors. Check `decision.IsDenied()`. Separate `NewClient` calls do not share cache.
 - Call `protect()` / `Protect()` inside each route handler (not in app-level middleware), once per request.
-- Map denial reasons to HTTP responses. Only branch on reasons that produce a *different* response – there is no point in a Shield-specific arm that returns the same status as the default 403.
+- Map denial reasons to HTTP responses. Only branch on reasons that produce a *different* response – there is no point in a Shield-specific arm that returns the same status as the default 403. Order: reason-specific arms → a catch-all `isDenied()` 403 (remote rules and other denials land here; don't skip it) → errored.
+- Errored decisions fail open by default. On routes that send text to a model or screen PII, deny (503) when the decision errored. Log-and-allow is acceptable for Shield, bots, and rate limits.
 - Put the language's `userId` characteristic selector on the specific rule that needs it, then pass a **trusted, authenticated** user ID at protection time. Never rate limit by a client-controlled header unless a trusted proxy strips and rewrites it.
 - Treat client-IP provenance as security configuration. JavaScript, Python, and Go may fall back to common forwarding headers when no usable public address is available and produce one `client_ip_provenance="unverified-header"` warning for the lifetime of each SDK client instance. Configure every trusted proxy and verify the application is reachable only through infrastructure that overwrites or safely appends forwarding headers. Never silence the warning by copying a client-controlled header into a manual override.
 - If the application already has an independently trusted client IP, pass it explicitly: `ipSrc` (JS), `ip_src` (Python; also set `disable_automatic_ip_detection=True` when constructing the client), or `WithIPSrc` (Go). The SDKs reject malformed values, although JS treats an empty `ipSrc` as omitted. Syntax validation does not prove provenance. Before shipping, inspect representative requests with JS `clientIpDetails()` / `findIpDetails()`, Python `client_ip_details()`, or Go `ClientIPDetails()`.
@@ -137,24 +146,26 @@ Follow the patterns in the reference file from Step 3. Key principles:
 
 #### Guard (non-HTTP code):
 - Client at module scope: `launchArcjet()` (JS), `launch_arcjet()` / `launch_arcjet_sync()` (Python – match async vs sync), `NewGuardClient` (Go).
-- Rules at module scope. **One `guard()` per operation with a hardcoded slug label** (`tools.get-weather`). Interpolated labels break grep and Console grouping. Slugs: ASCII letters of either case, digits, `-`, `.`, `_` only; start and end with a letter or digit; max 256 bytes. Matched case-sensitively, so `Order.looked-up` and `order.looked-up` are different labels.
+- Rules at module scope. A throwing or unusable policy callback runs Guard without that value (a remote DENY still stands), then `onGuardError` / `on_guard_error` decides. In JS, `rules` / `metadata` / `action` / `sessionId` callbacks must be synchronous – a Promise counts as a failure. **One `guard()` per operation with a hardcoded slug label** (`tools.get-weather`). Interpolated labels break grep and Console grouping. Slugs: ASCII letters of either case, digits, `-`, `.`, `_` only; start and end with a letter or digit; max 256 bytes. Matched case-sensitively, so `Order.looked-up` and `order.looked-up` are different labels.
 - `metadata` is nested JSON for audit only. No secrets or PII. `capture()` is visibility, never a decision – flush on shutdown. Python helper `success` is not "the action ran" – see the Python Guard reference.
 - Free `guard()` (JS/Python registration) fail-opens if nothing is registered. Go has no registration API. Prefer an explicit client.
 - Prefer official wrappers over hand-wrapping. Import the **versioned** JS path and load that adapter file from Step 3. Load the dedicated Python skill from Step 3. Unversioned `@arcjet/guard/<adapter>` aliases do not resolve.
 - **Branch on which rule denied**, not just `DENY`. Guard `decision.reason` is a flat string (`"PROMPT_INJECTION"`) and is `undefined` on ALLOW. A denial by one rule still spends the others' budget in the same `rules` array – split calls if a PII false positive must not drain a rate limit.
 - Every rate-limit rule needs a `key` and a `bucket`. Use a trusted user/session id when you have one; otherwise a stable identifier you control.
+- Limits per `guard()` call: 50 rules (`AJ1003`), 64 policy inputs, ~100 KB per server string, 256 items per list (over → `AJP1003`, live rules fail closed). Prompt injection and moderation deny text over 128 KiB; moderation evaluates the first 60 KB.
+- Warnings (`AJ1060` undeclared input, `AJ1062` empty text unscreened, `AJ1142`) reach only the SDK, not the Console. Log `decision.warnings`.
 
 **JS adapters:** wrappers fail closed; core `guard()` fails open. Load the Step 3 file (or the Cloudflare Think skill) for the project's framework. `npm install @arcjet/guard` or `pnpm add @arcjet/guard` is enough for every published adapter — plus `actor` / `inputs` / `validateGuardLabel`. Cloudflare Think is the same published `@arcjet/guard` install plus peer `@cloudflare/think`; load [integrate-arcjet-guard-cloudflare-think](../integrate-arcjet-guard-cloudflare-think/SKILL.md). Do not pin a git SHA.
 
-**Python:** `guard_action` / `guard_action_sync` is core. Load the dedicated skill for the project's extra (`arcjet[langchain]`, `arcjet[langchain-agents]`, `arcjet[openai-agents]`, `arcjet[claude-agent-sdk]`, `arcjet[claude-managed-agents]`, `arcjet[strands-agents]`, `arcjet[google-adk]`). There is no `arcjet[crewai]` extra. `validate_guard_label` and adapter `actor` / `inputs` are in PyPI `arcjet` **1.2.0**. Google ADK is `pip install "arcjet[google-adk]"` or `uv add "arcjet[google-adk]"` — load [integrate-arcjet-guard-google-adk-py](../integrate-arcjet-guard-google-adk-py/SKILL.md). Do not pin a git SHA.
+**Python:** `guard_action` / `guard_action_sync` is core. Load the dedicated skill for the project's extra (`arcjet[langchain]`, `arcjet[langchain-agents]`, `arcjet[openai-agents]`, `arcjet[claude-agent-sdk]`, `arcjet[claude-managed-agents]`, `arcjet[strands-agents]`, `arcjet[google-adk]`). There is no `arcjet[crewai]` extra. `validate_guard_label` and adapter `actor` / `inputs` are in PyPI `arcjet` **1.2.0+** (uppercase labels 1.4.0+). Google ADK is `pip install "arcjet[google-adk]"` or `uv add "arcjet[google-adk]"` — load [integrate-arcjet-guard-google-adk-py](../integrate-arcjet-guard-google-adk-py/SKILL.md). Do not pin a git SHA.
 
 **Traps that run without error and enforce nothing** (full write-up in the Guard references and https://docs.arcjet.com/llms.txt):
 
 - Guard has no `sensitiveInfo` rule – that is HTTP `protect()` only. Use `localDetectSensitiveInfo` / `LocalDetectSensitiveInfo`.
-- Python `LocalDetectSensitiveInfo()` with neither `allow` nor `deny` fail-opens as ALLOW (`AJ1203`). Always pass a list. JS works with no args; still pass a list.
+- Don't rely on `localDetectSensitiveInfo` / `LocalDetectSensitiveInfo` defaults. Pass an explicit `deny` list of the types to block.
 - The sensitive-info rule does **not** inherit the client's backend. Entity types beyond `EMAIL` / `PHONE_NUMBER` / `IP_ADDRESS` / `CREDIT_CARD_NUMBER` need `backend` on the rule. Share one Rampart instance with the client.
-- A label the service will not match reads as `ALLOW` with `hasFailedOpen()` / `has_failed_open()` false, so the guard silently does not run. `@arcjet/guard` 1.13.0 and PyPI `arcjet` 1.2.0 refuse one up front: adapter factories throw / raise `ArcjetInvalidLabelError`, and a capture warns `AJ1023` and still sends. Check a label you build yourself with `validateGuardLabel` / `validate_guard_label`.
-- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. Import `policyInput` from `@arcjet/guard` (not an adapter path). Python uses `server_input` / `local_input`. Check installed types — do not pass fields a helper does not declare.
+- A label the service will not match reads as `ALLOW` with `hasFailedOpen()` / `has_failed_open()` false, so the guard silently does not run. Adapter factories throw / raise `ArcjetInvalidLabelError` up front, and a capture warns `AJ1023` and still sends. Check a label you build yourself with `validateGuardLabel` (importable from `@arcjet/guard` **1.15.0**; `undefined` at runtime before) / `validate_guard_label`.
+- A remote policy that declares `actor` or typed `inputs` only fires if this call sends them. A missing optional input is silent; a missing required one is `AJP1003` (actor `AJP1002`): wrappers deny, core `guard()` returns ALLOW with `hasFailedOpen()`. Copy **Generate the SDK call** from the Console policy so names match. Import `policyInput` from `@arcjet/guard` (not an adapter path). Python uses `server_input` / `local_input`. Check installed types — do not pass fields a helper does not declare.
 - A missing decision is not a denial. If the model asks a question or masks values itself, Guard never runs. Verify in Console/CLI.
 - Guarding one tool only helps if it is the only path. Claude Agent SDK needs `settingSources: []` / `setting_sources=[]` **and** `strictMcpConfig: true` / `strict_mcp_config=True`.
 - HITL (`needsApproval`, `human_input`, `can_use_tool`, `event.interrupt()`, `always_ask`) is not a policy gate.
@@ -171,16 +182,17 @@ After wiring up protection, confirm it's actually firing. Three steps:
 
 **2. Trigger a real call so a decision exists to check.** Without one, the Console and CLI are empty and you can't tell whether protection is actually wired up.
 
+- **Shield**: send `x-arcjet-suspicious: true` – the first five requests pass, the sixth is denied. A single curl never shows a Shield deny.
 - **Request-based**: start the dev server (`npm run dev`, `uvicorn main:app --reload`) and `curl` the protected route with the method the route actually accepts (`curl -I` is HEAD – FastAPI GET-only routes answer 405, not the documented 403). Empty `bots.allow` / `allow=[]` denies `CURL` before later rules run – temporarily `allow: ["CURL"]` when you need to reach email or rate-limit checks, then drop it. To trip a rate limit: `for i in {1..50}; do curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/api/your-route; done`.
 - **Guard**: invoke the protected function so a decision exists. A missing decision is not a denial – read Console/CLI, not the absence of a side effect. Don't test Guard by `curl`ing anything.
 
 **3. Confirm the decision in the Arcjet platform.**
 
 - **CLI**: `npx -y @arcjet/cli@latest requests list --site-id <id>` (request-based) or `... guards list --site-id <id>` (Guard)
-- **MCP**: `list-requests` / `list-guards`
-- **Console**: https://console.arcjet.com
+- **MCP**: `list-requests` / `list-guards` (`correlationId` scopes one session) / `get-guard`
+- **Console**: https://console.arcjet.com – the actor's **Activity** tab
 
-For deeper investigation: `arcjet requests explain --site-id <id> --request-id <id>` or `arcjet guards explain --site-id <id> --guard-id <id>`.
+For deeper investigation: `arcjet requests explain --site-id <id> --request-id req_…` or `arcjet guards details --site-id <id> --decision-id gdec_…`. There is no `guards explain`. A misnamed policy input shows only as an SDK warning, never in the Console.
 
 If you can't run the app in the current environment, tell the user exactly what to do (which command to run, what to look for in the output) instead of silently skipping verification.
 
@@ -190,7 +202,7 @@ If you can't run the app in the current environment, tell the user exactly what 
 - **Wrong placement**: `protect()` must not be called in Express middleware or Next.js middleware. Call it inside each route handler.
 - **Wrong layer for `guard()`**: don't put `guard()` in a generic dispatcher. Use the official wrapper from the table above, or put `guard()` inside the specific tool. Load the dedicated Python skill instead of hand-wrapping.
 - **Python adapter denials and HITL:** load the dedicated skill. Capture handlers never block. HITL is not a policy gate. Helper `metadata.outcome` details live in the Python Guard reference.
-- **Hand-edited dependency manifests**: run the project's package manager so the version is real (`@arcjet/*` 1.13.0, Python `arcjet` 1.2.0).
+- **Hand-edited dependency manifests**: run the project's package manager so the version is real (`@arcjet/*` 1.15.0, Python `arcjet` 1.5.0).
 - **Double-counting**: calling `protect()` or `guard()` multiple times for the same operation counts against rate limits multiple times.
 - **Client-IP warning bypass**: never "fix" an `unverified-header` warning by copying `X-Forwarded-For` into `ipSrc` / `ip_src` / `WithIPSrc`.
 - **JS denial envelopes:** one `ArcjetDenialResult` payload; delivery is per-framework. Read the adapter file from Step 3 before inventing a status or throwing. `guardTool` and `guardAction` are different handlers.
@@ -208,8 +220,8 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 - **Python Guard integration skills**: [integrate-arcjet-guard-langchain-py](../integrate-arcjet-guard-langchain-py/SKILL.md), [integrate-arcjet-guard-crewai](../integrate-arcjet-guard-crewai/SKILL.md), [integrate-arcjet-guard-openai-agents-py](../integrate-arcjet-guard-openai-agents-py/SKILL.md), [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md), [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md), [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md), [integrate-arcjet-guard-google-adk-py](../integrate-arcjet-guard-google-adk-py/SKILL.md).
 - **JS Cloudflare Think skill**: [integrate-arcjet-guard-cloudflare-think](../integrate-arcjet-guard-cloudflare-think/SKILL.md).
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`). JS Guard adapter files: [references/guards_js_vercel_ai.md](references/guards_js_vercel_ai.md) and siblings listed in Step 3.
-- **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. `go get github.com/arcjet/arcjet-go` resolves **v1.0.0** (Go 1.25+). Microsoft Agent Framework helpers live in a separate module: `go get github.com/arcjet/arcjet-go/agentframework` resolves **v0.1.0** and needs Go 1.26+.
-- **Guard policies**: author and publish via MCP (`list-guard-policies` / `describe-guard-policy` / `validate-guard-policy` / `put-guard-policy`). The CLI has no policy commands. Application policies select by `label` / `action`. Coding-agent policies attach by **Execute on** (Tool call, Prompt, or Model switch); publishing turns them on — the hook URL must not name a policy and must omit `?surface=`. Install templates: https://docs.arcjet.com/coding-agents.
+- **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. `go get github.com/arcjet/arcjet-go` resolves **v1.3.0** (Go 1.25+). Microsoft Agent Framework helpers live in a separate module: `go get github.com/arcjet/arcjet-go/agentframework` resolves **v0.1.0** and needs Go 1.26+.
+- **Guard policies**: author in the Console policy editor, or via MCP (`get-guard-policy` → `describe-guard-policy` → `validate-guard-policy` → `put-guard-policy`; see [references/mcp.md](references/mcp.md)). Saving is publishing. The CLI has no policy commands.
 - **Agent registration**: https://arcjet.com/auth.md — follow that file; do not reproduce the ceremony here.
 - **Docs**: https://docs.arcjet.com – narrative guides, blueprints, and product reference.
 - **Console**: https://console.arcjet.com – sites, keys, and decision history.

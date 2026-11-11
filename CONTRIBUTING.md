@@ -31,6 +31,15 @@ Dedicated Guard adapter skills follow the `integrate-arcjet-guard-*` conventions
 
 JS Guard adapters that ship inside `@arcjet/guard` stay as `references/guards_js_*.md` behind the shared `arcjet` skill. The adapter routing table lives only in `guards_javascript.md` — `SKILL.md` links there instead of copying it. Do not add a separately triggered skill per JS adapter that already has a `guards_js_*.md` file (the npm package ships those `integrate-arcjet-guard-*` under `node_modules/@arcjet/guard/skills/`). Cloudflare Think is the JS adapter taught here as `integrate-arcjet-guard-cloudflare-think` and listed in that table. Do not put adapter wiring back into `guards_javascript.md`. HTTP frameworks stay in the request references — do not split Next.js / Express / FastAPI into their own skills.
 
+## Distribution
+
+This repo is canonical. Change guidance here first, then sync the two bundles in the same change window:
+
+- **[arcjet/arcjet-plugin](https://github.com/arcjet/arcjet-plugin)** vendors the skill directories under `plugins/arcjet/skills/`. Copy them at a `main` SHA, run `dprint fmt`, and record the SHA in its `CHANGELOG.md`. `evals/` is not vendored.
+- **[arcjet/arcjet-js](https://github.com/arcjet/arcjet-js)** ships JS/TS skills in npm via TanStack Intent: `arcjet-skills/` (`protect`, `choose-protections`, `cli`, `mcp`, `guard`) and `arcjet-guard/skills/` (one `integrate-arcjet-guard-*` per adapter). Port the JS parts of `arcjet/SKILL.md` and `references/` into their `docs/*.md` source and `SKILL.md`, then run `npm run validate-skills` in both workspaces.
+
+Don't fix guidance only in a bundle. The next sync overwrites it.
+
 ## skill-creator
 
 The `skill-creator` skill in `.agents/skills/` is vendored from

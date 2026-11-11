@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-claude-agent-sdk-py
 description: Integrate Arcjet Guard into the Python Claude Agent SDK — wrap authored @tool with guard_tool, and use guard_hooks for UserPromptSubmit inbound plus PreToolUse on unwrapped built-ins / MCP. Use when asked to add Arcjet to claude-agent-sdk, rate limit those tools, screen inbound prompts, or block prompt injection / PII. This is Python claude-agent-sdk, not the JS adapter and not Claude Managed Agents hosted sessions.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official claude-agent-sdk>=0.2.127,<1 via arcjet[claude-agent-sdk] (safe extra, no chromadb). Requires PyPI arcjet 1.1.0.
+compatibility: Requires Python >= 3.10 and official claude-agent-sdk>=0.2.127,<1 via arcjet[claude-agent-sdk] (safe extra, no chromadb). Requires PyPI arcjet 1.1.0; result screening (result_rules / tool_results) needs 1.5.0.
 metadata:
   author: arcjet
   type: core
@@ -26,7 +26,8 @@ community forks, and not Claude Managed Agents hosted
 `arcjet.guard.claude_agent_sdk` does not load LangChain, CrewAI, or the
 JS adapter. The extra is safe (no chromadb).
 
-Exports: `guard_tool`, `guard_hooks`, `claude_agent_context`. Authored
+Exports: `guard_tool`, `guard_hooks`, `claude_agent_context`,
+`REPLACEABLE_BUILTIN_TOOLS`, `can_replace_result`. Authored
 `@tool` + `create_sdk_mcp_server` for tools you own; `guard_hooks` for
 inbound `UserPromptSubmit` and unwrapped built-ins / MCP `PreToolUse`.
 There is no inbound helper and no `guard_can_use_tool`.
@@ -40,7 +41,10 @@ Three surfaces, one decision rule:
   "block"`). That is the only place a turn can be declined before the
   model reads the prompt.
 - **Built-ins / unwrapped MCP** → `guard_hooks` `PreToolUse`
-  (`permissionDecision: "deny"`). `PostToolUse` is capture only.
+  (`permissionDecision: "deny"`).
+- **What a tool returned** (1.5.0+) → `guard_tool(result_rules=...)` for
+  an authored tool, `guard_hooks(tool_results={"rules": ...})` on
+  `PostToolUse` for every tool. Without them `PostToolUse` only captures.
 - **Correlation** → `claude_agent_context` reads a caller-owned UUID
   `session_id`. It never mints.
 
@@ -57,6 +61,35 @@ pass `{"server": "support", "name": "lookup_order"}` for an authored MCP
 tool (it resolves to `mcp__support__lookup_order`) and a bare string for
 a built-in such as `"Bash"`. A bare authored name deliberately does not
 match every server's tool of that name.
+
+## Screen tool results before the model reads them (1.5.0+)
+
+```python
+guarded_fetch = guard_tool(guard=aj, tool=fetch_page, action="page.fetched",
+                           session_id=session_id,
+                           result_rules=lambda r: [DetectPromptInjection()(r["text"])])
+hooks = guard_hooks(guard=aj, session_id=session_id,
+                    tool_results={"rules": lambda r: [DetectPromptInjection()(r["text"])]})
+```
+
+- `result_rules` gets `{"arguments", "result", "text"}` and runs a second
+  Guard call labelled `result_action` (default `"{action}.result"`) –
+  publish remote policy under that label. A DENY returns the same
+  `is_error` envelope in place of the result.
+- `tool_results["rules"]` is required and must be a callable of
+  `{"tool_name", "tool_input", "tool_response", "text"}`; default action
+  `"{tool_name}.result"`. No policy inputs are sent.
+- On a `tool_results` DENY: MCP tools (`mcp__…`) and `Bash` / `Read` get
+  the result replaced; **any other tool stops the run** (`continue:
+  false`). Don't resume a stopped session – it still holds the original
+  result. Keep tools `can_replace_result()` rejects out of
+  `allowed_tools` where stopping is unacceptable.
+- `exclude` does not skip `tool_results`, so a tool with `result_rules`
+  is screened twice. Subagent (`Agent`) output is not screened. Another
+  `PostToolUse` hook that rewrites the result can overwrite the denial.
+- `text` is never shortened: over 128 KiB to prompt injection is a deny,
+  and a slow scan under the default `on_guard_error="deny"` also denies.
+  Choose `on_guard_error` per tool deliberately.
 
 ## Authored `@tool` denial is JSON-in-content + `is_error: True`
 
