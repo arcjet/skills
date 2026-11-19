@@ -318,6 +318,6 @@ the call is uncorrelated rather than joined to a generated id.
 
 Worked example:
 [`examples/cloudflare-think-agent`](https://github.com/arcjet/examples/tree/main/examples/cloudflare-think-agent)
-(no verify fixture; `main` does not have this tree yet). Do not
+(no verify fixture). Do not
 invent a second example name. Do not add an example in this skills
 repo.
