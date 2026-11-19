@@ -6,13 +6,15 @@ Map the user's problem to the right Arcjet rules. Load this file when you need t
 
 Automated clients – scrapers, data harvesters, and script-based attackers – treat AI features as free compute. Without bot protection, every request from a bot reaches your AI provider and inflates your costs.
 
-Arcjet bot detection runs inside the application, before the AI call, so denied requests never reach your provider. It classifies 800+ known bots across 23 categories and verifies legitimate bots by IP, reverse DNS, or Web Bot Auth signature.
+Arcjet bot detection runs inside the application, before the AI call, so denied requests never reach your provider. It classifies 800+ known bots across 24 categories and verifies legitimate bots by IP, reverse DNS, or Web Bot Auth signature.
 
 You configure bot rules in application code – not at the CDN layer – so you can apply different strategies per route and make decisions based on full application context (identity, subscription level, session state).
 
 **Rules:** `detectBot` (request-based only). Pass exactly one of `allow` or `deny` – neither or both is an error. `allow` is a safelist (everything else is denied); `deny` blocks listed categories. Empty `allow=[]` blocks every detected bot. Combine with rate limiting for traffic control.
 
-**Signed agents (Web Bot Auth; JS 1.15.0, Python 1.5.0, Go v1.3.0):** list signers in the same `allow` / `deny` by catalog name (`CHATGPT_AGENT`, `BROWSERBASE`, …) or as `SIGNED_BOT:https://<host>/.well-known/http-message-signatures-directory`. Arcjet Cloud verifies the signature.
+**`CATEGORY:AI_AGENT` (JS 1.16.0, Python 1.6.0, Go v1.4.0):** the part of `CATEGORY:AI` that fetches a page on demand for a person (ChatGPT-User, Claude-User, coding agents, …). Every AI agent is also in `CATEGORY:AI`, so `deny: ["CATEGORY:AI"]` blocks agents too. To block AI crawlers but allow agents, use an `allow` list that includes `CATEGORY:AI_AGENT` instead of denying `CATEGORY:AI`. Check a LIVE result with `isAiAgent` from `@arcjet/inspect` (JS), `is_ai_agent` (Python), or `decision.IsAIAgent()` (Go) — identity is not authorization; read `evidence` when strength matters.
+
+**Signed agents (Web Bot Auth; JS 1.15.0+, Python 1.5.0+, Go v1.3.0+):** list signers in the same `allow` / `deny` by catalog name (`CHATGPT_AGENT`, `BROWSERBASE`, …) or as `SIGNED_BOT:https://<host>/.well-known/http-message-signatures-directory`. Arcjet Cloud verifies the signature.
 
 - An existing allow list such as `CATEGORY:SEARCH_ENGINE` now **denies** verified browser agents that used to pass as browsers. Add the signers you want.
 - Check `isDenied()` before `isVerifiedBot` – a verified signer missing from `allow` is denied.

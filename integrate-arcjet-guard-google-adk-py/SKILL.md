@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-google-adk-py
 description: Integrate Arcjet Guard into Python Google ADK — assign guard_tool to LlmAgent(before_tool_callback=), put guard_plugin first on Runner(plugins=) so a deny dict with arcjetDenied skips the tool, and read a caller-owned id via google_adk_context. Use when asked to add Arcjet to google-adk, Google ADK Python, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python google-adk 2.x, not JS @google/adk and not @google/genai.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official google-adk>=2.0.0,<3 via the published arcjet[google-adk] extra (safe extra, no chromadb). Install with pip install or uv add. This is LlmAgent.before_tool_callback plus Runner BasePlugin. DENY is a skip dict with arcjetDenied.
+compatibility: Requires Python >= 3.11 for arcjet 1.6.0 (pip installs 1.5.0 on 3.10). Needs official google-adk>=2.0.0,<3 via the published arcjet[google-adk] extra (safe extra, no chromadb). Install with pip install or uv add. This is LlmAgent.before_tool_callback plus Runner BasePlugin. DENY is a skip dict with arcjetDenied.
 metadata:
   author: arcjet
   type: core

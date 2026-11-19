@@ -26,7 +26,7 @@ Install with whichever package manager the project already uses (`npm install`, 
 npm install @arcjet/guard
 ```
 
-Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called out as 1.6.0 still apply. Capture, registration, Rampart, nested metadata, and threat/billing require **`@arcjet/guard` 1.10.0**. Adapters listed as shipped in 1.11.0 remain available from 1.11.0 onward. Google ADK, TanStack AI, and Claude Managed Agents require **1.12.0**. Uppercase labels need **1.14.1**. Claude Agent SDK result screening and an importable `validateGuardLabel` / `ArcjetInvalidLabelError` need **1.15.0** (in 1.13.0–1.14.1 both are `undefined` at runtime on Node, Deno, and Bun). Runtime minimums match the Arcjet JS SDK line:
+Requires `@arcjet/guard` ≥ 1.4.0 for basic Guard protection. Features called out as 1.6.0 still apply. Capture, registration, Rampart, nested metadata, and threat/billing require **`@arcjet/guard` 1.10.0**. Adapters listed as shipped in 1.11.0 remain available from 1.11.0 onward. Google ADK, TanStack AI `/v0`, and Claude Managed Agents `/v0` require **1.12.0**. TanStack AI `/v1` and Claude Managed Agents `/v1` require **1.16.0**. Uppercase labels need **1.14.1**. Claude Agent SDK result screening and an importable `validateGuardLabel` / `ArcjetInvalidLabelError` need **1.15.0** (in 1.13.0–1.14.1 both are `undefined` at runtime on Node, Deno, and Bun). `CATEGORY:AI_AGENT` / `isAiAgent` need **1.16.0**. Runtime minimums match the Arcjet JS SDK line:
 
 | Runtime            | Minimum version          |
 | ------------------ | ------------------------ |
@@ -39,7 +39,7 @@ The correct transport is picked automatically via conditional exports (HTTP/2 on
 
 Read the installed package's types and doc comments for the full API surface.
 
-> _Runtime support last verified against the published `@arcjet/guard` **v1.15.0** on **November 11, 2026**. The twelve adapters are `vercel-ai/v7`, `vercel-eve/v0`, `mastra/v1`, `langgraph/v1`, `langchain/v1`, `claude-agent-sdk/v0`, `claude-managed-agents/v0`, `openai-agents/v0`, `genkit/v1`, `strands-agents/v1`, `google-adk/v2`, and `tanstack-ai/v0`; every one takes `actor` / `inputs`. Prompt-injection `threshold` / `score` are **removed**. Decide timeout defaults to 2000 ms. `cloudflare-think/v0` installs from published `@arcjet/guard` plus peer `@cloudflare/think` — load [integrate-arcjet-guard-cloudflare-think](../../integrate-arcjet-guard-cloudflare-think/SKILL.md). Do not pin a git SHA. Read the installed package's types. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
+> _Runtime support last verified against the published `@arcjet/guard` **v1.16.0** on **November 19, 2026**. Published adapters include `vercel-ai/v7`, `vercel-eve/v0`, `mastra/v1`, `langgraph/v1`, `langchain/v1`, `claude-agent-sdk/v0`, `claude-managed-agents/v0` and `/v1`, `openai-agents/v0`, `genkit/v1`, `strands-agents/v1`, `google-adk/v2`, `tanstack-ai/v0` and `/v1`, and `cloudflare-think/v0`; every one takes `actor` / `inputs`. Prompt-injection `threshold` / `score` are **removed**. Decide timeout defaults to 2000 ms. `cloudflare-think/v0` installs from published `@arcjet/guard` plus peer `@cloudflare/think` — load [integrate-arcjet-guard-cloudflare-think](../../integrate-arcjet-guard-cloudflare-think/SKILL.md). Do not pin a git SHA. Read the installed package's types. Minimums tend to creep upward – check the [Runtime support section](https://github.com/arcjet/arcjet-js/tree/main/arcjet-guard#runtime-support) of the README._
 
 ## Architecture: why things go where they do
 
@@ -289,7 +289,7 @@ Load **fundamentals here, then exactly one adapter**. Do not open sibling adapte
 | Adapter | Import | Load |
 | --- | --- | --- |
 | Vercel AI SDK v7 | `@arcjet/guard/vercel-ai/v7` | [guards_js_vercel_ai.md](guards_js_vercel_ai.md) |
-| Vercel Eve v0 | `@arcjet/guard/vercel-eve/v0` | [guards_js_vercel_eve.md](guards_js_vercel_eve.md) |
+| Vercel Eve 0.x | `@arcjet/guard/vercel-eve/v0` | [guards_js_vercel_eve.md](guards_js_vercel_eve.md) |
 | Mastra v1 | `@arcjet/guard/mastra/v1` | [guards_js_mastra.md](guards_js_mastra.md) |
 | LangChain `createAgent` v1 | `@arcjet/guard/langchain/v1` | [guards_js_langchain.md](guards_js_langchain.md) |
 | LangGraph v1 | `@arcjet/guard/langgraph/v1` | [guards_js_langgraph.md](guards_js_langgraph.md) |
@@ -298,8 +298,10 @@ Load **fundamentals here, then exactly one adapter**. Do not open sibling adapte
 | Claude Agent SDK v0 | `@arcjet/guard/claude-agent-sdk/v0` | [guards_js_claude_agent_sdk.md](guards_js_claude_agent_sdk.md) |
 | Strands Agents v1 | `@arcjet/guard/strands-agents/v1` | [guards_js_strands_agents.md](guards_js_strands_agents.md) |
 | Google ADK v2 | `@arcjet/guard/google-adk/v2` | [guards_js_google_adk.md](guards_js_google_adk.md) |
-| TanStack AI v0 | `@arcjet/guard/tanstack-ai/v0` | [guards_js_tanstack_ai.md](guards_js_tanstack_ai.md) |
-| Claude Managed Agents v0 | `@arcjet/guard/claude-managed-agents/v0` | [guards_js_claude_managed_agents.md](guards_js_claude_managed_agents.md) |
+| TanStack AI 1.x | `@arcjet/guard/tanstack-ai/v1` | [guards_js_tanstack_ai.md](guards_js_tanstack_ai.md) |
+| TanStack AI 0.x | `@arcjet/guard/tanstack-ai/v0` | [guards_js_tanstack_ai.md](guards_js_tanstack_ai.md) |
+| Claude Managed Agents (`@anthropic-ai/sdk` 1.x) | `@arcjet/guard/claude-managed-agents/v1` | [guards_js_claude_managed_agents.md](guards_js_claude_managed_agents.md) |
+| Claude Managed Agents (`@anthropic-ai/sdk` 0.x) | `@arcjet/guard/claude-managed-agents/v0` | [guards_js_claude_managed_agents.md](guards_js_claude_managed_agents.md) |
 | Cloudflare Think v0 | `@arcjet/guard/cloudflare-think/v0` | Published `@arcjet/guard` (`npm install` / `pnpm add`) plus peer `@cloudflare/think` `>=0.3.0 <1`. Docs https://docs.arcjet.com/guards/cloudflare-think/. Load [integrate-arcjet-guard-cloudflare-think](../../integrate-arcjet-guard-cloudflare-think/SKILL.md) for the peer, deny envelope, fail-closed, no ID minting, HITL, and `actor` / `inputs` + `policyInput`. |
 
 Docs are the merged pages at https://docs.arcjet.com/guards/<adapter>/. Language-specific `*-js` / `*-py` URLs redirect there. JS adapters also ship `integrate-arcjet-guard-*` skills under `node_modules/@arcjet/guard/skills/` — this repo does not duplicate those. Cloudflare Think is a dedicated skill here instead of a `guards_js_*.md` file.

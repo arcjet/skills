@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-claude-managed-agents-py
 description: Integrate Arcjet Guard into Python Claude Managed Agents — screen user.message with guard_events before sessions.events.send, and gate custom tools on agent.custom_tool_use with guard_custom_tool. Use when asked to add Arcjet to hosted Claude Managed Agents, anthropic beta sessions, rate limit custom tools, or block prompt injection on hosted sessions. Not Claude Agent SDK local query() / PreToolUse.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official anthropic>=0.92.0,<2 via arcjet[claude-managed-agents] (safe extra, no chromadb). Peer is anthropic, not claude-agent-sdk. Requires PyPI arcjet 1.1.0.
+compatibility: Requires Python >= 3.11 for arcjet 1.6.0 (pip installs 1.5.0 on 3.10). Needs official anthropic>=0.92.0,<2 via arcjet[claude-managed-agents] (safe extra, no chromadb). Peer is anthropic, not claude-agent-sdk. Requires PyPI arcjet 1.1.0.
 metadata:
   author: arcjet
   type: core
@@ -22,7 +22,7 @@ Agents-specific.
 Official `anthropic>=0.92.0,<2` only — not `claude-agent-sdk`, not
 `arcjet.guard.claude_agent_sdk`, not the JS
 `@anthropic-ai/claude-agent-sdk` adapter, and not JS Claude Managed
-Agents (`@arcjet/guard/claude-managed-agents/v0`, docs
+Agents (`@arcjet/guard/claude-managed-agents/v1` for `@anthropic-ai/sdk` 1.x, `/v0` for 0.x; docs
 https://docs.arcjet.com/guards/claude-managed-agents/). Importing
 `arcjet.guard.claude_managed_agents` does not load Claude Agent SDK,
 LangChain, or CrewAI. The extra is safe (no chromadb).

@@ -49,11 +49,9 @@ Two surfaces, one decision rule:
 
 Docs: https://docs.arcjet.com/guards/cloudflare-think/
 Do not invent a second slug and do not overwrite any other
-`/guards/...` page. Example (the `main` tree 404s; no example PR
-is open, so cite this branch until
-`examples/cloudflare-think-agent` exists on `main`):
-[`examples/cloudflare-think-agent`](https://github.com/arcjet/examples/tree/david/cursor/cloudflare-think-agent-f8cc/examples/cloudflare-think-agent)
-(no verify fixture). Do not invent a second example name.
+`/guards/...` page. Example:
+[`examples/cloudflare-think-agent`](https://github.com/arcjet/examples/tree/main/examples/cloudflare-think-agent).
+Do not invent a second example name.
 
 ## The gate is `beforeToolCall` block / substitute
 
@@ -319,7 +317,7 @@ the call is uncorrelated rather than joined to a generated id.
    run it.
 
 Worked example:
-[`examples/cloudflare-think-agent`](https://github.com/arcjet/examples/tree/david/cursor/cloudflare-think-agent-f8cc/examples/cloudflare-think-agent)
-(no verify fixture; `main` does not have this tree yet). Do not
+[`examples/cloudflare-think-agent`](https://github.com/arcjet/examples/tree/main/examples/cloudflare-think-agent)
+(no verify fixture). Do not
 invent a second example name. Do not add an example in this skills
 repo.

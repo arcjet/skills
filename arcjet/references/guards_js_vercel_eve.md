@@ -4,7 +4,7 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/vercel-eve/
 
-Exports: `guardTool`, `guardApproval`, `guardInbound`, `arcjetHooks`, `eveAgentContext`. Import `@arcjet/guard/vercel-eve/v0` – there is no unversioned alias and no `/v1`. Optional peer `eve` `>=0.34.0 <1`. Eve is still 0.x. Node.js ≥ 24. The request/response form ships in 1.11.0+. A connection's tools have no local handler, so `guardApproval` is the only enforcement that reaches them.
+Exports: `guardTool`, `guardApproval`, `guardInbound`, `arcjetHooks`, `eveAgentContext`. Import `@arcjet/guard/vercel-eve/v0` – there is no unversioned alias. Published `@arcjet/guard` **1.16.0** exports `/v0` only (matches the docs page). Eve 1.x `/v1` is on `arcjet-js` main for a later release — check the installed package's `exports` before importing `/v1`; do not invent the path. Optional peer `eve` `>=0.34.0 <1` for `/v0`. Node.js ≥ 24. The request/response form ships in 1.11.0+. A connection's tools have no local handler, so `guardApproval` is the only enforcement that reaches them.
 
 `guardInbound` and `arcjetHooks` are unchanged. `guardTool` still throws `ArcjetDeniedError` (Eve projects that as a failed `action.result`). Opt in to a returned `ArcjetDenialResult` with `onDeny: "result"` so an `outputSchema` is not silently violated. `defineDynamic` / OpenAPI / MCP connections have no local `execute` – use `guardApproval`, not `guardTool`. `guardApproval` never throws; it returns Eve approval objects (`denied` / `rejected` / `allowed`). Eve 0.34+ request/response approval:
 
