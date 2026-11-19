@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-claude-agent-sdk-py
 description: Integrate Arcjet Guard into the Python Claude Agent SDK — wrap authored @tool with guard_tool, and use guard_hooks for UserPromptSubmit inbound plus PreToolUse on unwrapped built-ins / MCP. Use when asked to add Arcjet to claude-agent-sdk, rate limit those tools, screen inbound prompts, or block prompt injection / PII. This is Python claude-agent-sdk, not the JS adapter and not Claude Managed Agents hosted sessions.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official claude-agent-sdk>=0.2.127,<1 via arcjet[claude-agent-sdk] (safe extra, no chromadb). Requires PyPI arcjet 1.1.0; result screening (result_rules / tool_results) needs 1.5.0.
+compatibility: Requires Python >= 3.11 for arcjet 1.6.0 (pip installs 1.5.0 on 3.10). Needs official claude-agent-sdk>=0.2.127,<1 via arcjet[claude-agent-sdk] (safe extra, no chromadb). Requires PyPI arcjet 1.1.0; result screening (result_rules / tool_results) needs 1.5.0.
 metadata:
   author: arcjet
   type: core

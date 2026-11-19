@@ -4,7 +4,7 @@ Request protection inspects `net/http` requests (headers, IP, body) on API route
 
 ## Installation
 
-The current release is **`github.com/arcjet/arcjet-go` v1.3.0** (verified November 11, 2026), which `go get ...@latest` resolves. It requires Go 1.25+. Web Bot Auth (`SIGNED_BOT:`) needs v1.3.0. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The current release is **`github.com/arcjet/arcjet-go` v1.4.0** (verified November 19, 2026), which `go get ...@latest` resolves. It requires Go 1.26+. Web Bot Auth (`SIGNED_BOT:`) needs v1.3.0+. `CATEGORY:AI_AGENT` and `Decision.IsAIAgent()` need v1.4.0. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Install with `go get github.com/arcjet/arcjet-go@latest`, not by editing `go.mod`. Read the installed package docs for exact signatures.
 
@@ -69,7 +69,7 @@ Use `client.WithRule(...)` to derive a route-specific client when a handler need
 For rule selection and rate-limiting strategy comparisons, see [Choose protections](choosing_protections.md).
 
 - `Shield` – always include. Set `ShieldOptions{Mode: arcjet.ModeLive}` to enforce. **Every HTTP Protect rule defaults to dry run** when `Mode` is the zero value – not only Shield.
-- `DetectBot` – request-based only; pass exactly one of `Allow` or `Deny`. Web Bot Auth signers go in the same lists, by catalog name (`CHATGPT_AGENT`, `BROWSERBASE`, …) or as `SIGNED_BOT:https://<host>/.well-known/http-message-signatures-directory`. See [Web Bot Auth](#web-bot-auth).
+- `DetectBot` – request-based only; pass exactly one of `Allow` or `Deny`. `BotCategoryAIAgent` / `CATEGORY:AI_AGENT` (v1.4.0+) is the on-demand AI-agent slice of `CATEGORY:AI` — denying `CATEGORY:AI` also blocks agents. Check a LIVE decision with `decision.IsAIAgent()`. Web Bot Auth signers go in the same lists, by catalog name (`CHATGPT_AGENT`, `BROWSERBASE`, …) or as `SIGNED_BOT:https://<host>/.well-known/http-message-signatures-directory`. See [Web Bot Auth](#web-bot-auth).
 - Rate limits – `TokenBucket`, `FixedWindow`, `SlidingWindow`; use `WithRequested(n)` for variable-cost calls and `WithCharacteristics(...)` for user/session keys.
 - `ValidateEmail` / `ProtectSignup` – signup and login forms. `ProtectSignup` returns `[]Rule` (bot + email + rate limit) – assign it to `Config.Rules` or `append` other rules. It is not a single composite rule like JS `protectSignup`.
 - `SensitiveInfo` – scans text on-device; pass text with `WithSensitiveInfoValue(...)`. Always set `Backend` (see [Sensitive information](#sensitive-information)).

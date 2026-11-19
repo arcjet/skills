@@ -2,7 +2,7 @@
 name: integrate-arcjet-guard-strands-agents-py
 description: Integrate Arcjet Guard into Python Strands Agents — wrap authored @tool with guard_tool, and put guard_hooks on Agent(hooks=) for unwrapped / MCP tools via BeforeToolCallEvent.cancel_tool. Use when asked to add Arcjet to strands / strands-agents, rate limit those tools, screen inbound messages, or block prompt injection / PII. This is Python strands, not JS @strands-agents/sdk.
 license: Apache-2.0
-compatibility: Requires Python >= 3.10 and official strands-agents>=1.11.0,<2 via arcjet[strands-agents] (safe extra, no chromadb). 1.11.0 is the first 1.x with BeforeToolCallEvent.cancel_tool. Requires PyPI arcjet 1.1.0.
+compatibility: Requires Python >= 3.11 for arcjet 1.6.0 (pip installs 1.5.0 on 3.10). Needs official strands-agents>=1.11.0,<2 via arcjet[strands-agents] (safe extra, no chromadb). 1.11.0 is the first 1.x with BeforeToolCallEvent.cancel_tool. Requires PyPI arcjet 1.1.0.
 metadata:
   author: arcjet
   type: core

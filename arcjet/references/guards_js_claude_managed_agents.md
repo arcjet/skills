@@ -4,7 +4,14 @@ Load [guards_javascript.md](guards_javascript.md) for the client, rules, labels,
 
 Docs: https://docs.arcjet.com/guards/claude-managed-agents/
 
-Exports: `guardCustomTool`, `guardEvents`, `claudeManagedAgentsContext`. There is no `guardTool`, `guardHooks`, `guardInbound`, or unversioned `@arcjet/guard/claude-managed-agents` alias. This is the hosted Claude Managed Agents harness (`@anthropic-ai/sdk` `client.beta.sessions`). It is **not** Claude Agent SDK local `query()` / `PreToolUse` — that stays `@arcjet/guard/claude-agent-sdk/v0` (docs https://docs.arcjet.com/guards/claude-agent-sdk/). Optional peer `@anthropic-ai/sdk` `>=0.86.0 <1` — not `@anthropic-ai/claude-agent-sdk`. Ships in `@arcjet/guard` **1.12.0** — `npm install @arcjet/guard`. Worked example: [`examples/claude-managed-agent`](https://github.com/arcjet/examples/tree/main/examples/claude-managed-agent). Read the installed package's types before wiring. Python is `arcjet.guard.claude_managed_agents` (shared docs https://docs.arcjet.com/guards/claude-managed-agents/; load [integrate-arcjet-guard-claude-managed-agents-py](../../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md)). There is no `/guards/claude-managed-agents-py/` page.
+Exports: `guardCustomTool`, `guardEvents`, `claudeManagedAgentsContext`. There is no `guardTool`, `guardHooks`, `guardInbound`, or unversioned `@arcjet/guard/claude-managed-agents` alias. This is the hosted Claude Managed Agents harness (`@anthropic-ai/sdk` `client.beta.sessions`). It is **not** Claude Agent SDK local `query()` / `PreToolUse` — that stays `@arcjet/guard/claude-agent-sdk/v0` (docs https://docs.arcjet.com/guards/claude-agent-sdk/).
+
+Pick the path from the installed `@anthropic-ai/sdk` major:
+
+- **1.x** → `@arcjet/guard/claude-managed-agents/v1` (ships in `@arcjet/guard` **1.16.0**; re-exports `/v0`)
+- **0.x** (`>=0.86.0 <1`) → `@arcjet/guard/claude-managed-agents/v0` (first shipped in **1.12.0**)
+
+`npm install @arcjet/guard`. Worked example: [`examples/claude-managed-agent`](https://github.com/arcjet/examples/tree/main/examples/claude-managed-agent). Read the installed package's types before wiring. Python is `arcjet.guard.claude_managed_agents` (shared docs https://docs.arcjet.com/guards/claude-managed-agents/; load [integrate-arcjet-guard-claude-managed-agents-py](../../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md)). There is no `/guards/claude-managed-agents-py/` page.
 
 This is a hosted harness. Anthropic runs the agent loop and the built-in toolset (`bash`, files, web_*). The agent toolset defaults to `always_allow`, so there is **no customer pre-exec** for bash/files — `agent.tool_use` / `agent.tool_result` fire after the built-in already ran. There is no `PreToolUse`. Do not paper over that gap with `always_ask`.
 
@@ -26,7 +33,7 @@ import {
   claudeManagedAgentsContext,
   guardCustomTool,
   guardEvents,
-} from "@arcjet/guard/claude-managed-agents/v0";
+} from "@arcjet/guard/claude-managed-agents/v1";
 
 const client = new Anthropic();
 const arcjet = launchArcjet({ key: process.env.ARCJET_KEY! });

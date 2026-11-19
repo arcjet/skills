@@ -65,7 +65,7 @@ See [references/cli.md](references/cli.md) for install options beyond `npx`, age
 
 #### Install the SDK with the project's package manager
 
-Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.15.0`; Python `arcjet` is `1.5.0`; Go must use a module tag, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
+Once you know which SDK you need (see Step 3), install it with the package manager the project already uses: `npm install`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`, or `go get`. Don't hand-edit `package.json` / `requirements.txt` / `go.mod` and guess a version: typed versions go stale (`@arcjet/next` is currently `1.16.0`; Python `arcjet` is `1.6.0`; Go must use a module tag, not a copied pseudo-version), and the lockfile/module metadata won't get updated. Let the package manager pick the real version and pin it.
 
 ### Step 3: Detect protection type and read the reference
 
@@ -202,7 +202,7 @@ If you can't run the app in the current environment, tell the user exactly what 
 - **Wrong placement**: `protect()` must not be called in Express middleware or Next.js middleware. Call it inside each route handler.
 - **Wrong layer for `guard()`**: don't put `guard()` in a generic dispatcher. Use the official wrapper from the table above, or put `guard()` inside the specific tool. Load the dedicated Python skill instead of hand-wrapping.
 - **Python adapter denials and HITL:** load the dedicated skill. Capture handlers never block. HITL is not a policy gate. Helper `metadata.outcome` details live in the Python Guard reference.
-- **Hand-edited dependency manifests**: run the project's package manager so the version is real (`@arcjet/*` 1.15.0, Python `arcjet` 1.5.0).
+- **Hand-edited dependency manifests**: run the project's package manager so the version is real (`@arcjet/*` 1.16.0, Python `arcjet` 1.6.0).
 - **Double-counting**: calling `protect()` or `guard()` multiple times for the same operation counts against rate limits multiple times.
 - **Client-IP warning bypass**: never "fix" an `unverified-header` warning by copying `X-Forwarded-For` into `ipSrc` / `ip_src` / `WithIPSrc`.
 - **JS denial envelopes:** one `ArcjetDenialResult` payload; delivery is per-framework. Read the adapter file from Step 3 before inventing a status or throwing. `guardTool` and `guardAction` are different handlers.
@@ -220,7 +220,7 @@ For exact API signatures, parameter names, and the full set of rules and helpers
 - **Python Guard integration skills**: [integrate-arcjet-guard-langchain-py](../integrate-arcjet-guard-langchain-py/SKILL.md), [integrate-arcjet-guard-crewai](../integrate-arcjet-guard-crewai/SKILL.md), [integrate-arcjet-guard-openai-agents-py](../integrate-arcjet-guard-openai-agents-py/SKILL.md), [integrate-arcjet-guard-claude-agent-sdk-py](../integrate-arcjet-guard-claude-agent-sdk-py/SKILL.md), [integrate-arcjet-guard-claude-managed-agents-py](../integrate-arcjet-guard-claude-managed-agents-py/SKILL.md), [integrate-arcjet-guard-strands-agents-py](../integrate-arcjet-guard-strands-agents-py/SKILL.md), [integrate-arcjet-guard-google-adk-py](../integrate-arcjet-guard-google-adk-py/SKILL.md).
 - **JS Cloudflare Think skill**: [integrate-arcjet-guard-cloudflare-think](../integrate-arcjet-guard-cloudflare-think/SKILL.md).
 - **JavaScript / TypeScript SDK**: https://github.com/arcjet/arcjet-js – monorepo with framework-specific packages (`@arcjet/next`, `@arcjet/node`, `@arcjet/fastify`, `@arcjet/sveltekit`, `@arcjet/guard`). JS Guard adapter files: [references/guards_js_vercel_ai.md](references/guards_js_vercel_ai.md) and siblings listed in Step 3.
-- **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. `go get github.com/arcjet/arcjet-go` resolves **v1.3.0** (Go 1.25+). Microsoft Agent Framework helpers live in a separate module: `go get github.com/arcjet/arcjet-go/agentframework` resolves **v0.1.0** and needs Go 1.26+.
+- **Go SDK**: https://github.com/arcjet/arcjet-go – `github.com/arcjet/arcjet-go` module with request and guard clients. `go get github.com/arcjet/arcjet-go` resolves **v1.4.0** (Go 1.26+). Microsoft Agent Framework helpers live in a separate module: `go get github.com/arcjet/arcjet-go/agentframework` resolves **v0.1.0** and needs Go 1.26+.
 - **Guard policies**: author in the Console policy editor, or via MCP (`get-guard-policy` → `describe-guard-policy` → `validate-guard-policy` → `put-guard-policy`; see [references/mcp.md](references/mcp.md)). Saving is publishing. The CLI has no policy commands.
 - **Agent registration**: https://arcjet.com/auth.md — follow that file; do not reproduce the ceremony here.
 - **Docs**: https://docs.arcjet.com – narrative guides, blueprints, and product reference.

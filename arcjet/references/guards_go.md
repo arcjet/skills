@@ -6,7 +6,7 @@ Guard protects code paths that do not have an HTTP request – agent tool calls,
 
 ## Installation
 
-The current release is **`github.com/arcjet/arcjet-go` v1.3.0** (verified November 11, 2026), which `go get ...@latest` resolves. It requires Go 1.25+. Uppercase labels and the default `client.Guard` deadline need **v1.2.0**. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
+The current release is **`github.com/arcjet/arcjet-go` v1.4.0** (verified November 19, 2026), which `go get ...@latest` resolves. It requires Go 1.26+. Uppercase labels and the default `client.Guard` deadline need **v1.2.0**. If the project uses an older Go toolchain, warn the user and stop until it is upgraded.
 
 Separate modules: `github.com/arcjet/arcjet-go/agentframework` **v0.1.0** (Go 1.26+) and `github.com/arcjet/arcjet-go/sensitiveinfo/rampart`. Install with `go get ...@latest`, not by editing `go.mod`.
 
