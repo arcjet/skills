@@ -166,7 +166,7 @@ Rampart's `max_input_chars` defaults to 100,000 code points. Over the limit, the
 
 ### Content moderation
 
-`ModerateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is frozen to `detected` plus optional `billing` (`text_units`) – no per-category scores. Graduated in **1.0.0**; `experimental_ModerateContent` remains a deprecated alias. `decision.reason` is `"MODERATE_CONTENT"` on deny.
+`ModerateContent()` flags unsafe or policy-violating text for Guard call sites (not available on `protect()`). The result is frozen to `detected`, `detected_categories` (`tuple[str, ...]`, default `()`), and optional `billing` (`text_units`). Categories are `SEXUALLY_EXPLICIT`, `MISCONDUCT`, `HATE_SPEECH`, `INSULTS` (plus any future string) in fixed catalogue order; scores and thresholds are never returned. Decide on `detected`: the tuple can be empty even when `detected` is true (older server). On published `arcjet` **1.6.0** the field is absent – check installed types (merged on `main` in #303). Graduated in **1.0.0**; `experimental_ModerateContent` remains a deprecated alias. `decision.reason` is `"MODERATE_CONTENT"` on deny.
 
 ```python
 from arcjet.guard import ModerateContent
@@ -217,7 +217,7 @@ if decision.conclusion == "DENY":
     raise Exception("blocked")
 ```
 
-`decision.reason` is a flat string – one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"MODERATE_CONTENT"`, `"SENSITIVE_INFO"`, `"INPUT_CONSTRAINT"`, `"CUSTOM"`, `"POLICY_EXPRESSION"`, `"IP_THREAT"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Branch on the ones you handle and keep a catch-all for DENY. Remote policy results arrive in `decision.policy_results` (policy, revision, rule, mode, execution `SDK`/`SERVER`); `decision.policy_evaluation.status` is `NOT_CONFIGURED` (no published policy for the label), `APPLIED`, `INCOMPLETE`, `UNAVAILABLE`, or `UNKNOWN`. Prompt-injection and content-moderation results may include optional `billing` (`unit` / `count`). Prompt injection uses `tokens`; moderation uses `text_units`. The moderation result is `detected` plus that optional `billing` only. Read the types on the decision object for the full structure.
+`decision.reason` is a flat string – one of `"RATE_LIMIT"`, `"PROMPT_INJECTION"`, `"MODERATE_CONTENT"`, `"SENSITIVE_INFO"`, `"INPUT_CONSTRAINT"`, `"CUSTOM"`, `"POLICY_EXPRESSION"`, `"IP_THREAT"`, `"ERROR"`, `"NOT_RUN"`, `"UNKNOWN"`. Branch on the ones you handle and keep a catch-all for DENY. Remote policy results arrive in `decision.policy_results` (policy, revision, rule, mode, execution `SDK`/`SERVER`); `decision.policy_evaluation.status` is `NOT_CONFIGURED` (no published policy for the label), `APPLIED`, `INCOMPLETE`, `UNAVAILABLE`, or `UNKNOWN`. Prompt-injection and content-moderation results may include optional `billing` (`unit` / `count`). Prompt injection uses `tokens`; moderation uses `text_units`. The moderation result is `detected`, `detected_categories`, and optional `billing` – decide on `detected`. Read the types on the decision object for the full structure.
 
 ### Errors vs warnings (failing open)
 

@@ -36,7 +36,7 @@ Pick the adapter for the project's framework, then install it with whichever pac
 | Astro             | `@arcjet/astro`                                           | Astro ^5.9.3 \|\| ^6 \|\| ^7                         |
 | Nuxt              | `@arcjet/nuxt`                                            | `@nuxt/kit` ≥ 4, `@nuxt/schema` ≥ 4                  |
 | Bun               | `@arcjet/bun`                                             | Bun ≥ 1.3.0                                          |
-| Deno              | `@arcjet/deno` (install with `deno add npm:@arcjet/deno`) | Deno `stable` / `lts`                                |
+| Deno              | `@arcjet/node` (install with `deno add npm:@arcjet/node`; run a `node:http` server – Deno's Node compat layer). `@arcjet/deno` is **deprecated** (no further updates). | Deno `stable` / `lts`                                |
 | Hono              | `@arcjet/node` (on Node) or `@arcjet/bun` (on Bun)        | runtime-dependent (see Node/Bun rows)                |
 
 If the project is below a listed minimum, warn the user and stop – installing anyway produces confusing errors.
@@ -44,7 +44,8 @@ If the project is below a listed minimum, warn the user and stop – installing 
 **Some frameworks don't fit the generic patterns.** Check [Framework-specific setup](#framework-specific-setup) first:
 
 - **Astro, Nuxt, NestJS** – replace the "shared client file" pattern entirely (Astro integration / Nuxt module / NestJS DI).
-- **Bun, Deno, Hono on Node** – use the shared client file, but with a runtime quirk (`aj.handler()` wrapping for Bun/Deno; `HttpBindings` type for Hono on Node).
+- **Bun, Hono on Node** – use the shared client file, but with a runtime quirk (`aj.handler()` wrapping for Bun; `HttpBindings` type for Hono on Node).
+- **Deno** – prefer `@arcjet/node` with a `node:http` server. `@arcjet/deno` is deprecated.
 
 Everything else (Next.js, Express/Node, Fastify, SvelteKit, Remix, React Router, Hono on Bun) follows the generic patterns directly.
 
@@ -168,12 +169,11 @@ export class AppController {
 }
 ```
 
-### Bun and Deno
+### Bun
 
-Both expose `aj.handler()` to wrap the server's fetch handler. Wrapping is for accurate client IP detection – `protect()` still needs to be called inside.
+`@arcjet/bun` exposes `aj.handler()` to wrap the server's fetch handler. Wrapping is for accurate client IP detection – `protect()` still needs to be called inside. Env comes from `import { env } from "bun"` rather than `process.env`.
 
 ```typescript
-// Bun
 import arcjet, { shield } from "@arcjet/bun";
 import { env } from "bun";
 
@@ -187,20 +187,11 @@ Bun.serve({
     return new Response("ok");
   }),
 });
-
-// Deno
-import arcjet, { shield } from "npm:@arcjet/deno";
-
-const aj = arcjet({ key: Deno.env.get("ARCJET_KEY")!, rules: [shield({ mode: "LIVE" })] });
-
-Deno.serve(aj.handler(async (request) => {
-  const decision = await aj.protect(request);
-  // ...
-  return new Response("ok");
-}));
 ```
 
-On Deno, imports use the `npm:` prefix (`npm:@arcjet/deno`, `npm:@arcjet/inspect`). On Bun, env comes from `import { env } from "bun"` rather than `process.env`.
+### Deno
+
+`@arcjet/deno` is **deprecated** and receives no further updates. On Deno, use `@arcjet/node` with a `node:http` server (Deno's Node.js compatibility layer). Do not start new Deno apps on `@arcjet/deno`.
 
 ### Hono
 
@@ -268,9 +259,9 @@ The request object to pass differs by framework:
 | Hono on Node.js                     | `c.env.incoming` (requires `Hono<{ Bindings: HttpBindings }>`)    |
 | Hono on Bun                         | `c.req.raw`                                                       |
 | Bun                                 | `request` (Web `Request`), wrap `fetch` with `aj.handler()`       |
-| Deno                                | `request` (Web `Request`), wrap `Deno.serve` body with `aj.handler()` |
+| Deno (via `@arcjet/node`)           | `req` (`IncomingMessage` from `node:http`)                        |
 
-`aj.handler()` on Bun and Deno wraps the user's fetch handler so Arcjet has access to the underlying socket / connection info for accurate IP detection – Bun and Deno don't expose that on the `Request` object alone. The wrapping is for IP detection only; you still need to call `aj.protect(request)` yourself inside the handler.
+`aj.handler()` on Bun wraps the user's fetch handler so Arcjet has access to the underlying socket / connection info for accurate IP detection – Bun doesn't expose that on the `Request` object alone. The wrapping is for IP detection only; you still need to call `aj.protect(request)` yourself inside the handler.
 
 ## Decision handling
 
@@ -363,10 +354,12 @@ As of `@arcjet/*` 1.6.0, the request-based SDK still carries a couple of depreca
 
 - **`experimental_detectPromptInjection`** – the legacy `experimental_` alias is deprecated. Import `detectPromptInjection` directly from `@arcjet/node` / `@arcjet/next` or the adapter in use.
 - **`ArcjetEdgeRuleReason`** – unused; ignore it in reason-handling switches.
+- **`@arcjet/deno`** – deprecated; on Deno use `@arcjet/node` with a `node:http` server. No how-to for the old package.
+- **`@arcjet/redact`** / **`@arcjet/redact-wasm`** – deprecated and no longer maintained. Do not add them to new projects; no how-to here.
 
 In `@arcjet/*` **1.11.0**, `detectPromptInjection({ threshold })` and `PromptInjectionReason.score` are **removed**, not deprecated. Only `mode` remains. Do not pass `threshold` in new code, and drop it from existing configs when you see it – especially Astro, where leftover `threshold` throws (see [Astro](#astro)). Don't read `score`; branch on `decision.reason.isPromptInjection()` / `injectionDetected`.
 
-> _Deprecations last verified against the `@arcjet/*` v1.16.0 release on **November 19, 2026**. Before relying on these items, grep the installed package for `@deprecated` markers – see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
+> _Deprecations last verified against `@arcjet/*` source on **November 23, 2026** (published cut still **1.16.0**; Deno/redact deprecations and moderation `detectedCategories` are on `main`). Before relying on these items, grep the installed package for `@deprecated` markers – see [`protocol/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/protocol/index.ts) and [`arcjet/index.ts`](https://github.com/arcjet/arcjet-js/blob/main/arcjet/index.ts)._
 
 ## Key patterns
 
